@@ -145,7 +145,7 @@ const Appointment = () => {
   const dateLocale = language === "fr" ? fr : language === "ar" ? arSA : undefined;
 
   const isNameValid = clientName.trim().length >= 2;
-  const isPhoneValid = clientPhone.replace(/\D/g, "").length >= 6;
+  const isPhoneValid = clientPhone.replace(/\D/g, "").length >= 9;
   const isFormValid = isNameValid && isPhoneValid;
   const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : !isFormValid ? 3 : 4;
 
