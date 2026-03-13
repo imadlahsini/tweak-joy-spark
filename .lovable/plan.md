@@ -1,32 +1,86 @@
 
 
-# Appointment Confirmation Page
+# Fix: Dashboard Frontend Invocation Issues
 
-## Overview
-Create a stunning confirmation page at `/appointment/confirmation` that replaces the current toast + redirect. It will match the premium glass-morphism style of the booking page.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-## New File: `src/pages/AppointmentConfirmation.tsx`
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-**Visual Design:**
-- Full-screen dark gradient background with FloatingOrbs (matching Appointment page)
-- Large animated success checkmark: green circle that scales in, then a check icon draws in with a stroke animation
-- "Appointment Confirmed!" heading with TextReveal-style animation
-- Premium glass-morphism summary card (reusing the exact same card design from the booking page — gradient animated border, divided rows with icon pills for client info, date, time, consultation)
-- A subtle confetti burst of small dots/particles on mount (CSS-only or framer-motion)
-- "Back to Home" button styled like the existing CTA (gradient glow, shimmer sweep)
-- Full trilingual support (EN/FR/AR) using `useLanguage()`
+## Fix
 
-**Behavior:**
-- Receives booking data via `useLocation().state` (clientName, clientPhone, selectedDate, selectedTime)
-- Redirects to `/appointment` if no state is present
-- RTL support for Arabic
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-## Changes to `src/pages/Appointment.tsx`
-- Update `handleConfirm` to navigate to `/appointment/confirmation` passing state instead of showing a toast
+**Simplify the `fetchStats` function (lines 45-82):**
 
-## Changes to `src/App.tsx`
-- Add route `<Route path="/appointment/confirmation" element={<AppointmentConfirmation />} />`
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
 
-## Translations
-Each language gets: confirmedTitle, confirmedSubtitle, backHome, date, time, consultation, duration, details labels — matching existing tone.
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
 
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
+
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
+
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function

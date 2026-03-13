@@ -231,10 +231,14 @@ const Appointment = () => {
 
   const handleConfirm = () => {
     if (selectedDate && selectedTime && isFormValid) {
-      toast.success(t.successTitle, {
-        description: `${clientName} — ${t.successDesc} ${formatDate(selectedDate, "PPP")} ${t.at} ${selectedTime}`,
+      navigate("/appointment/confirmation", {
+        state: {
+          clientName,
+          clientPhone,
+          selectedDate: selectedDate.toISOString(),
+          selectedTime,
+        },
       });
-      setTimeout(() => navigate("/home"), 1500);
     }
   };
 

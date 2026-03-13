@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
+import AppointmentConfirmation from "./pages/AppointmentConfirmation";
 import { CTAModalProvider } from "@/contexts/CTAModalContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import CTAModal from "@/components/landing/CTAModal";
@@ -28,6 +29,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Welcome />} />
               <Route path="/appointment" element={<Appointment />} />
+              <Route path="/appointment/confirmation" element={<AppointmentConfirmation />} />
               <Route path="/home" element={<Index />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
