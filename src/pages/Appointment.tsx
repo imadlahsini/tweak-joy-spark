@@ -125,6 +125,15 @@ const Appointment = () => {
     }
   }, [selectedDate]);
 
+  // Auto-scroll to summary card when time selected
+  useEffect(() => {
+    if (selectedDate && selectedTime && summarySectionRef.current) {
+      setTimeout(() => {
+        summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 400);
+    }
+  }, [selectedTime]);
+
   // Sparkle burst when both selected
   useEffect(() => {
     if (selectedDate && selectedTime) {
