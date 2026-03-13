@@ -24,7 +24,7 @@ const SectionBadge = ({
     >
       <span className={`inline-flex items-center gap-2 font-medium text-sm px-4 py-2 rounded-full border ${
         isLight 
-          ? "bg-purple-500/15 text-purple-200 border-purple-400/25 backdrop-blur-sm" 
+          ? "bg-blue-500/15 text-blue-200 border-blue-400/25 backdrop-blur-sm" 
           : "bg-primary/10 text-primary border-primary/20"
       } ${className}`}>
         <span className={`w-2 h-2 rounded-full animate-pulse ${isLight ? "bg-purple-400" : "bg-primary"}`} />
