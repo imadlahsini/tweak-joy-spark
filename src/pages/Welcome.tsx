@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 
@@ -162,14 +162,14 @@ const Welcome = () => {
               className="group relative w-full sm:w-56 rounded-2xl cursor-pointer overflow-hidden"
             >
               {/* Animated gradient border */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/40 via-accent/30 to-primary/40 bg-[length:200%_200%] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-accent/15 to-primary/20 bg-[length:200%_200%] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="absolute inset-[1px] rounded-2xl bg-gradient-to-br from-primary/20 via-transparent to-accent/20 opacity-50 group-hover:opacity-100 transition-opacity duration-300" />
               
               {/* Card inner */}
-              <div className="relative m-[1px] rounded-2xl bg-card/70 backdrop-blur-xl border border-border/40 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-[0_0_40px_hsl(var(--primary)/0.2),0_0_80px_hsl(var(--primary)/0.08)]">
+              <div className="relative m-[1px] rounded-2xl bg-card/70 backdrop-blur-xl border border-border/40 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]">
                 {/* Shimmer sweep */}
                 <div className="absolute inset-0 rounded-2xl overflow-hidden">
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
                 </div>
 
                 {/* Top gradient accent */}
@@ -178,8 +178,7 @@ const Welcome = () => {
                 <div className="relative flex items-center gap-4 px-5 py-5 sm:flex-col sm:items-center sm:gap-3 sm:px-6 sm:py-7">
                   {/* Flag with glow */}
                   <div className="relative flex-shrink-0">
-                    <div className="absolute inset-0 scale-150 bg-primary/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <span className="relative text-5xl sm:text-6xl block leading-none drop-shadow-lg">
+                    <span className="relative text-5xl sm:text-6xl block leading-none">
                       {lang.flag}
                     </span>
                   </div>
@@ -199,10 +198,12 @@ const Welcome = () => {
 
                   {/* Arrow — slides in on hover */}
                   <div className="flex-shrink-0 sm:hidden">
-                    <ArrowRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
+                    <div className="w-8 h-8 rounded-full bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-all duration-300">
+                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-300" />
+                    </div>
                   </div>
                   <div className="hidden sm:block">
-                    <ArrowRight className="w-4 h-4 text-muted-foreground/0 group-hover:text-primary transition-all duration-300 translate-y-1 group-hover:translate-y-0" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-all duration-300" />
                   </div>
                 </div>
               </div>

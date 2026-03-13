@@ -1,20 +1,86 @@
 
 
-# Rethink Arrow & Reduce Glow on Welcome Language Cards
+# Fix: Dashboard Frontend Invocation Issues
 
-## Problems
-1. **Arrow**: The mobile arrow (`ArrowRight`) sits as a plain icon — looks generic and disconnected. The desktop arrow is invisible until hover (opacity 0) which is odd.
-2. **Glow overkill**: The hover shadow uses `0_0_40px` + `0_0_80px` glow (line 169), the flag has a `scale-150 blur-2xl` glow (line 181), the shimmer sweep adds more visual noise, and the animated gradient border compounds it all.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-## Changes — `src/pages/Welcome.tsx`
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-### Arrow redesign
-- **Mobile**: Replace the bare `ArrowRight` icon with a small circular container (`w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center`) housing a `ChevronRight` icon. Always visible, subtle, clean. On hover: bg becomes `bg-primary/20` and icon shifts slightly right.
-- **Desktop**: Replace invisible arrow with a simple `ChevronRight` that's always visible in muted color, becomes primary on hover.
+## Fix
 
-### Reduce glow
-- **Card hover shadow** (line 169): Reduce from `0_0_40px...0_0_80px` to a single subtle `0_0_20px_hsl(var(--primary)/0.1)`.
-- **Flag glow** (line 181): Remove the `scale-150 blur-2xl` glow div entirely — the flag emoji doesn't need a glow behind it.
-- **Shimmer sweep** (lines 171-173): Keep but reduce `via-primary/10` to `via-primary/5`.
-- **Animated gradient border** (line 165): Reduce `from-primary/40 via-accent/30` to `from-primary/20 via-accent/15`.
+### File: `src/pages/admin/AdminDashboard.tsx`
 
+**Simplify the `fetchStats` function (lines 45-82):**
+
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
+
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
+
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
+
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
+
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
