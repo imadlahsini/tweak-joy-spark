@@ -180,14 +180,14 @@ const Appointment = () => {
     }
   }, [isFormValid]);
 
-  // Sparkle burst when both selected
+  // Sparkle burst when form becomes valid
   useEffect(() => {
-    if (selectedDate && selectedTime) {
+    if (isFormValid) {
       setShowSparkles(true);
       const timer = setTimeout(() => setShowSparkles(false), 1500);
       return () => clearTimeout(timer);
     }
-  }, [selectedDate, selectedTime]);
+  }, [isFormValid]);
 
   // Bug 8 fix: scroll fade indicators
   useEffect(() => {
