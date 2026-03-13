@@ -239,7 +239,7 @@ const AppointmentConfirmation = () => {
                         <row.icon className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                        <p className={`text-[10px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.12em]"} text-muted-foreground`}>
                           {row.label}
                         </p>
                         <p className="text-sm font-semibold text-foreground truncate">
