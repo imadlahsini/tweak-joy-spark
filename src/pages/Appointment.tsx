@@ -99,8 +99,9 @@ const Appointment = () => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
-  const [hasScrolled, setHasScrolled] = useState(false);
-  const mouseX = useMotionValue(0);
+   const [hasScrolled, setHasScrolled] = useState(false);
+   const initialScrollLeftRef = useRef<number | null>(null);
+   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
   const orbX1 = useTransform(mouseX, [-500, 500], [-20, 20]);
