@@ -95,6 +95,7 @@ const Appointment = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const timeSectionRef = useRef<HTMLDivElement>(null);
   const dateSectionRef = useRef<HTMLDivElement>(null);
+  const summarySectionRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
@@ -123,6 +124,15 @@ const Appointment = () => {
       }, 300);
     }
   }, [selectedDate]);
+
+  // Auto-scroll to summary card when time selected
+  useEffect(() => {
+    if (selectedDate && selectedTime && summarySectionRef.current) {
+      setTimeout(() => {
+        summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 400);
+    }
+  }, [selectedTime]);
 
   // Sparkle burst when both selected
   useEffect(() => {
@@ -589,6 +599,7 @@ const Appointment = () => {
         <AnimatePresence>
           {selectedDate && selectedTime && (
             <motion.div
+              ref={summarySectionRef}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
