@@ -201,9 +201,19 @@ const AppointmentConfirmation = () => {
         {/* Animated Checkmark */}
         <div className="relative mb-8">
           {/* Confetti particles */}
-          {Array.from({ length: 20 }).map((_, i) => (
+          {Array.from({ length: 30 }).map((_, i) => (
             <Particle key={i} index={i} />
           ))}
+
+          {/* Green success glow halo */}
+          <motion.div
+            animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.15, 1] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 -m-8 rounded-full"
+            style={{
+              background: "radial-gradient(circle, hsl(142 71% 45% / 0.25) 0%, transparent 70%)",
+            }}
+          />
 
           {/* Outer ring */}
           <motion.div
@@ -272,6 +282,16 @@ const AppointmentConfirmation = () => {
               {/* Inner glass highlight */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-accent/[0.03] pointer-events-none" />
 
+              {/* Shimmer sweep */}
+              <motion.div
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: "linear-gradient(105deg, transparent 40%, hsl(0 0% 100% / 0.06) 45%, hsl(0 0% 100% / 0.1) 50%, hsl(0 0% 100% / 0.06) 55%, transparent 60%)",
+                }}
+              />
+
               {/* Header */}
               <div className="relative px-5 pt-5 pb-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -333,26 +353,30 @@ const AppointmentConfirmation = () => {
         transition={{ delay: 1.6, duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
         className="fixed bottom-6 left-4 right-4 z-50 max-w-sm mx-auto"
       >
-        <div className="bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-elevated p-3 flex items-center justify-around">
+        <div className="bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-elevated p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-around">
           {[
-            { icon: MessageCircle, label: t.whatsapp, href: "https://wa.me/212XXXXXXXXX", color: "text-green-500" },
-            { icon: Phone, label: t.call, href: "tel:+212XXXXXXXXX", color: "text-primary" },
-            { icon: MapPin, label: t.directions, href: "https://maps.google.com/?q=placeholder", color: "text-accent-foreground" },
-          ].map((item, i) => (
-            <motion.a
-              key={item.label}
-              href={item.href}
-              target={item.icon === MapPin ? "_blank" : undefined}
-              rel={item.icon === MapPin ? "noopener noreferrer" : undefined}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.8 + i * 0.1 }}
-              whileTap={{ scale: 0.92 }}
-              className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-colors hover:bg-muted/50"
-            >
-              <item.icon className={`w-5 h-5 ${item.color}`} />
-              <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
-            </motion.a>
+            { icon: MessageCircle, label: t.whatsapp, href: "https://wa.me/212XXXXXXXXX", color: "text-green-500", bg: "bg-green-500/10" },
+            { icon: Phone, label: t.call, href: "tel:+212XXXXXXXXX", color: "text-primary", bg: "bg-primary/10" },
+            { icon: MapPin, label: t.directions, href: "https://maps.google.com/?q=placeholder", color: "text-accent-foreground", bg: "bg-accent/10" },
+          ].map((item, i, arr) => (
+            <div key={item.label} className="flex items-center">
+              <motion.a
+                href={item.href}
+                target={item.icon === MapPin ? "_blank" : undefined}
+                rel={item.icon === MapPin ? "noopener noreferrer" : undefined}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.8 + i * 0.1 }}
+                whileTap={{ scale: 0.92 }}
+                className="flex flex-col items-center gap-1.5 px-4 py-1.5 rounded-xl transition-colors hover:bg-muted/50"
+              >
+                <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center`}>
+                  <item.icon className={`w-5 h-5 ${item.color}`} />
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
+              </motion.a>
+              {i < arr.length - 1 && <div className="h-8 w-px bg-border/30 mx-1" />}
+            </div>
           ))}
         </div>
       </motion.div>

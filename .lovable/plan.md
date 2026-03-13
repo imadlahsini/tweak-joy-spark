@@ -1,26 +1,86 @@
 
 
-# Confirmation Page — Final Polish Pass
+# Fix: Dashboard Frontend Invocation Issues
 
-The page already has all the core premium elements (animated gradient mesh, floating shapes, orbs, noise overlay, navbar, confetti, animated card with rotating gradient border, floating action bar). Here are targeted refinements to make it truly exceptional:
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-## Changes — `src/pages/AppointmentConfirmation.tsx`
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-### 1. Add a subtle green success glow behind the checkmark
-Add a soft radial green gradient behind the checkmark circle that pulses gently, creating a "halo" effect that reinforces the success state.
+## Fix
 
-### 2. Enhance the summary card with a subtle inner shimmer
-Add a slow-moving diagonal highlight sweep across the card surface (similar to a premium credit card effect) — a thin white gradient line that slides across every 4 seconds.
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-### 3. Add a vertical separator between floating bar buttons
-Instead of plain `justify-around`, add thin `h-8 w-px bg-border/30` dividers between the 3 action buttons for a cleaner, more structured look.
+**Simplify the `fetchStats` function (lines 45-82):**
 
-### 4. Give each floating bar button an icon background circle
-Wrap each icon in a soft colored circle (`w-10 h-10 rounded-full bg-green-500/10` for WhatsApp, `bg-primary/10` for Call, `bg-accent/10` for Directions) to make the buttons feel more tappable and polished.
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
 
-### 5. Add safe-area bottom padding to the floating bar
-Use `safe-bottom` class so the bar doesn't overlap the home indicator on notched devices.
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
 
-### 6. Increase confetti particle count
-Bump from 20 to 30 particles for a more celebratory burst.
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
 
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
+
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
