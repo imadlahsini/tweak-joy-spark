@@ -377,7 +377,7 @@ const Appointment = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="flex items-center justify-center gap-0 mb-6 max-w-xs mx-auto w-full"
+          className="flex items-center justify-center gap-0 mb-6 max-w-sm mx-auto w-full px-2"
         >
           {/* Step 1 — clickable */}
           <button onClick={() => handleStepClick(1)} className="flex flex-col items-center gap-1.5 relative z-10 cursor-pointer">
@@ -403,8 +403,8 @@ const Appointment = () => {
             </span>
           </button>
 
-          {/* Connecting line */}
-          <div className={`flex-1 h-[2px] bg-border/50 mx-3 relative -mt-5 rounded-full overflow-hidden ${isRTL ? "direction-rtl" : ""}`}>
+          {/* Connecting line 1 */}
+          <div className={`flex-1 h-[2px] bg-border/50 mx-2 relative -mt-5 rounded-full overflow-hidden ${isRTL ? "direction-rtl" : ""}`}>
             <motion.div
               initial={{ scaleX: 0 }}
               animate={{ scaleX: currentStep >= 2 ? 1 : 0 }}
@@ -434,6 +434,40 @@ const Appointment = () => {
             </motion.div>
             <span className={`text-[11px] font-semibold transition-colors duration-300 ${currentStep >= 2 ? "text-primary" : "text-muted-foreground"}`}>
               {t.step2}
+            </span>
+          </button>
+
+          {/* Connecting line 2 */}
+          <div className={`flex-1 h-[2px] bg-border/50 mx-2 relative -mt-5 rounded-full overflow-hidden ${isRTL ? "direction-rtl" : ""}`}>
+            <motion.div
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: currentStep >= 3 ? 1 : 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className={`absolute inset-0 bg-gradient-to-r from-accent to-primary ${isRTL ? "origin-right" : "origin-left"}`}
+            />
+          </div>
+
+          {/* Step 3 — Details */}
+          <button onClick={() => {}} className="flex flex-col items-center gap-1.5 relative z-10 cursor-default">
+            <motion.div
+              animate={currentStep === 3 ? { scale: [1, 1.15, 1] } : {}}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
+                currentStep >= 4
+                  ? "bg-primary border-primary shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
+                  : currentStep >= 3
+                  ? "border-primary bg-primary/10 shadow-[0_0_15px_hsl(var(--primary)/0.25)]"
+                  : "border-border bg-card/50"
+              }`}
+            >
+              {currentStep >= 4 ? (
+                <Check className="w-4 h-4 text-primary-foreground" />
+              ) : (
+                <User className={`w-4 h-4 ${currentStep >= 3 ? "text-primary" : "text-muted-foreground"}`} />
+              )}
+            </motion.div>
+            <span className={`text-[11px] font-semibold transition-colors duration-300 ${currentStep >= 3 ? "text-primary" : "text-muted-foreground"}`}>
+              {t.step3}
             </span>
           </button>
         </motion.div>
