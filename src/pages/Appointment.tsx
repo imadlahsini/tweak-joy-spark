@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft, ArrowRight, Stethoscope } from "lucide-react";
+import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft, ArrowRight, Stethoscope, ChevronRight, ChevronLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import { toast } from "@/components/ui/sonner";
@@ -99,7 +99,7 @@ const Appointment = () => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
-  const hasNudged = useRef(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -149,6 +149,7 @@ const Appointment = () => {
     const slider = sliderRef.current;
     if (!slider) return;
     const handleScroll = () => {
+      setHasScrolled(true);
       const { scrollLeft, scrollWidth, clientWidth } = slider;
       if (isRTL) {
         setShowRightFade(scrollLeft < 0);
@@ -163,22 +164,6 @@ const Appointment = () => {
     return () => slider.removeEventListener("scroll", handleScroll);
   }, [isRTL, next14Days]);
 
-  // Scroll hint nudge animation — run once to show dates are scrollable
-  useEffect(() => {
-    const slider = sliderRef.current;
-    if (!slider || hasNudged.current) return;
-    hasNudged.current = true;
-
-    const nudgeDistance = isRTL ? -80 : 80;
-    const timer1 = setTimeout(() => {
-      slider.scrollTo({ left: nudgeDistance, behavior: "smooth" });
-    }, 800);
-    const timer2 = setTimeout(() => {
-      slider.scrollTo({ left: 0, behavior: "smooth" });
-    }, 1200);
-
-    return () => { clearTimeout(timer1); clearTimeout(timer2); };
-  }, [isRTL]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -434,6 +419,26 @@ const Appointment = () => {
               {showRightFade && (
                 <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
               )}
+
+              {/* Bouncing scroll hint arrow */}
+              <AnimatePresence>
+                {!hasScrolled && showRightFade && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+                    className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20`}
+                  >
+                    <motion.div
+                      animate={{ x: isRTL ? [0, -6, 0] : [0, 6, 0] }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                      className="bg-primary/80 text-primary-foreground rounded-full p-1.5 shadow-lg backdrop-blur-sm"
+                    >
+                      {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div
                 ref={sliderRef}
                 className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
