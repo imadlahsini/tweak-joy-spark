@@ -308,7 +308,8 @@ const Appointment = () => {
 
       {/* === Main Content === */}
       {/* Bug 10 fix: increased pb-36 */}
-      <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 pt-6 pb-36">
+      <Navbar />
+      <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 pt-24 pb-36">
 
         {/* Heading */}
         <motion.div
