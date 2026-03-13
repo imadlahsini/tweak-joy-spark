@@ -1,86 +1,44 @@
 
+Goal: Make the bouncing chevron hint reliably visible on load and hide only after real user scroll, while removing the current React ref warning.
 
-# Fix: Dashboard Frontend Invocation Issues
+Plan
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+1) Fix hint visibility logic in `src/pages/Appointment.tsx`
+- Current condition uses `showRightFade` for all languages; in RTL this can hide the hint incorrectly.
+- Add a derived flag:
+  - `const showTrailingHint = isRTL ? showLeftFade : showRightFade;`
+- Render hint with `!hasScrolled && showTrailingHint`.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+2) Make “hasScrolled” user-driven (not mount-driven)
+- Replace the current `isInitialCall` pattern with scroll-distance detection:
+  - Capture initial `scrollLeft` when effect runs.
+  - In `handleScroll`, only set `hasScrolled(true)` if absolute delta from initial position is above a small threshold (e.g. 4–8px).
+- This prevents auto-measure/layout scroll events from instantly hiding the arrow.
 
-## Fix
+3) Remove the AnimatePresence ref warning source for the hint
+- Replace the hint’s `AnimatePresence` wrapper with a direct `motion.div` conditional (or a single mounted `motion.div` with animated opacity/scale).
+- Keep the same bounce motion and RTL/LTR icon direction.
+- This avoids `AnimatePresence` trying to attach refs in this branch and should clear the console warning tied to `Appointment`.
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+4) Preserve UX behavior
+- Keep current bounce animation (`x` oscillation).
+- Keep placement at trailing edge (`right` in LTR, `left` in RTL).
+- Ensure hint stays hidden after first real scroll.
 
-**Simplify the `fetchStats` function (lines 45-82):**
+Technical details
+- File: `src/pages/Appointment.tsx`
+- State/refs:
+  - keep `hasScrolled` state
+  - add `initialScrollLeftRef` (number | null)
+- Effect update:
+  - initialize `initialScrollLeftRef.current = slider.scrollLeft`
+  - compute fades as today
+  - set `hasScrolled` only when user-caused scroll distance exceeds threshold
+- Hint render condition:
+  - `const shouldShowScrollHint = !hasScrolled && showTrailingHint`
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
-
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
-
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
+Validation checklist (mobile 390x844)
+- On first load, hint appears.
+- Swiping date slider once makes hint disappear.
+- LTR and RTL both show hint on correct side.
+- Console no longer shows “Function components cannot be given refs” from `Appointment`.
