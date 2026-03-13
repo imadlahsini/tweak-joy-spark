@@ -882,7 +882,7 @@ const Appointment = () => {
                         <CalendarDays className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step1}</p>
+                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step1}</p>
                         <p className="text-[15px] font-bold text-foreground">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
                       </div>
                     </div>
