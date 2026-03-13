@@ -701,9 +701,127 @@ const Appointment = () => {
           )}
         </AnimatePresence>
 
-        {/* ── Summary Card ── */}
+        {/* ── Step 3: Your Details — Glass Card ── */}
         <AnimatePresence>
           {selectedDate && selectedTime && (
+            <motion.div
+              ref={detailsSectionRef}
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.5, ease: [0.2, 0.65, 0.3, 0.9] }}
+              className="w-full max-w-sm mx-auto mb-5"
+            >
+              <div className="relative bg-card/60 backdrop-blur-2xl border border-border/30 rounded-3xl p-5 overflow-hidden">
+                {/* Top gradient accent line */}
+                <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+                {/* Section label */}
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20">
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-bold text-foreground">{t.yourDetails}</span>
+                </div>
+
+                {/* Name input */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
+                      <User className="w-3.5 h-3.5 text-muted-foreground" />
+                      {t.nameLabel}
+                      {isNameValid && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", bounce: 0.5 }}
+                        >
+                          <Check className="w-3.5 h-3.5 text-green-500" />
+                        </motion.div>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        ref={nameInputRef}
+                        type="text"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        onBlur={() => setNameTouched(true)}
+                        placeholder={t.namePlaceholder}
+                        className={`w-full h-12 rounded-xl bg-background/50 backdrop-blur-sm border px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                          nameTouched && !isNameValid
+                            ? "border-destructive focus:border-destructive"
+                            : "border-border/60 focus:border-primary"
+                        }`}
+                      />
+                    </div>
+                    <AnimatePresence>
+                      {nameTouched && !isNameValid && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: "auto" }}
+                          exit={{ opacity: 0, y: -4, height: 0 }}
+                          className="text-xs text-destructive"
+                        >
+                          {t.nameRequired}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Phone input */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
+                      <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                      {t.phoneLabel}
+                      {isPhoneValid && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", bounce: 0.5 }}
+                        >
+                          <Check className="w-3.5 h-3.5 text-green-500" />
+                        </motion.div>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        dir="ltr"
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        onBlur={() => setPhoneTouched(true)}
+                        placeholder={t.phonePlaceholder}
+                        className={`w-full h-12 rounded-xl bg-background/50 backdrop-blur-sm border px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                          phoneTouched && !isPhoneValid
+                            ? "border-destructive focus:border-destructive"
+                            : "border-border/60 focus:border-primary"
+                        } ${isRTL ? "text-left" : ""}`}
+                      />
+                    </div>
+                    <AnimatePresence>
+                      {phoneTouched && !isPhoneValid && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: "auto" }}
+                          exit={{ opacity: 0, y: -4, height: 0 }}
+                          className="text-xs text-destructive"
+                        >
+                          {t.phoneRequired}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Summary Card ── */}
+        <AnimatePresence>
+          {selectedDate && selectedTime && isFormValid && (
             <motion.div
               ref={summarySectionRef}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
@@ -722,8 +840,20 @@ const Appointment = () => {
                 <div className="relative m-[1.5px] bg-card/90 backdrop-blur-2xl rounded-[22px] p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
 
                   <div className="divide-y divide-border/30">
-                    {/* Date row */}
+                    {/* Client info row */}
                     <div className="flex items-center gap-3 py-3 first:pt-0">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-accent/5 shadow-sm flex items-center justify-center">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step3}</p>
+                        <p className="text-[15px] font-bold text-foreground truncate">{clientName}</p>
+                        <p className="text-[13px] text-muted-foreground" dir="ltr">{clientPhone}</p>
+                      </div>
+                    </div>
+
+                    {/* Date row */}
+                    <div className="flex items-center gap-3 py-3">
                       <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm flex items-center justify-center">
                         <CalendarDays className="w-5 h-5 text-primary" />
                       </div>
