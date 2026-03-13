@@ -1,86 +1,36 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Improve Summary Info Card Design
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+The current card has a rotating gradient border and simple icon rows. Here's the upgrade for a more polished, premium feel on mobile.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### Changes in `src/pages/Appointment.tsx` (lines 598-658)
 
-## Fix
+**1. Card structure — segmented rows with dividers**
+- Add a thin `border-b border-border/30` separator between each info row (date, time, consultation) for visual clarity
+- Increase row padding to `py-3` for better breathing room
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+**2. Icon containers — gradient fills instead of flat tints**
+- Date icon: `bg-gradient-to-br from-primary/15 to-primary/5` with a subtle `shadow-sm`
+- Time icon: `bg-gradient-to-br from-accent/15 to-accent/5`
+- Consultation icon: `bg-gradient-to-br from-primary/10 to-accent/10`
+- Make icons slightly larger: `w-11 h-11 rounded-2xl`
 
-**Simplify the `fetchStats` function (lines 45-82):**
+**3. Typography refinement**
+- Labels: `text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70` — smaller, letterspaced for a premium subtitle feel
+- Values: `text-[15px] font-bold text-foreground` — slightly larger and bolder
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+**4. Header upgrade**
+- Replace the simple Sparkles + text header with a pill badge: `inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold`
+- This makes the title "Your Appointment" stand out as a status badge
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+**5. Animated gradient border — keep but soften**
+- Reduce border thickness from 2px to 1.5px (change `m-[2px]` to `m-[1.5px]`)
+- Slow down animation from 4s to 6s for a more subtle, premium feel
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+**6. Add a subtle inner glow**
+- Add `shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]` to the inner card for a glass highlight effect
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
+### Summary
+All changes within the existing summary card block. No new components needed. The card gets segmented rows, gradient icon backgrounds, refined typography, a badge-style header, and a softer animated border.
 
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
