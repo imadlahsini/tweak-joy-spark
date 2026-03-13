@@ -370,7 +370,7 @@ const Appointment = () => {
             <span className={`text-[11px] font-semibold transition-colors duration-300 ${currentStep >= 2 ? "text-primary" : "text-muted-foreground"}`}>
               {t.step2}
             </span>
-          </div>
+          </button>
         </motion.div>
 
         {/* ── Step 1: Date — Glass Card ── */}
