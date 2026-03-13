@@ -5,8 +5,9 @@ import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft } from "
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import { toast } from "@/components/ui/sonner";
-import { addDays, isToday } from "date-fns";
-import { format } from "date-fns";
+import { addDays, format, isToday, isSameDay } from "date-fns";
+
+const next14Days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
 
 const timeSlots = [
   { time: "09:00", period: "morning" },
