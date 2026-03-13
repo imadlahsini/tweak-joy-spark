@@ -163,11 +163,11 @@ const Appointment = () => {
 
   // Auto-scroll to details section when time selected
   useEffect(() => {
-    if (selectedDate && selectedTime && detailsSectionRef.current) {
+    if (selectedDate && selectedTime) {
       setTimeout(() => {
         detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        nameInputRef.current?.focus();
-      }, 400);
+        setTimeout(() => nameInputRef.current?.focus(), 300);
+      }, 600);
     }
   }, [selectedTime]);
 
