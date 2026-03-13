@@ -324,7 +324,12 @@ const Appointment = () => {
       {/* Sparkle burst overlay */}
       <AnimatePresence>
         {showSparkles && (
-          <div className="fixed inset-0 z-50 pointer-events-none">
+          <motion.div
+            key="sparkle-burst"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 pointer-events-none"
+          >
             {Array.from({ length: 12 }).map((_, i) => (
               <motion.div
                 key={i}
@@ -340,12 +345,11 @@ const Appointment = () => {
                   x: `${50 + (Math.random() - 0.5) * 60}%`,
                   y: `${50 + (Math.random() - 0.5) * 60}%`,
                 }}
-                exit={{ opacity: 0 }}
                 transition={{ duration: 1, delay: i * 0.05 }}
                 className="absolute w-2 h-2 rounded-full bg-primary"
               />
             ))}
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
