@@ -47,7 +47,7 @@ const translations = {
     nameLabel: "Full Name",
     namePlaceholder: "Enter your name",
     phoneLabel: "Phone Number",
-    phonePlaceholder: "+212 6XX XXX XXX",
+    phonePlaceholder: "6XX XXX XXX",
     nameRequired: "Name is required (min 2 characters)",
     phoneRequired: "Phone is required (min 6 digits)",
   },
@@ -76,7 +76,7 @@ const translations = {
     nameLabel: "Nom Complet",
     namePlaceholder: "Entrez votre nom",
     phoneLabel: "Numéro de Téléphone",
-    phonePlaceholder: "+212 6XX XXX XXX",
+    phonePlaceholder: "6XX XXX XXX",
     nameRequired: "Le nom est requis (min 2 caractères)",
     phoneRequired: "Le téléphone est requis (min 6 chiffres)",
   },
@@ -105,7 +105,7 @@ const translations = {
     nameLabel: "الاسم الكامل",
     namePlaceholder: "أدخل اسمك",
     phoneLabel: "رقم الهاتف",
-    phonePlaceholder: "+212 6XX XXX XXX",
+    phonePlaceholder: "6XX XXX XXX",
     nameRequired: "الاسم مطلوب (حرفان على الأقل)",
     phoneRequired: "الهاتف مطلوب (6 أرقام على الأقل)",
   },
@@ -145,7 +145,7 @@ const Appointment = () => {
   const dateLocale = language === "fr" ? fr : language === "ar" ? arSA : undefined;
 
   const isNameValid = clientName.trim().length >= 2;
-  const isPhoneValid = clientPhone.replace(/\D/g, "").length >= 6;
+  const isPhoneValid = clientPhone.replace(/\D/g, "").length >= 9;
   const isFormValid = isNameValid && isPhoneValid;
   const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : !isFormValid ? 3 : 4;
 
@@ -796,20 +796,28 @@ const Appointment = () => {
                         </motion.div>
                       )}
                     </label>
-                    <div className="relative">
+                    <div className={`relative flex items-center h-12 rounded-xl bg-background/50 backdrop-blur-sm border overflow-hidden transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                          phoneTouched && !isPhoneValid
+                            ? "border-destructive focus-within:border-destructive"
+                            : "border-border/60 focus-within:border-primary"
+                        }`} dir="ltr">
+                      <div className="flex items-center gap-1.5 px-3 h-full border-r border-border/40 bg-muted/30 select-none shrink-0">
+                        <span className="text-base leading-none">🇲🇦</span>
+                        <span className="text-sm font-medium text-foreground/80">+212</span>
+                      </div>
                       <input
                         type="tel"
-                        inputMode="tel"
+                        inputMode="numeric"
                         dir="ltr"
                         value={clientPhone}
-                        onChange={(e) => setClientPhone(e.target.value)}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                          setClientPhone(digits);
+                        }}
                         onBlur={() => setPhoneTouched(true)}
                         placeholder={t.phonePlaceholder}
-                        className={`w-full h-12 rounded-xl bg-background/50 backdrop-blur-sm border px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
-                          phoneTouched && !isPhoneValid
-                            ? "border-destructive focus:border-destructive"
-                            : "border-border/60 focus:border-primary"
-                        } ${isRTL ? "text-left" : ""}`}
+                        maxLength={9}
+                        className="flex-1 h-full px-3 text-sm text-foreground bg-transparent placeholder:text-muted-foreground/60 outline-none"
                       />
                     </div>
                     <AnimatePresence>
@@ -860,7 +868,7 @@ const Appointment = () => {
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step3}</p>
                         <p className="text-[15px] font-bold text-foreground truncate">{clientName}</p>
-                        <p className="text-[13px] text-muted-foreground" dir="ltr">{clientPhone}</p>
+                        <p className="text-[13px] text-muted-foreground" dir="ltr">+212 {clientPhone}</p>
                       </div>
                     </div>
 

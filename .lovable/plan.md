@@ -1,30 +1,86 @@
 
 
-# Better Phone Field with Morocco Country Code
+# Fix: Dashboard Frontend Invocation Issues
 
-## Current State
-The phone field is a plain text input with a placeholder `+212 6XX XXX XXX`. No country flag, no prefix, no formatting.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-## Plan
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-### Changes to `src/pages/Appointment.tsx`
+## Fix
 
-**Add a styled phone input with Morocco flag and +212 prefix baked in:**
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-1. Replace the plain `<input>` for phone (around line 800-813) with a composite input that has:
-   - A non-editable left section showing the Morocco flag emoji (🇲🇦) and `+212` prefix, styled as part of the input with a subtle right border separator
-   - The actual input field for the remaining digits only
+**Simplify the `fetchStats` function (lines 45-82):**
 
-2. Update state handling:
-   - `clientPhone` stores only the local number (without +212)
-   - `onChange` strips non-digit characters and limits to 9 digits (Moroccan mobile format)
-   - Auto-format display as `6XX XXX XXX` with spaces
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
 
-3. Update validation:
-   - `isPhoneValid` checks for exactly 9 digits (Moroccan numbers) or at least 6 digits to be lenient
-   - Update placeholder to `6XX XXX XXX` (since +212 is shown in prefix)
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
 
-4. Update the confirmation summary (line 863) to display `+212 ${clientPhone}` so the full number shows
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
 
-5. Update all three language placeholders (lines 50, 79, 108) from `+212 6XX XXX XXX` to `6XX XXX XXX`
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
 
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
