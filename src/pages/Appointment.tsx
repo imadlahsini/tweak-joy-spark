@@ -279,7 +279,7 @@ const Appointment = () => {
               {/* Morning slots */}
               <TimeGroup
                 label={t.morning}
-                icon={<Sun className="w-3.5 h-3.5 text-amber-500" />}
+                icon={<Sun className="w-3.5 h-3.5 text-primary" />}
                 slots={morningSlots}
                 selectedTime={selectedTime}
                 onSelect={setSelectedTime}
