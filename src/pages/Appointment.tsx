@@ -105,7 +105,7 @@ const translations = {
     nameLabel: "الاسم الكامل",
     namePlaceholder: "أدخل اسمك",
     phoneLabel: "رقم الهاتف",
-    phonePlaceholder: "+212 6XX XXX XXX",
+    phonePlaceholder: "6XX XXX XXX",
     nameRequired: "الاسم مطلوب (حرفان على الأقل)",
     phoneRequired: "الهاتف مطلوب (6 أرقام على الأقل)",
   },
