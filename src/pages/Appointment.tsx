@@ -559,7 +559,7 @@ const Appointment = () => {
                   <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
                   <motion.div
                     animate={{ rotate: [0, 180, 360] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                    transition={{ duration: 8, ease: "linear" }}
                     className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center"
                   >
                     <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-accent" />
