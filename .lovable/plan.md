@@ -1,86 +1,29 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+# Improve Scroll Arrow Design
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+## Current State
+The arrow is a simple solid-color circle with a chevron icon and a glow shadow — functional but visually flat compared to the rest of the glass-morphism UI.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+## Design Upgrade
 
-## Fix
+### File: `src/pages/Appointment.tsx` (lines 524-530)
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+Replace the single circle with a **layered, animated pill-shaped indicator**:
 
-**Simplify the `fetchStats` function (lines 45-82):**
+1. **Outer glow ring** — A `motion.div` with a gradient border (`from-primary via-accent to-primary`) that pulses opacity, matching the selected-date glow ring style already used in the page.
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+2. **Glass pill body** — Replace the solid `bg-primary` circle with a glass-morphism pill: `bg-card/70 backdrop-blur-xl border border-primary/30 rounded-full`. This aligns with the premium glass-card identity.
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+3. **Double chevron** — Use two stacked chevrons (or a `ChevronsRight` icon from lucide) instead of a single one, with a staggered bounce animation where the second chevron trails the first by ~100ms.
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+4. **Animated trail dots** — Add 2-3 small dots trailing behind the arrow that fade out sequentially, creating a motion trail effect. Each dot is a tiny `motion.div` circle with decreasing opacity and size.
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
+5. **Subtle "swipe" text** — A tiny localized label ("Swipe" / "Glisser" / "اسحب") below the arrow in `text-[10px] text-muted-foreground` that fades out after 2 seconds using a delayed animation.
 
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
+### Animation Details
+- Main chevrons: bounce `x: [0, 8, 0]` (or `[-8, 0]` for RTL) at 1.2s loop
+- Trail dots: same bounce but with `delay: 0.1` and `delay: 0.2` offsets
+- Outer glow: `opacity: [0.4, 0.8, 0.4]` pulsing at 2s
+- Text label: `opacity` animates from 1 to 0 with a 2s delay
 
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
