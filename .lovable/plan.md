@@ -1,86 +1,34 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Plan: Replace Calendar with Horizontal Day Slider
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+### Problem
+The current calendar widget is bulky and not great UX on mobile. A horizontal scrollable day picker is more modern, touch-friendly, and visually appealing.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### New Date Picker Design
+Replace the `Calendar` component with a **horizontally scrollable day strip** showing the next 14 days as individual day cards:
 
-## Fix
+**Each day card** (glass-morphism styled):
+- Day name abbreviated on top (Mon, Tue, Wed...)
+- Day number large and bold in center
+- Month abbreviated below
+- Selected card gets primary fill + glow + check badge (same style as time slots)
+- Today's card has a subtle accent dot indicator
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+**Interaction:**
+- Horizontal scroll with snap behavior (`snap-x snap-mandatory`)
+- Each card ~70px wide with `snap-center`
+- Touch-friendly swipe on mobile
+- Selected card animates with scale + glow
 
-**Simplify the `fetchStats` function (lines 45-82):**
+### Changes to `src/pages/Appointment.tsx`
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+1. **Remove** `Calendar` import and usage
+2. **Generate** an array of the next 14 days using `date-fns` (`addDays`, `format`, `isToday`)
+3. **Replace** the calendar glass card section with a horizontally scrollable container of day cards
+4. Keep the selected date pill below
+5. Keep all background layers, time slots, and CTA unchanged
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+### No other files need changes
+The `Calendar` component stays in the project (used elsewhere potentially), we just stop importing it here.
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
-
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
