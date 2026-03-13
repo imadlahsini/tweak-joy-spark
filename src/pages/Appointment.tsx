@@ -944,7 +944,7 @@ const Appointment = () => {
                   <span className="relative z-10">{t.confirm}</span>
                   <motion.div
                     className="relative z-10"
-                    animate={{ x: [0, 4, 0] }}
+                    animate={{ x: isRTL ? [0, -4, 0] : [0, 4, 0] }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                   >
                     <ArrowRight className={`w-4 h-4 ${isRTL ? "rotate-180" : ""}`} />
