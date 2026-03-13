@@ -604,7 +604,7 @@ const Appointment = () => {
                       <motion.div
                         animate={{ x: isRTL ? [0, -8, 0] : [0, 8, 0] }}
                         transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                        className="relative flex items-center gap-0 rounded-full px-2.5 py-2 bg-card/70 backdrop-blur-xl border border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.4)] text-primary"
+                        className="relative flex items-center gap-0 rounded-full px-2.5 py-2 bg-card/70 backdrop-blur-xl border border-primary/30 text-primary"
                       >
                         {isRTL ? (
                           <ChevronsLeft className="w-5 h-5" />
