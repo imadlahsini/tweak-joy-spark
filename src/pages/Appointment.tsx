@@ -2,11 +2,12 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import { toast } from "@/components/ui/sonner";
-import { format } from "date-fns";
+import { addDays, format, isToday, isSameDay } from "date-fns";
+
+const next14Days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
 
 const timeSlots = [
   { time: "09:00", period: "morning" },
@@ -218,25 +219,73 @@ const Appointment = () => {
             <span className="text-sm font-semibold text-foreground">{t.selectDate}</span>
           </div>
 
-          {/* Glass card for calendar */}
-          <div className="group relative rounded-2xl overflow-hidden">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-accent/10 to-primary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative m-[1px] rounded-2xl bg-card/70 backdrop-blur-xl border border-border/40 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-[0_0_40px_hsl(var(--primary)/0.15)]">
-              {/* Top accent line */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-60" />
-              {/* Shimmer */}
-              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
-              </div>
-              <div className="p-2 sm:p-3 flex justify-center">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                  className="pointer-events-auto"
-                />
-              </div>
+          {/* Horizontal day slider */}
+          <div className="relative -mx-4 sm:-mx-6 px-4 sm:px-6">
+            <div className="flex gap-2.5 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+              {next14Days.map((day, i) => {
+                const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
+                const today = isToday(day);
+                return (
+                  <motion.button
+                    key={day.toISOString()}
+                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.04 }}
+                    whileHover={{ scale: 1.08, y: -3 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setSelectedTime(null);
+                    }}
+                    className={`group relative flex-shrink-0 snap-center rounded-2xl overflow-hidden transition-all duration-300 ${
+                      isSelected ? "ring-2 ring-primary shadow-[0_0_25px_hsl(var(--primary)/0.3)]" : ""
+                    }`}
+                  >
+                    {/* Hover gradient border */}
+                    {!isSelected && (
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    )}
+                    <div
+                      className={`relative m-[1px] rounded-2xl w-[68px] py-3 flex flex-col items-center gap-1 transition-all duration-300 ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-card/70 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30 group-hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)]"
+                      }`}
+                    >
+                      {/* Shimmer */}
+                      {!isSelected && (
+                        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/8 to-transparent" />
+                        </div>
+                      )}
+                      <span className={`text-[10px] font-medium uppercase tracking-wider relative z-10 ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                        {format(day, "EEE")}
+                      </span>
+                      <span className="text-xl font-bold relative z-10">{format(day, "d")}</span>
+                      <span className={`text-[10px] font-medium relative z-10 ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                        {format(day, "MMM")}
+                      </span>
+                      {/* Today dot */}
+                      {today && !isSelected && (
+                        <div className="absolute bottom-1.5 w-1.5 h-1.5 rounded-full bg-accent" />
+                      )}
+                    </div>
+                    {/* Selected check badge */}
+                    <AnimatePresence>
+                      {isSelected && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0 }}
+                          className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary border-2 border-background flex items-center justify-center z-20"
+                        >
+                          <Check className="w-3 h-3 text-primary-foreground" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                );
+              })}
             </div>
           </div>
 
