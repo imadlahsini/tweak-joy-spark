@@ -720,45 +720,33 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: 0.1 + (delayOffset + i) * 0.06 }}
-              whileHover={{ scale: 1.06, y: -3 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.04, y: -2 }}
+              whileTap={{ scale: 0.93 }}
               onClick={() => onSelect(slot.time)}
-              className={`group relative rounded-xl transition-all duration-300 ${
-                isSelected ? "shadow-[0_0_25px_hsl(var(--primary)/0.3)]" : ""
+              className={`group relative rounded-2xl transition-all duration-300 ${
+                isSelected ? "shadow-[0_0_20px_hsl(var(--primary)/0.25)]" : ""
               }`}
             >
-              {/* Pulsing glow ring for selected */}
+              {/* Gradient border for selected */}
               {isSelected && (
-                <motion.div
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-primary via-accent to-primary bg-[length:200%_200%] animate-gradient"
-                />
+                <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-br from-primary via-accent to-primary" />
               )}
               {/* Hover border */}
               {!isSelected && (
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               )}
               <div
-                className={`relative m-[2px] rounded-[10px] py-2.5 text-center transition-all duration-300 flex flex-col items-center justify-center gap-0.5 ${
+                className={`relative m-[2px] rounded-[14px] py-2 text-center transition-all duration-300 flex items-center justify-center ${
                   isSelected
                     ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
-                    : "bg-card/80 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30 group-hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)]"
+                    : "bg-card/80 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30"
                 }`}
               >
                 {/* Inner shine */}
                 {isSelected && (
-                  <div className="absolute inset-0 rounded-[10px] bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 rounded-[14px] bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none" />
                 )}
-                {/* Shimmer */}
-                {!isSelected && (
-                  <div className="absolute inset-0 rounded-[10px] overflow-hidden pointer-events-none">
-                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/8 to-transparent" />
-                  </div>
-                )}
-                {/* Subtle clock icon */}
-                <Clock className={`w-3 h-3 mb-0.5 relative z-10 ${isSelected ? "text-primary-foreground/60" : "text-muted-foreground/40"}`} />
-                <span className="text-sm font-bold relative z-10">{slot.time}</span>
+                <span className="text-base font-bold relative z-10">{slot.time}</span>
               </div>
               {/* Selected check */}
               <AnimatePresence>
