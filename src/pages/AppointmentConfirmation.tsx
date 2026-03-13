@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, CalendarDays, Clock, User, Phone, Stethoscope, MessageCircle, MapPin } from "lucide-react";
+import { Check, CalendarDays, Clock, User, Phone, PhoneCall, MessageCircle, Navigation } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import Navbar from "@/components/landing/Navbar";
