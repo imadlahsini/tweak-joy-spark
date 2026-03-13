@@ -42,7 +42,6 @@ const translations = {
   ar: {
     title: "!تم تأكيد الموعد",
     subtitle: "تم جدولة حجزك بنجاح",
-    backHome: "العودة للرئيسية",
     date: "التاريخ",
     time: "الوقت",
     consultation: "استشارة",
@@ -51,6 +50,9 @@ const translations = {
     phone: "الهاتف",
     details: "تفاصيل الموعد",
     seeYou: "!نتطلع لرؤيتك",
+    whatsapp: "واتساب",
+    call: "اتصال",
+    directions: "الاتجاهات",
   },
 };
 
