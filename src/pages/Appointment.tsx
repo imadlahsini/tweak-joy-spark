@@ -519,15 +519,48 @@ const Appointment = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.5 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
-                    className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1`}
+                    className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1.5`}
                   >
+                    {/* Outer pulsing glow ring */}
                     <motion.div
-                      animate={{ x: isRTL ? [0, -6, 0] : [0, 6, 0] }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                      className="bg-primary text-primary-foreground rounded-full p-2.5 shadow-[0_0_16px_hsl(var(--primary)/0.5)] backdrop-blur-sm"
+                      animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.08, 1] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary via-accent to-primary opacity-50 blur-sm"
+                    />
+                    {/* Glass pill body with chevrons + trail dots */}
+                    <div className="relative flex items-center">
+                      {/* Trail dots (behind the pill in movement direction) */}
+                      {[0.15, 0.3].map((delay, i) => (
+                        <motion.div
+                          key={`trail-${i}`}
+                          animate={{ x: isRTL ? [0, -8, 0] : [0, 8, 0], opacity: [0.6 - i * 0.2, 0.2, 0.6 - i * 0.2] }}
+                          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut", delay }}
+                          className={`absolute ${isRTL ? "right-full mr-1" : "left-full ml-1"} rounded-full bg-primary/40`}
+                          style={{ width: 4 - i, height: 4 - i, [isRTL ? "marginRight" : "marginLeft"]: 4 + i * 6 }}
+                        />
+                      ))}
+                      {/* Main pill */}
+                      <motion.div
+                        animate={{ x: isRTL ? [0, -8, 0] : [0, 8, 0] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                        className="relative flex items-center gap-0 rounded-full px-2.5 py-2 bg-card/70 backdrop-blur-xl border border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.4)] text-primary"
+                      >
+                        {isRTL ? (
+                          <ChevronsLeft className="w-5 h-5" />
+                        ) : (
+                          <ChevronsRight className="w-5 h-5" />
+                        )}
+                      </motion.div>
+                    </div>
+                    {/* Swipe label that fades out */}
+                    <motion.span
+                      initial={{ opacity: 1 }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 0.6, delay: 2 }}
+                      className="text-[10px] text-muted-foreground font-medium select-none"
                     >
-                      {isRTL ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-                    </motion.div>
+                      {language === "ar" ? "اسحب" : language === "fr" ? "Glisser" : "Swipe"}
+                    </motion.span>
                   </motion.div>
                 )}
               </AnimatePresence>
