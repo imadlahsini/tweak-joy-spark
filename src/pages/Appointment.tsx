@@ -486,6 +486,8 @@ const Appointment = () => {
           className="w-full max-w-sm mx-auto mb-5"
         >
           <div className="relative bg-card/60 backdrop-blur-2xl border border-border/30 rounded-3xl p-5 overflow-hidden">
+            {/* Left-side ambient glow */}
+            <div className={`absolute top-0 bottom-0 ${isRTL ? 'right-0' : 'left-0'} w-1/3 ${isRTL ? 'bg-gradient-to-l' : 'bg-gradient-to-r'} from-primary/15 to-transparent blur-2xl pointer-events-none`} />
             {/* Top gradient accent line */}
             <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
@@ -586,12 +588,6 @@ const Appointment = () => {
                     transition={{ duration: 0.3, ease: "easeOut" }}
                     className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1.5`}
                   >
-                    {/* Outer pulsing glow ring */}
-                    <motion.div
-                      animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.08, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary via-accent to-primary opacity-50 blur-sm"
-                    />
                     {/* Glass pill body with chevrons + trail dots */}
                     <div className="relative flex items-center">
                       {/* Trail dots */}
@@ -608,7 +604,7 @@ const Appointment = () => {
                       <motion.div
                         animate={{ x: isRTL ? [0, -8, 0] : [0, 8, 0] }}
                         transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                        className="relative flex items-center gap-0 rounded-full px-2.5 py-2 bg-card/70 backdrop-blur-xl border border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.4)] text-primary"
+                        className="relative flex items-center gap-0 rounded-full px-2.5 py-2 bg-card/70 backdrop-blur-xl border border-primary/30 text-primary"
                       >
                         {isRTL ? (
                           <ChevronsLeft className="w-5 h-5" />
