@@ -58,10 +58,10 @@ const LogoBar = () => {
         <ScrollReveal direction="up" delay={0.2} duration={0.6}>
           <div className="relative mt-6 sm:mt-10 md:mt-12">
             {/* Left gradient mask - narrower on mobile */}
-            <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-20 md:w-32 bg-gradient-to-r from-[#0f0a1f] to-transparent z-10 pointer-events-none" />
+            <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-20 md:w-32 bg-gradient-to-r from-[#091625] to-transparent z-10 pointer-events-none" />
             
             {/* Right gradient mask - narrower on mobile */}
-            <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-20 md:w-32 bg-gradient-to-l from-[#0f0a1f] to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-20 md:w-32 bg-gradient-to-l from-[#091625] to-transparent z-10 pointer-events-none" />
             
             {/* Scrolling track */}
             <div className="overflow-hidden">
