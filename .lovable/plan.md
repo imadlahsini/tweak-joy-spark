@@ -1,28 +1,86 @@
 
 
-## Plan: Add Faded Background Image to Bottom of Welcome Page
+# Fix: Dashboard Frontend Invocation Issues
 
-### Changes to `src/pages/Welcome.tsx`
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-Add a new `div` after the noise overlay (line 138) containing the hero image, positioned at the bottom of the screen, faded and blurred:
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-```jsx
-{/* Bottom background image — faded & blurred */}
-<div className="absolute bottom-0 left-0 right-0 h-[50%] pointer-events-none overflow-hidden">
-  <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-transparent z-10" />
-  <img
-    src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
-    alt=""
-    className="w-full h-full object-cover object-top opacity-20 blur-sm"
-  />
-</div>
+## Fix
+
+### File: `src/pages/admin/AdminDashboard.tsx`
+
+**Simplify the `fetchStats` function (lines 45-82):**
+
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
+
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
+
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
+
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
+
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
 ```
 
-- Positioned at the bottom 50% of the viewport
-- Gradient overlay fades from solid background at top to transparent, blending seamlessly
-- Image at 20% opacity with slight blur for a subtle, atmospheric effect
-- `pointer-events-none` so it doesn't interfere with interactions
+## Changes
 
-### File to modify
-- `src/pages/Welcome.tsx` — insert after line 138
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
 
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
