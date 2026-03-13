@@ -12,7 +12,6 @@ const translations = {
   en: {
     title: "Appointment Confirmed!",
     subtitle: "Your booking has been successfully scheduled",
-    backHome: "Back to Home",
     date: "Date",
     time: "Time",
     consultation: "Consultation",
@@ -21,6 +20,9 @@ const translations = {
     phone: "Phone",
     details: "Appointment Details",
     seeYou: "We look forward to seeing you!",
+    whatsapp: "WhatsApp",
+    call: "Call",
+    directions: "Directions",
   },
   fr: {
     title: "Rendez-vous Confirmé!",
