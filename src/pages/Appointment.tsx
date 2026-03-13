@@ -288,17 +288,6 @@ const Appointment = () => {
       {/* === Main Content === */}
       {/* Bug 10 fix: increased pb-36 */}
       <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 pt-6 pb-36">
-        {/* Back button */}
-        <motion.button
-          initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4 self-start"
-        >
-          <ArrowLeft className={`w-4 h-4 ${isRTL ? "rotate-180" : ""}`} />
-          <span className="text-sm font-medium">{t.back}</span>
-        </motion.button>
 
         {/* Heading */}
         <motion.div
