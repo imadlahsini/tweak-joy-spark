@@ -870,7 +870,7 @@ const Appointment = () => {
                         <User className="w-5 h-5 text-primary" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step3}</p>
+                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step3}</p>
                         <p className="text-[15px] font-bold text-foreground truncate">{clientName}</p>
                         <p className="text-[13px] text-muted-foreground" dir="ltr">+212 {clientPhone}</p>
                       </div>
@@ -882,7 +882,7 @@ const Appointment = () => {
                         <CalendarDays className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step1}</p>
+                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step1}</p>
                         <p className="text-[15px] font-bold text-foreground">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
                       </div>
                     </div>
@@ -893,7 +893,7 @@ const Appointment = () => {
                         <Clock className="w-5 h-5 text-accent" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step2}</p>
+                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step2}</p>
                         <p className="text-[15px] font-bold text-foreground">{selectedTime} – {getEndTime(selectedTime)}</p>
                       </div>
                     </div>
@@ -904,7 +904,7 @@ const Appointment = () => {
                         <Stethoscope className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.consultation}</p>
+                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.consultation}</p>
                         <p className="text-[15px] font-bold text-foreground">{t.duration}</p>
                       </div>
                     </div>
@@ -944,7 +944,7 @@ const Appointment = () => {
                   <span className="relative z-10">{t.confirm}</span>
                   <motion.div
                     className="relative z-10"
-                    animate={{ x: [0, 4, 0] }}
+                    animate={{ x: isRTL ? [0, -4, 0] : [0, 4, 0] }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                   >
                     <ArrowRight className={`w-4 h-4 ${isRTL ? "rotate-180" : ""}`} />

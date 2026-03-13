@@ -127,7 +127,7 @@ const AppointmentConfirmation = () => {
   ];
 
   return (
-    <div className={`min-h-screen bg-background relative overflow-hidden ${isRTL ? "rtl" : ""}`}>
+    <div dir={isRTL ? "rtl" : "ltr"} className={`min-h-screen bg-background relative overflow-hidden ${isRTL ? "rtl" : ""}`}>
       {/* Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
       <div className="fixed inset-0 dot-grid opacity-30" />
@@ -216,7 +216,7 @@ const AppointmentConfirmation = () => {
               <div className="relative px-5 pt-5 pb-4">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-green-500">
+                  <span className={`text-[10px] font-semibold uppercase ${isRTL ? "tracking-normal" : "tracking-[0.15em]"} text-green-500`}>
                     {t.details}
                   </span>
                 </div>
@@ -239,7 +239,7 @@ const AppointmentConfirmation = () => {
                         <row.icon className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                        <p className={`text-[10px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.12em]"} text-muted-foreground`}>
                           {row.label}
                         </p>
                         <p className="text-sm font-semibold text-foreground truncate">
@@ -277,7 +277,7 @@ const AppointmentConfirmation = () => {
           {/* Shimmer sweep */}
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
-            animate={{ x: ["-150%", "150%"] }}
+            animate={{ x: isRTL ? ["150%", "-150%"] : ["-150%", "150%"] }}
             transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" }}
           />
           <span className="relative z-10 flex items-center justify-center gap-2">
