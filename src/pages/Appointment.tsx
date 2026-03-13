@@ -538,7 +538,7 @@ const Appointment = () => {
                   </div>
                   <div>
                     <span className="text-sm font-bold text-foreground">{t.selectTime}</span>
-                    <p className="text-[10px] text-muted-foreground">8 {language === "ar" ? "خانات" : language === "fr" ? "créneaux" : "slots"}</p>
+                    
                   </div>
                 </div>
 
