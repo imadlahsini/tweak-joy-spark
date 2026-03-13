@@ -494,6 +494,8 @@ const Appointment = () => {
                     </motion.button>
                   );
                 })}
+                {/* Spacer to prevent last card from being hidden by fade */}
+                <div className="flex-shrink-0 w-6" aria-hidden="true" />
               </div>
             </div>
 
