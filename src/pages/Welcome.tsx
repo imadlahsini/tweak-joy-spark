@@ -38,8 +38,6 @@ const Welcome = () => {
     navigate("/appointment");
   };
 
-  if (language) return null;
-
   return (
     <div
       ref={containerRef}
