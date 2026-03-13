@@ -2,10 +2,10 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import { toast } from "@/components/ui/sonner";
+import { addDays, isToday } from "date-fns";
 import { format } from "date-fns";
 
 const timeSlots = [
