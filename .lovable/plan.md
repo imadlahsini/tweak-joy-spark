@@ -1,86 +1,33 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+# Bug: Slow Page Load with Random Elements Flashing
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+## Root Causes Found
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### 1. Navbar references deleted `/checkout` route (lines 185 and 330)
+The Navbar "Get Started" button navigates to `/checkout` which was deleted. This causes a flash of the NotFound page. Both desktop and mobile CTA buttons have this broken link.
 
-## Fix
+### 2. Heavy external image blocking render
+Both Welcome and Appointment pages load a large external image from `ophtalmologueagadir.com`. This blocks rendering and causes layout shifts as the image loads.
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+### 3. Excessive staggered animations cause "random elements" appearance
+Nearly every element on both Welcome and Appointment pages has individual `initial={{ opacity: 0 }}` with different delays (0.2s, 0.5s, 0.7s, etc.). During load, elements pop in one-by-one at different positions, looking like random elements appearing.
 
-**Simplify the `fetchStats` function (lines 45-82):**
+### 4. Console error: Function components cannot be given refs
+In Appointment.tsx, a function component inside `AnimatePresence` is being given a ref it can't accept, causing React warnings and potential rendering issues.
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+## Fix Plan
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+### `src/components/landing/Navbar.tsx`
+- Change `navigate("/checkout")` to `navigate("/appointment")` on both desktop (line 185) and mobile (line 330) CTA buttons
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+### `src/pages/Welcome.tsx`
+- Add `loading="lazy"` and `fetchPriority="low"` to the background image
+- Reduce animation delays across language cards (currently 0.7 + i*0.12, reduce to 0.2 + i*0.08)
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
+### `src/pages/Appointment.tsx`
+- Reduce animation delays across the page (heading, step indicator, date card all have staggered delays adding up to ~0.5s+)
+- Add `loading="lazy"` to the background image
 
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
+These changes will make pages feel snappier and stop the "random elements appearing" effect caused by long staggered animation chains.
 
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
