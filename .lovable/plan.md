@@ -1,86 +1,34 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Plan: Remove Text Elements & Next-Level Logo Redesign
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+### Remove these elements from `src/pages/Welcome.tsx`:
+- **"Choose Your Experience" badge** (lines 147-157)
+- **"مرحباً · Welcome · Bienvenue" heading + "Choose your language" subtitle** (lines 177-200)
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### Next-Level Logo Redesign (mobile-first, 390px viewport)
 
-## Fix
+Replace the current simple icon+text logo (lines 159-175) with a dramatic, layered logo composition:
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+**Layered icon with animated rings:**
+- Outer animated ring: rotating dashed border (`w-28 h-28`) with gradient stroke, slowly spinning
+- Middle pulsing glow ring: `w-24 h-24` with `animate-pulse` and `blur-xl` primary glow
+- Inner glass-morphism container: `w-20 h-20 rounded-3xl` with `backdrop-blur-xl`, gradient border, and inner radial gradient background
+- Brain icon at `w-10 h-10` centered inside
 
-**Simplify the `fetchStats` function (lines 45-82):**
+**Orbital dots:**
+- 3 small dots (`w-2 h-2`) orbiting the icon at different speeds using CSS `rotate` keyframes, each a different color (primary, accent, foreground)
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+**Text below icon (stacked vertically on mobile):**
+- "Junior" in `text-5xl font-bold` with standard foreground color
+- "AI" in `text-5xl font-bold` with animated gradient text (`from-primary via-accent to-primary`, `bg-[length:200%] animate-gradient`)
+- Thin accent line below (`w-12 h-[2px]`) with gradient from primary to accent
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+**New keyframes in the component** (inline via framer-motion):
+- Slow spin for outer ring (40s linear infinite)
+- Orbital animation for dots (8s, 12s, 16s)
+- Gentle floating for the whole logo block
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+### File to modify
+- `src/pages/Welcome.tsx` — remove badge + heading/subtitle, replace logo section with layered animated logo
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
