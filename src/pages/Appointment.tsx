@@ -759,10 +759,6 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
                 {/* Subtle clock icon */}
                 <Clock className={`w-3 h-3 mb-0.5 relative z-10 ${isSelected ? "text-primary-foreground/60" : "text-muted-foreground/40"}`} />
                 <span className="text-sm font-bold relative z-10">{slot.time}</span>
-                {/* Bug 4 fix: RTL-aware arrow */}
-                <span className={`text-[9px] font-medium relative z-10 ${isSelected ? "text-primary-foreground/60" : "text-muted-foreground/60"}`}>
-                  {timeArrow} {getEndTime(slot.time)}
-                </span>
               </div>
               {/* Selected check */}
               <AnimatePresence>
