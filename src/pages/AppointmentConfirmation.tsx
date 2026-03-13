@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Check, CalendarDays, Clock, User, Phone, Stethoscope, MessageCircle, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
+import Navbar from "@/components/landing/Navbar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale/fr";
 import { arSA } from "date-fns/locale/ar-SA";
