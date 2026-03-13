@@ -28,7 +28,7 @@ const LogoBar = () => {
   return (
     <section 
       ref={sectionRef}
-      className="py-10 sm:py-16 md:py-24 relative overflow-hidden bg-gradient-to-b from-[#0f0a1f] via-[#1a1035] to-[#0f0a1f]"
+      className="py-10 sm:py-16 md:py-24 relative overflow-hidden bg-gradient-to-b from-[#091625] via-[#0d1f33] to-[#091625]"
     >
       {/* Subtle top glow line */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
