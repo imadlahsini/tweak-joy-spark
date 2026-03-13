@@ -125,10 +125,7 @@ const Navbar = () => {
                 {/* Brand Name */}
                 <div className="flex items-center gap-1.5">
                   <span className="font-display font-bold text-lg md:text-xl text-foreground tracking-tight">
-                    Junior
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-xs font-semibold tracking-wide">
-                    AI
+                    Tweaks
                   </span>
                 </div>
               </motion.a>
