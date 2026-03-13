@@ -210,7 +210,7 @@ const Appointment = () => {
         setShowRightFade(scrollLeft + clientWidth < scrollWidth - 4);
       }
     };
-    handleScroll();
+    requestAnimationFrame(() => handleScroll());
     slider.addEventListener("scroll", handleScroll, { passive: true });
     return () => slider.removeEventListener("scroll", handleScroll);
   }, [isRTL, next14Days]);
@@ -510,7 +510,71 @@ const Appointment = () => {
                 <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
               )}
 
-              {/* Bouncing scroll hint arrow */}
+              <div
+                ref={sliderRef}
+                className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", overflowY: "visible" }}
+              >
+                {next14Days.map((day, i) => {
+                  const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
+                  const today = isToday(day);
+                  return (
+                    <motion.button
+                      key={day.toISOString()}
+                      initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.04 }}
+                      whileTap={{ scale: 0.92 }}
+                      onClick={() => {
+                        setSelectedDate(day);
+                        setSelectedTime(null);
+                        if (timeSectionRef.current) {
+                          setTimeout(() => timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+                        }
+                      }}
+                      className={`relative flex-shrink-0 snap-center flex flex-col items-center justify-center w-[60px] h-[76px] rounded-2xl border transition-all duration-300 ${
+                        isSelected
+                          ? "bg-gradient-to-br from-primary to-accent border-primary/50 text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
+                          : today
+                            ? "bg-card/80 border-accent/40 text-foreground hover:border-accent/60"
+                            : "bg-card/50 border-border/30 text-foreground hover:border-primary/30 hover:bg-card/70"
+                      }`}
+                    >
+                      {/* Today indicator dot */}
+                      {today && !isSelected && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
+                      )}
+                      <span className={`text-[10px] font-medium uppercase tracking-wider ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                        {formatDate(day, "EEE")}
+                      </span>
+                      <span className={`text-xl font-bold leading-tight ${isSelected ? "text-primary-foreground" : ""}`}>
+                        {formatDate(day, "d")}
+                      </span>
+                      <span className={`text-[9px] font-medium ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground/70"}`}>
+                        {formatDate(day, "MMM")}
+                      </span>
+                      {/* Selected checkmark */}
+                      <AnimatePresence>
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0, rotate: -90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            exit={{ scale: 0, rotate: 90 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
+                          >
+                            <Check className="w-3 h-3 text-accent-foreground" />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+                  );
+                })}
+                {/* Spacer to prevent last card from being hidden by fade */}
+                <div className="flex-shrink-0 w-14" aria-hidden="true" />
+              </div>
+
+              {/* Bouncing scroll hint arrow — positioned outside scroll area */}
               <AnimatePresence>
                 {!hasScrolled && (isRTL ? showLeftFade : showRightFade) && (
                   <motion.div
@@ -519,7 +583,7 @@ const Appointment = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.5 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
-                    className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1.5`}
+                    className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1.5`}
                   >
                     {/* Outer pulsing glow ring */}
                     <motion.div
@@ -529,7 +593,7 @@ const Appointment = () => {
                     />
                     {/* Glass pill body with chevrons + trail dots */}
                     <div className="relative flex items-center">
-                      {/* Trail dots (behind the pill in movement direction) */}
+                      {/* Trail dots */}
                       {[0.15, 0.3].map((delay, i) => (
                         <motion.div
                           key={`trail-${i}`}
@@ -564,97 +628,6 @@ const Appointment = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div
-                ref={sliderRef}
-                className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", overflowY: "visible" }}
-              >
-                {next14Days.map((day, i) => {
-                  const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
-                  const today = isToday(day);
-                  return (
-                    <motion.button
-                      key={day.toISOString()}
-                      initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: i * 0.04 }}
-                      whileHover={{ scale: 1.08, y: -4 }}
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => {
-                        setSelectedDate(day);
-                        setSelectedTime(null);
-                      }}
-                      className={`group relative flex-shrink-0 snap-center rounded-2xl transition-all duration-300 ${
-                        isSelected ? "shadow-[0_0_30px_hsl(var(--primary)/0.35)]" : ""
-                      }`}
-                    >
-                      {/* Pulsing glow ring for selected */}
-                      {isSelected && (
-                        <motion.div
-                          animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.05, 1] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                          className="absolute -inset-[2px] rounded-2xl bg-gradient-to-br from-primary via-accent to-primary bg-[length:200%_200%] animate-gradient"
-                        />
-                      )}
-                      {/* Hover gradient border */}
-                      {!isSelected && (
-                        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      )}
-                      <div
-                        className={`relative m-[2px] rounded-[14px] w-[68px] py-3 pb-5 flex flex-col items-center gap-1 transition-all duration-300 ${
-                          isSelected
-                            ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
-                            : "bg-card/80 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30 group-hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)]"
-                        }`}
-                      >
-                        {/* Inner shine on selected */}
-                        {isSelected && (
-                          <div className="absolute inset-0 rounded-[14px] bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none" />
-                        )}
-                        {/* Shimmer on hover */}
-                        {!isSelected && (
-                          <div className="absolute inset-0 rounded-[14px] overflow-hidden pointer-events-none">
-                            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/8 to-transparent" />
-                          </div>
-                        )}
-                        <span className={`text-[10px] font-medium uppercase tracking-wider relative z-10 ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                          {formatDate(day, "EEE")}
-                        </span>
-                        <span className="text-xl font-bold relative z-10">{formatDate(day, "d")}</span>
-                        <span className={`text-[10px] font-medium relative z-10 ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {formatDate(day, "MMM")}
-                        </span>
-                        {/* Bug 3 fix: Today badge inside padded area, bottom-1 */}
-                        {today && (
-                          <span className={`absolute bottom-1 text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
-                            isSelected
-                              ? "text-primary-foreground/80 bg-white/15"
-                              : "text-accent bg-accent/10"
-                          }`}>
-                            {t.today}
-                          </span>
-                        )}
-                      </div>
-                      {/* Selected check badge */}
-                      <AnimatePresence>
-                        {isSelected && (
-                          <motion.div
-                            initial={{ scale: 0, rotate: -90 }}
-                            animate={{ scale: 1, rotate: 0 }}
-                            exit={{ scale: 0, rotate: 90 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
-                          >
-                            <Check className="w-3 h-3 text-accent-foreground" />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.button>
-                  );
-                })}
-                {/* Spacer to prevent last card from being hidden by fade */}
-                <div className="flex-shrink-0 w-6" aria-hidden="true" />
-              </div>
             </div>
 
             {/* Selected date pill */}
