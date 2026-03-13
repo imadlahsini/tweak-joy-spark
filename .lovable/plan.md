@@ -1,44 +1,86 @@
 
 
-## Make Time Buttons Look Amazing
+# Fix: Dashboard Frontend Invocation Issues
 
-The current time buttons are plain rectangular chips with just text. Here's the plan to make them visually stunning while keeping them functional.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-### Design Direction
-Glass-morphism chips with gradient accents, subtle icons, and rich micro-interactions.
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-### Changes in `src/pages/Appointment.tsx` — TimeGroup component (lines 714-768)
+## Fix
 
-**1. Richer unselected state**
-- Add a subtle inner gradient shimmer on hover (a pseudo-element that slides across)
-- Use `bg-gradient-to-br from-card via-card to-secondary/30` for depth instead of flat `bg-card/80`
-- Add a faint colored left-border accent (`border-l-2 border-l-primary/20`) for visual rhythm
-- Increase padding: `py-3 px-1` for a more generous tap target
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-**2. Stunning selected state**
-- Animated gradient background using `background-size: 200%` with a slow shifting animation
-- Stronger glow shadow: `shadow-[0_0_24px_hsl(var(--primary)/0.35),0_0_48px_hsl(var(--accent)/0.15)]`
-- Inner shine overlay with a diagonal gradient from white/25 to transparent
-- Slight scale bump on selection (`scale: 1.02`)
+**Simplify the `fetchStats` function (lines 45-82):**
 
-**3. Enhanced hover/tap micro-interactions**
-- `whileHover`: scale 1.06, y: -3, add a box-shadow glow
-- `whileTap`: scale 0.9 with a quick spring
-- Add a ripple-like ring effect on tap via a brief `ring-2 ring-primary/30` animation
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
 
-**4. Typography upgrade**
-- Selected: `text-lg font-extrabold` with a subtle text-shadow
-- Unselected: `text-base font-semibold` with muted-foreground color that transitions to foreground on hover
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
 
-**5. Layout tweak**
-- Change grid from `grid-cols-4 gap-2` to `grid-cols-3 gap-3` — gives each button more breathing room and a larger touch target on mobile (390px viewport)
-- Slightly taller buttons with the extra padding
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
 
-**6. Selected check badge upgrade**
-- Increase badge size from `w-5 h-5` to `w-6 h-6`
-- Add a gradient background matching the button gradient instead of flat `bg-accent`
-- Add a subtle pulsing glow ring around the badge
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
 
-### Summary
-All changes are within the TimeGroup component (~50 lines). The grid becomes 3-column for better proportions, buttons get glass-morphism styling with gradient accents, and micro-interactions are elevated with springs and glows.
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
 
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function

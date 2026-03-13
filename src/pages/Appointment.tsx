@@ -711,44 +711,60 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
         {icon}
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-3">
         {slots.map((slot, i) => {
           const isSelected = selectedTime === slot.time;
           return (
             <motion.button
               key={slot.time}
               initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
+              animate={{ opacity: 1, scale: isSelected ? 1.02 : 1 }}
               transition={{ duration: 0.3, delay: 0.1 + (delayOffset + i) * 0.06 }}
-              whileHover={{ scale: 1.04, y: -2 }}
-              whileTap={{ scale: 0.93 }}
+              whileHover={{ scale: 1.06, y: -3, boxShadow: "0 8px 24px hsl(270 65% 50% / 0.2)" }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => onSelect(slot.time)}
               className={`group relative rounded-2xl transition-all duration-300 ${
-                isSelected ? "shadow-[0_0_20px_hsl(var(--primary)/0.25)]" : ""
+                isSelected
+                  ? "shadow-[0_0_24px_hsl(var(--primary)/0.35),0_0_48px_hsl(var(--accent)/0.15)]"
+                  : ""
               }`}
             >
-              {/* Gradient border for selected */}
+              {/* Animated gradient border for selected */}
               {isSelected && (
-                <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-br from-primary via-accent to-primary" />
+                <motion.div
+                  className="absolute -inset-[2px] rounded-2xl"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary)))",
+                    backgroundSize: "200% 200%",
+                  }}
+                  animate={{ backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                />
               )}
-              {/* Hover border */}
+              {/* Hover border for unselected */}
               {!isSelected && (
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               )}
               <div
-                className={`relative m-[2px] rounded-[14px] py-2 text-center transition-all duration-300 flex items-center justify-center ${
+                className={`relative m-[2px] rounded-[14px] py-3 px-1 text-center transition-all duration-300 flex items-center justify-center overflow-hidden ${
                   isSelected
                     ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
-                    : "bg-card/80 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30"
+                    : "bg-gradient-to-br from-card via-card to-secondary/30 backdrop-blur-xl border-l-2 border-l-primary/20 border border-border/40 text-muted-foreground group-hover:text-foreground group-hover:border-primary/30"
                 }`}
               >
-                {/* Inner shine */}
+                {/* Inner diagonal shine for selected */}
                 {isSelected && (
-                  <div className="absolute inset-0 rounded-[14px] bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 rounded-[14px] bg-gradient-to-br from-white/25 via-transparent to-transparent pointer-events-none" />
                 )}
-                <span className="text-base font-bold relative z-10">{slot.time}</span>
+                {/* Shimmer hover effect for unselected */}
+                {!isSelected && (
+                  <div className="absolute inset-0 rounded-[14px] bg-gradient-to-r from-transparent via-primary/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none" />
+                )}
+                <span className={`relative z-10 ${isSelected ? "text-lg font-extrabold" : "text-base font-semibold"}`}>
+                  {slot.time}
+                </span>
               </div>
-              {/* Selected check */}
+              {/* Selected check badge */}
               <AnimatePresence>
                 {isSelected && (
                   <motion.div
@@ -756,9 +772,9 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
                     animate={{ scale: 1, rotate: 0 }}
                     exit={{ scale: 0, rotate: 90 }}
                     transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
+                    className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-gradient-to-br from-primary to-accent border-2 border-background flex items-center justify-center z-20 shadow-[0_0_12px_hsl(var(--accent)/0.4)]"
                   >
-                    <Check className="w-3 h-3 text-accent-foreground" />
+                    <Check className="w-3.5 h-3.5 text-primary-foreground" />
                   </motion.div>
                 )}
               </AnimatePresence>
