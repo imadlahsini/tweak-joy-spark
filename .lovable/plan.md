@@ -1,86 +1,50 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Plan: Elevate Appointment Page to Next Level
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+### Current Issues
+The page works but feels flat — plain text labels, basic grid of time slots, no visual hierarchy or "wow" moments. It needs more depth, polish, and delight.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### Enhancements to `src/pages/Appointment.tsx`
 
-## Fix
+**1. Step Progress Indicator**
+- Add a visual step tracker at the top (Step 1: Date / Step 2: Time) with animated connecting line that fills as user progresses
+- Glowing active step dot, muted completed/upcoming dots
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+**2. Enhanced Day Slider Cards**
+- Add inner gradient shine effect on selected card
+- Pulsing glow ring animation on selected card (not just static ring)
+- "Today" badge label instead of just a dot
+- Subtle particle/sparkle effect on selection
 
-**Simplify the `fetchStats` function (lines 45-82):**
+**3. Glass-morphism Section Cards**
+- Wrap the date section and time section each in a glass-morphism card container (`bg-card/60 backdrop-blur-2xl border border-border/30 rounded-3xl p-5`) with a top gradient accent line (like the Welcome language cards)
+- Adds visual depth and grouping
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+**4. Upgraded Time Slots**
+- Make time slots taller with a secondary line showing the end time (e.g., "09:00" main, "09:00 - 10:00" subtitle)
+- Add a subtle clock icon inside each slot
+- Selected slot gets animated gradient background instead of flat primary fill
+- Ripple effect on tap
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+**5. Summary Card Before Confirm**
+- When both date and time are selected, show an animated summary card above the CTA with:
+  - Calendar icon + formatted date
+  - Clock icon + formatted time
+  - Doctor/clinic icon + "Consultation" label
+  - Glass-morphism styling with gradient border
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+**6. Micro-interactions & Polish**
+- Confetti/sparkle burst animation when both selections are made
+- Smooth auto-scroll to time section after date selection
+- Haptic-style scale bounce on selection
+- Animated gradient divider between morning/afternoon sections
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
+**7. Enhanced CTA Button**
+- Add a shimmer sweep animation across the button
+- Pulse animation when ready to confirm
+- Arrow icon that slides on hover
 
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
+### Files Changed
+Only `src/pages/Appointment.tsx` — full rewrite of the component with all enhancements above. No new files needed; all changes are self-contained.
 
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
