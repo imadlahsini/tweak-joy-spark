@@ -39,6 +39,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Welcome />} />
+              <Route path="/appointment" element={<Appointment />} />
               <Route path="/home" element={<Index />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
