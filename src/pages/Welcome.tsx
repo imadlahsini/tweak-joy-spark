@@ -136,6 +136,7 @@ const Welcome = () => {
         <img
           src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
           alt=""
+          loading="lazy"
           className="w-full h-full object-cover object-top opacity-20 blur-sm"
         />
       </div>
