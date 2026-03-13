@@ -135,15 +135,68 @@ const AppointmentConfirmation = () => {
 
   return (
     <div dir={isRTL ? "rtl" : "ltr"} className={`min-h-screen bg-background relative overflow-hidden ${isRTL ? "rtl" : ""}`}>
-      {/* Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
-      <div className="fixed inset-0 dot-grid opacity-30" />
-      <FloatingOrb className="bg-primary/8 -top-32 -right-32" delay={0} />
-      <FloatingOrb className="bg-accent/6 -bottom-40 -left-40" delay={2} size="w-[500px] h-[500px]" />
-      <FloatingOrb className="bg-primary/5 top-1/2 right-1/4" delay={4} size="w-64 h-64" />
+      <Navbar />
+
+      {/* Animated gradient mesh background */}
+      <div className="fixed inset-0">
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 5, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-radial from-primary/20 via-transparent to-transparent blur-3xl"
+        />
+        <motion.div
+          animate={{ scale: [1.2, 1, 1.2], rotate: [0, -5, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-radial from-accent/15 via-transparent to-transparent blur-3xl"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.3, 1], x: [0, 50, 0] }}
+          transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-1/4 left-1/3 w-1/2 h-1/2 bg-gradient-radial from-primary/10 via-transparent to-transparent blur-3xl"
+        />
+      </div>
+
+      <div className="fixed inset-0 dot-grid opacity-40" />
+
+      {/* Floating geometric shapes */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[10%] right-[8%] w-10 h-10 md:w-14 md:h-14 border-2 border-primary/20"
+          style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }}
+        />
+        <motion.div
+          animate={{ y: [-10, 10, -10] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[25%] left-[5%] w-8 h-8 md:w-12 md:h-12 rounded-full border-2 border-accent/30 bg-accent/5"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-[25%] right-[5%] w-14 h-14 md:w-20 md:h-20 rounded-full border-4 border-primary/15"
+        />
+      </div>
+
+      {/* Floating orbs */}
+      <FloatingOrb className="bg-primary/15 -top-20 -right-32" size="w-[200px] h-[200px] md:w-[500px] md:h-[500px]" delay={0.2} />
+      <FloatingOrb className="bg-accent/10 top-1/3 -left-40" size="w-[250px] h-[250px] lg:w-[600px] lg:h-[600px]" delay={0.5} />
+
+      <div className="absolute inset-0 noise-overlay pointer-events-none" />
+
+      {/* Bottom hero image */}
+      <div className="absolute bottom-0 left-0 right-0 h-[40%] pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-transparent z-10" />
+        <img
+          src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
+          alt=""
+          loading="lazy"
+          className="w-full h-full object-cover object-top opacity-5 blur-sm"
+        />
+      </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-5 py-12">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-5 pt-24 pb-32">
         
         {/* Animated Checkmark */}
         <div className="relative mb-8">
