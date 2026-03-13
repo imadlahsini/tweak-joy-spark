@@ -43,15 +43,6 @@ const App = () => (
               <Route path="/checkout/1-year-special" element={<YearSpecialCheckout />} />
               <Route path="/checkout/:planSlug" element={<PlanCheckout />} />
               <Route path="/checkout" element={<Checkout />} />
-              <Route path="/admin">
-                <Route index element={<AdminLogin />} />
-                <Route element={<AdminLayout />}>
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="subscriptions" element={<AdminSubscriptions />} />
-                  <Route path="links" element={<AdminLinks />} />
-                </Route>
-              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
