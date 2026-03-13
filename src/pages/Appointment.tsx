@@ -99,8 +99,9 @@ const Appointment = () => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
-  const [hasScrolled, setHasScrolled] = useState(false);
-  const mouseX = useMotionValue(0);
+   const [hasScrolled, setHasScrolled] = useState(false);
+   const initialScrollLeftRef = useRef<number | null>(null);
+   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
   const orbX1 = useTransform(mouseX, [-500, 500], [-20, 20]);
@@ -148,12 +149,13 @@ const Appointment = () => {
   useEffect(() => {
     const slider = sliderRef.current;
     if (!slider) return;
-    let isInitialCall = true;
+    initialScrollLeftRef.current = slider.scrollLeft;
     const handleScroll = () => {
-      if (isInitialCall) {
-        isInitialCall = false;
-      } else {
-        setHasScrolled(true);
+      if (initialScrollLeftRef.current !== null) {
+        const delta = Math.abs(slider.scrollLeft - initialScrollLeftRef.current);
+        if (delta > 8) {
+          setHasScrolled(true);
+        }
       }
       const { scrollLeft, scrollWidth, clientWidth } = slider;
       if (isRTL) {
@@ -426,24 +428,21 @@ const Appointment = () => {
               )}
 
               {/* Bouncing scroll hint arrow */}
-              <AnimatePresence>
-                {!hasScrolled && showRightFade && (
+              {!hasScrolled && (isRTL ? showLeftFade || !showRightFade : showRightFade) && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20`}
+                >
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
-                    className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20`}
+                    animate={{ x: isRTL ? [0, -6, 0] : [0, 6, 0] }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                    className="bg-primary/80 text-primary-foreground rounded-full p-1.5 shadow-lg backdrop-blur-sm"
                   >
-                    <motion.div
-                      animate={{ x: isRTL ? [0, -6, 0] : [0, 6, 0] }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                      className="bg-primary/80 text-primary-foreground rounded-full p-1.5 shadow-lg backdrop-blur-sm"
-                    >
-                      {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </motion.div>
+                    {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </motion.div>
-                )}
-              </AnimatePresence>
+                </motion.div>
+              )}
               <div
                 ref={sliderRef}
                 className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
