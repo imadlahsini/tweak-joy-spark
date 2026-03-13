@@ -127,7 +127,7 @@ const AppointmentConfirmation = () => {
   ];
 
   return (
-    <div className={`min-h-screen bg-background relative overflow-hidden ${isRTL ? "rtl" : ""}`}>
+    <div dir={isRTL ? "rtl" : "ltr"} className={`min-h-screen bg-background relative overflow-hidden ${isRTL ? "rtl" : ""}`}>
       {/* Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
       <div className="fixed inset-0 dot-grid opacity-30" />
