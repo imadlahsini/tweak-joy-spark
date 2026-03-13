@@ -1,17 +1,86 @@
 
 
-## Improve Time Buttons
+# Fix: Dashboard Frontend Invocation Issues
 
-Current state: Each time button is a tall card with a tiny clock icon + time text, using a 4-column grid. They look sparse and the clock icons add visual noise without value.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-### Changes in `src/pages/Appointment.tsx`
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-1. **Remove the clock icon** — the time text is self-explanatory; the icon adds clutter
-2. **Make buttons more compact** — reduce vertical padding from `py-2.5` to `py-2`, making them feel like quick-tap chips rather than tall cards
-3. **Simplify the inner container** — remove the `flex-col` + `gap-0.5` layout since there's only one element (the time text) after removing the icon
-4. **Increase font weight contrast** — bump time text to `text-base font-bold` so the numbers are more prominent and scannable
-5. **Reduce animation noise** — tone down the shimmer hover effect and the pulsing glow ring on selected state; keep the gradient border but remove the `opacity` pulse animation
-6. **Round the buttons more** — change from `rounded-xl` to `rounded-2xl` for a softer pill-like feel
+## Fix
 
-Net result: clean, compact, easy-to-scan time chips without unnecessary decorations.
+### File: `src/pages/admin/AdminDashboard.tsx`
 
+**Simplify the `fetchStats` function (lines 45-82):**
+
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
+
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
+
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
+
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
+
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
