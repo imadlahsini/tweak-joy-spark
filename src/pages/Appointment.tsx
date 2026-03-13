@@ -397,19 +397,19 @@ const Appointment = () => {
             </div>
 
             {/* Horizontal day slider with scroll indicators (Bug 8) */}
-            <div className="relative -mx-5 px-5">
+            <div className="relative -mx-8 px-8">
               {/* Left fade */}
               {showLeftFade && (
-                <div className={`absolute ${isRTL ? "right-0" : "left-0"} top-0 bottom-3 w-8 bg-gradient-to-r ${isRTL ? "from-transparent to-card/80" : "from-card/80 to-transparent"} z-10 pointer-events-none rounded-l-2xl`} />
+                <div className={`absolute ${isRTL ? "right-0" : "left-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-transparent to-card/80" : "from-card/80 to-transparent"} z-10 pointer-events-none rounded-l-2xl`} />
               )}
               {/* Right fade */}
               {showRightFade && (
-                <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-3 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
+                <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
               )}
               <div
                 ref={sliderRef}
-                className="flex gap-2.5 overflow-x-auto pb-3 snap-x snap-mandatory"
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
+                className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", overflowY: "visible" }}
               >
                 {next14Days.map((day, i) => {
                   const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
