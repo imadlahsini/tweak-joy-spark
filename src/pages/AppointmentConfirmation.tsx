@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, CalendarDays, Clock, User, Phone, Stethoscope, Home } from "lucide-react";
+import { Check, CalendarDays, Clock, User, Phone, Stethoscope, MessageCircle, MapPin } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import { format } from "date-fns";
@@ -12,7 +12,6 @@ const translations = {
   en: {
     title: "Appointment Confirmed!",
     subtitle: "Your booking has been successfully scheduled",
-    backHome: "Back to Home",
     date: "Date",
     time: "Time",
     consultation: "Consultation",
@@ -21,11 +20,13 @@ const translations = {
     phone: "Phone",
     details: "Appointment Details",
     seeYou: "We look forward to seeing you!",
+    whatsapp: "WhatsApp",
+    call: "Call",
+    directions: "Directions",
   },
   fr: {
     title: "Rendez-vous Confirmé!",
     subtitle: "Votre réservation a été planifiée avec succès",
-    backHome: "Retour à l'accueil",
     date: "Date",
     time: "Heure",
     consultation: "Consultation",
@@ -34,11 +35,13 @@ const translations = {
     phone: "Téléphone",
     details: "Détails du Rendez-vous",
     seeYou: "Nous avons hâte de vous voir!",
+    whatsapp: "WhatsApp",
+    call: "Appeler",
+    directions: "Itinéraire",
   },
   ar: {
     title: "!تم تأكيد الموعد",
     subtitle: "تم جدولة حجزك بنجاح",
-    backHome: "العودة للرئيسية",
     date: "التاريخ",
     time: "الوقت",
     consultation: "استشارة",
@@ -47,6 +50,9 @@ const translations = {
     phone: "الهاتف",
     details: "تفاصيل الموعد",
     seeYou: "!نتطلع لرؤيتك",
+    whatsapp: "واتساب",
+    call: "اتصال",
+    directions: "الاتجاهات",
   },
 };
 
@@ -264,28 +270,38 @@ const AppointmentConfirmation = () => {
           {t.seeYou}
         </motion.p>
 
-        {/* Back to Home button */}
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.6, duration: 0.5 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate("/home")}
-          className="relative group overflow-hidden w-full max-w-sm h-12 rounded-xl font-display font-semibold text-sm bg-primary text-primary-foreground shadow-elevated"
-        >
-          {/* Shimmer sweep */}
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
-            animate={{ x: isRTL ? ["150%", "-150%"] : ["-150%", "150%"] }}
-            transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" }}
-          />
-          <span className="relative z-10 flex items-center justify-center gap-2">
-            <Home className="w-4 h-4" />
-            {t.backHome}
-          </span>
-        </motion.button>
       </div>
+
+      {/* Floating Action Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.6, duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
+        className="fixed bottom-6 left-4 right-4 z-50 max-w-sm mx-auto"
+      >
+        <div className="bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-elevated p-3 flex items-center justify-around">
+          {[
+            { icon: MessageCircle, label: t.whatsapp, href: "https://wa.me/212XXXXXXXXX", color: "text-green-500" },
+            { icon: Phone, label: t.call, href: "tel:+212XXXXXXXXX", color: "text-primary" },
+            { icon: MapPin, label: t.directions, href: "https://maps.google.com/?q=placeholder", color: "text-accent-foreground" },
+          ].map((item, i) => (
+            <motion.a
+              key={item.label}
+              href={item.href}
+              target={item.icon === MapPin ? "_blank" : undefined}
+              rel={item.icon === MapPin ? "noopener noreferrer" : undefined}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.8 + i * 0.1 }}
+              whileTap={{ scale: 0.92 }}
+              className="flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-colors hover:bg-muted/50"
+            >
+              <item.icon className={`w-5 h-5 ${item.color}`} />
+              <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
+            </motion.a>
+          ))}
+        </div>
+      </motion.div>
     </div>
   );
 };
