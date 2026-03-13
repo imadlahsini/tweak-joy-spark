@@ -187,7 +187,7 @@ const Appointment = () => {
     }
   };
 
-  const timeArrow = isRTL ? "←" : "→";
+  const timeArrow = "–";
 
   return (
     <div
