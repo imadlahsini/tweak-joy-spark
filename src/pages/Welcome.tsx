@@ -40,7 +40,7 @@ const Welcome = () => {
 
   const handleSelect = (lang: Language) => {
     setLanguage(lang);
-    navigate("/home");
+    navigate("/appointment");
   };
 
   if (language) return null;
