@@ -317,6 +317,7 @@ const Appointment = () => {
         <img
           src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
           alt=""
+          loading="lazy"
           className="w-full h-full object-cover object-top opacity-5 blur-sm"
         />
       </div>
@@ -380,7 +381,7 @@ const Appointment = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
           className="flex items-center justify-center gap-0 mb-6 max-w-sm mx-auto w-full px-2"
         >
           {/* Step 1 — clickable */}

@@ -136,6 +136,7 @@ const Welcome = () => {
         <img
           src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
           alt=""
+          loading="lazy"
           className="w-full h-full object-cover object-top opacity-20 blur-sm"
         />
       </div>
@@ -154,7 +155,7 @@ const Welcome = () => {
               key={lang.code}
               initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.5, delay: 0.7 + i * 0.12, ease: [0.2, 0.65, 0.3, 0.9] }}
+              transition={{ duration: 0.4, delay: 0.15 + i * 0.08, ease: [0.2, 0.65, 0.3, 0.9] }}
               whileHover={{ scale: 1.04, y: -6 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => handleSelect(lang.code)}
