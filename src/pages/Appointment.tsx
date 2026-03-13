@@ -894,7 +894,7 @@ const Appointment = () => {
 
       {/* ── Fixed bottom CTA ── */}
       <AnimatePresence>
-        {selectedDate && selectedTime && (
+        {selectedDate && selectedTime && isFormValid && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
