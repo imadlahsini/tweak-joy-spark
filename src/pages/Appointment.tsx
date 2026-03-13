@@ -149,6 +149,7 @@ const Appointment = () => {
     const slider = sliderRef.current;
     if (!slider) return;
     const handleScroll = () => {
+      setHasScrolled(true);
       const { scrollLeft, scrollWidth, clientWidth } = slider;
       if (isRTL) {
         setShowRightFade(scrollLeft < 0);
