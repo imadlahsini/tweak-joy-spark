@@ -130,7 +130,7 @@ const AppointmentConfirmation = () => {
     { icon: Phone, label: t.phone, value: `+212 ${state.clientPhone}` },
     { icon: CalendarDays, label: t.date, value: formattedDate },
     { icon: Clock, label: t.time, value: `${state.selectedTime} — ${getEndTime(state.selectedTime)}` },
-    { icon: Stethoscope, label: t.consultation, value: t.duration },
+    
   ];
 
   return (
