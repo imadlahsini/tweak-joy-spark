@@ -149,12 +149,13 @@ const Appointment = () => {
   useEffect(() => {
     const slider = sliderRef.current;
     if (!slider) return;
-    let isInitialCall = true;
+    initialScrollLeftRef.current = slider.scrollLeft;
     const handleScroll = () => {
-      if (isInitialCall) {
-        isInitialCall = false;
-      } else {
-        setHasScrolled(true);
+      if (initialScrollLeftRef.current !== null) {
+        const delta = Math.abs(slider.scrollLeft - initialScrollLeftRef.current);
+        if (delta > 8) {
+          setHasScrolled(true);
+        }
       }
       const { scrollLeft, scrollWidth, clientWidth } = slider;
       if (isRTL) {
