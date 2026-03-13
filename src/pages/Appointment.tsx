@@ -144,7 +144,10 @@ const Appointment = () => {
   const isRTL = language === "ar";
   const dateLocale = language === "fr" ? fr : language === "ar" ? arSA : undefined;
 
-  const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : 3;
+  const isNameValid = clientName.trim().length >= 2;
+  const isPhoneValid = clientPhone.replace(/\D/g, "").length >= 6;
+  const isFormValid = isNameValid && isPhoneValid;
+  const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : !isFormValid ? 3 : 4;
 
   // Bug 2 fix: compute dates inside component with useMemo
   const next14Days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
@@ -158,14 +161,24 @@ const Appointment = () => {
     }
   }, [selectedDate]);
 
-  // Auto-scroll to summary card when time selected
+  // Auto-scroll to details section when time selected
   useEffect(() => {
-    if (selectedDate && selectedTime && summarySectionRef.current) {
+    if (selectedDate && selectedTime && detailsSectionRef.current) {
       setTimeout(() => {
-        summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        nameInputRef.current?.focus();
       }, 400);
     }
   }, [selectedTime]);
+
+  // Auto-scroll to summary when form is valid
+  useEffect(() => {
+    if (isFormValid && summarySectionRef.current) {
+      setTimeout(() => {
+        summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+    }
+  }, [isFormValid]);
 
   // Sparkle burst when both selected
   useEffect(() => {
