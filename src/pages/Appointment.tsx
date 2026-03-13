@@ -253,7 +253,7 @@ const Appointment = () => {
         <img
           src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
           alt=""
-          className="w-full h-full object-cover object-top opacity-15 blur-sm"
+          className="w-full h-full object-cover object-top opacity-5 blur-sm"
         />
       </div>
 
