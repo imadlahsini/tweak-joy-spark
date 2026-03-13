@@ -282,6 +282,16 @@ const AppointmentConfirmation = () => {
               {/* Inner glass highlight */}
               <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-accent/[0.03] pointer-events-none" />
 
+              {/* Shimmer sweep */}
+              <motion.div
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: "linear-gradient(105deg, transparent 40%, hsl(0 0% 100% / 0.06) 45%, hsl(0 0% 100% / 0.1) 50%, hsl(0 0% 100% / 0.06) 55%, transparent 60%)",
+                }}
+              />
+
               {/* Header */}
               <div className="relative px-5 pt-5 pb-4">
                 <div className="flex items-center gap-2 mb-1">
