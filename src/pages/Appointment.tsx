@@ -588,12 +588,6 @@ const Appointment = () => {
                     transition={{ duration: 0.3, ease: "easeOut" }}
                     className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1.5`}
                   >
-                    {/* Outer pulsing glow ring */}
-                    <motion.div
-                      animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.08, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary via-accent to-primary opacity-50 blur-sm"
-                    />
                     {/* Glass pill body with chevrons + trail dots */}
                     <div className="relative flex items-center">
                       {/* Trail dots */}
