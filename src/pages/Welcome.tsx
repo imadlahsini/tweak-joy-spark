@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import { Brain, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 
@@ -142,7 +142,7 @@ const Welcome = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.2, 0.65, 0.3, 0.9] }}
-        className="relative z-10 flex flex-col items-center gap-5 sm:gap-8 px-5 w-full max-w-lg sm:max-w-none"
+        className="relative z-10 flex flex-col items-center gap-4 sm:gap-6 px-5 w-full max-w-lg sm:max-w-none"
       >
         {/* Next-level animated logo */}
         <motion.div
@@ -170,7 +170,7 @@ const Welcome = () => {
             {/* Inner glass container */}
             <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-primary/20 via-card/80 to-accent/20 backdrop-blur-xl border border-primary/30 flex items-center justify-center shadow-[0_0_60px_hsl(var(--primary)/0.3)]">
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10" />
-              <Brain className="relative w-10 h-10 sm:w-12 sm:h-12 text-primary drop-shadow-lg" />
+              <img src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/ddfd.png" alt="Junior AI" className="relative w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-lg" />
             </div>
 
             {/* Orbital dots */}
@@ -197,25 +197,6 @@ const Welcome = () => {
             </motion.div>
           </div>
 
-          {/* Text below — stacked */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex flex-col items-center gap-1"
-          >
-            <div className="flex items-baseline gap-2 font-display">
-              <span className="text-5xl sm:text-6xl font-bold text-foreground tracking-tight">Junior</span>
-              <span className="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient tracking-tight">AI</span>
-            </div>
-            {/* Accent line */}
-            <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
-              className="w-16 h-[2px] mt-2 rounded-full bg-gradient-to-r from-primary to-accent"
-            />
-          </motion.div>
         </motion.div>
 
         {/* Language cards */}
