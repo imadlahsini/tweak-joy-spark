@@ -197,25 +197,6 @@ const Welcome = () => {
             </motion.div>
           </div>
 
-          {/* Text below — stacked */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex flex-col items-center gap-1"
-          >
-            <div className="flex items-baseline gap-2 font-display">
-              <span className="text-5xl sm:text-6xl font-bold text-foreground tracking-tight">Junior</span>
-              <span className="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient tracking-tight">AI</span>
-            </div>
-            {/* Accent line */}
-            <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
-              className="w-16 h-[2px] mt-2 rounded-full bg-gradient-to-r from-primary to-accent"
-            />
-          </motion.div>
         </motion.div>
 
         {/* Language cards */}
