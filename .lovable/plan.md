@@ -1,86 +1,44 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Plan: Language Selection Splash Screen
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+### What we'll build
+A full-screen splash/welcome page at `/` that shows:
+- The brand logo (Brain icon + "Junior AI")
+- A welcome message
+- Three language buttons: **Arabic**, **English**, **French** (with flag icons or native text)
+- Selecting a language saves the choice to `localStorage` and navigates to the main landing page
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+The current landing page (`Index`) will move to a new route (e.g., `/home`), and the splash screen becomes the new `/` route.
 
-## Fix
+### Technical approach
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+1. **Create `src/contexts/LanguageContext.tsx`**
+   - React context providing `language` and `setLanguage`
+   - Reads/writes to `localStorage`
+   - Default: none (forces user to pick on first visit)
 
-**Simplify the `fetchStats` function (lines 45-82):**
+2. **Create `src/pages/Welcome.tsx`**
+   - Full-screen centered layout with the brand's gradient background and floating orbs
+   - Brand logo at top
+   - "Welcome / Bienvenue / مرحبا" heading
+   - Three large, elegant language cards/buttons:
+     - **العربية** (Arabic)
+     - **English**
+     - **Français** (French)
+   - On click: saves language to context/localStorage, navigates to `/home`
+   - Uses framer-motion for entrance animations consistent with the existing design
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+3. **Update `src/App.tsx` routing**
+   - `/` → `Welcome` (new splash screen)
+   - `/home` → `Index` (existing landing page)
+   - Wrap app with `LanguageProvider`
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+4. **Auto-redirect logic**
+   - If a language is already saved in `localStorage`, the Welcome page auto-redirects to `/home` so returning visitors skip the selector
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+### Files to create/modify
+- **Create**: `src/contexts/LanguageContext.tsx`
+- **Create**: `src/pages/Welcome.tsx`
+- **Modify**: `src/App.tsx` (add route, wrap provider)
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
