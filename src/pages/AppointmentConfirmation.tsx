@@ -27,7 +27,6 @@ const translations = {
   fr: {
     title: "Rendez-vous Confirmé!",
     subtitle: "Votre réservation a été planifiée avec succès",
-    backHome: "Retour à l'accueil",
     date: "Date",
     time: "Heure",
     consultation: "Consultation",
@@ -36,6 +35,9 @@ const translations = {
     phone: "Téléphone",
     details: "Détails du Rendez-vous",
     seeYou: "Nous avons hâte de vous voir!",
+    whatsapp: "WhatsApp",
+    call: "Appeler",
+    directions: "Itinéraire",
   },
   ar: {
     title: "!تم تأكيد الموعد",
