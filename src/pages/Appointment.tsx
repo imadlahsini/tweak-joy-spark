@@ -524,6 +524,111 @@ const Appointment = () => {
                       initial={{ opacity: 0, scale: 0.8, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: i * 0.04 }}
+                      whileTap={{ scale: 0.92 }}
+                      onClick={() => {
+                        setSelectedDate(day);
+                        setSelectedTime(null);
+                        if (timeSectionRef.current) {
+                          setTimeout(() => timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+                        }
+                      }}
+                      className={`relative flex-shrink-0 snap-center flex flex-col items-center justify-center w-[60px] h-[76px] rounded-2xl border transition-all duration-300 ${
+                        isSelected
+                          ? "bg-gradient-to-br from-primary to-accent border-primary/50 text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
+                          : today
+                            ? "bg-card/80 border-accent/40 text-foreground hover:border-accent/60"
+                            : "bg-card/50 border-border/30 text-foreground hover:border-primary/30 hover:bg-card/70"
+                      }`}
+                    >
+                      {/* Today indicator dot */}
+                      {today && !isSelected && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
+                      )}
+                      <span className={`text-[10px] font-medium uppercase tracking-wider ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                        {formatDate(day, "EEE")}
+                      </span>
+                      <span className={`text-xl font-bold leading-tight ${isSelected ? "text-primary-foreground" : ""}`}>
+                        {formatDate(day, "d")}
+                      </span>
+                      <span className={`text-[9px] font-medium ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground/70"}`}>
+                        {formatDate(day, "MMM")}
+                      </span>
+                      {/* Selected checkmark */}
+                      <AnimatePresence>
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0, rotate: -90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            exit={{ scale: 0, rotate: 90 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
+                          >
+                            <Check className="w-3 h-3 text-accent-foreground" />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+                  );
+                })}
+                {/* Spacer to prevent last card from being hidden by fade */}
+                <div className="flex-shrink-0 w-14" aria-hidden="true" />
+              </div>
+
+              {/* Bouncing scroll hint arrow — positioned outside scroll area */}
+              <AnimatePresence>
+                {!hasScrolled && (isRTL ? showLeftFade : showRightFade) && (
+                  <motion.div
+                    key="scroll-hint"
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1.5`}
+                  >
+                    {/* Outer pulsing glow ring */}
+                    <motion.div
+                      animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.08, 1] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary via-accent to-primary opacity-50 blur-sm"
+                    />
+                    {/* Glass pill body with chevrons + trail dots */}
+                    <div className="relative flex items-center">
+                      {/* Trail dots */}
+                      {[0.15, 0.3].map((delay, i) => (
+                        <motion.div
+                          key={`trail-${i}`}
+                          animate={{ x: isRTL ? [0, -8, 0] : [0, 8, 0], opacity: [0.6 - i * 0.2, 0.2, 0.6 - i * 0.2] }}
+                          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut", delay }}
+                          className={`absolute ${isRTL ? "right-full mr-1" : "left-full ml-1"} rounded-full bg-primary/40`}
+                          style={{ width: 4 - i, height: 4 - i, [isRTL ? "marginRight" : "marginLeft"]: 4 + i * 6 }}
+                        />
+                      ))}
+                      {/* Main pill */}
+                      <motion.div
+                        animate={{ x: isRTL ? [0, -8, 0] : [0, 8, 0] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                        className="relative flex items-center gap-0 rounded-full px-2.5 py-2 bg-card/70 backdrop-blur-xl border border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.4)] text-primary"
+                      >
+                        {isRTL ? (
+                          <ChevronsLeft className="w-5 h-5" />
+                        ) : (
+                          <ChevronsRight className="w-5 h-5" />
+                        )}
+                      </motion.div>
+                    </div>
+                    {/* Swipe label that fades out */}
+                    <motion.span
+                      initial={{ opacity: 1 }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 0.6, delay: 2 }}
+                      className="text-[10px] text-muted-foreground font-medium select-none"
+                    >
+                      {language === "ar" ? "اسحب" : language === "fr" ? "Glisser" : "Swipe"}
+                    </motion.span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Selected date pill */}
             <AnimatePresence>
