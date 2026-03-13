@@ -1,86 +1,36 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+# Elevate Confirmation Page to Match Site Design
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+## Problem
+The confirmation page has a flat, minimal background compared to the rich, layered premium backgrounds used on the home and appointment pages. It's missing the navbar, animated gradient mesh, floating geometric shapes, noise overlay, and hero image.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+## Changes — `src/pages/AppointmentConfirmation.tsx`
 
-## Fix
+### 1. Add Navbar
+Import and render `<Navbar />` at the top. Add `pt-24` to the content container to offset for it.
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+### 2. Replace flat background with animated gradient mesh
+Swap the static `bg-gradient-to-br` with three animated radial gradient blobs (matching Appointment page):
+- Top-left: `from-primary/20`, scale+rotate animation, 20s loop
+- Bottom-right: `from-accent/15`, scale+rotate animation, 25s loop
+- Center: `from-primary/10`, scale+x animation, 30s loop
 
-**Simplify the `fetchStats` function (lines 45-82):**
+### 3. Add floating geometric shapes
+Add the same three animated shapes from the appointment page:
+- Rotating triangle (top-right)
+- Bobbing circle (top-left)
+- Pulsing ring (bottom-right)
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+### 4. Add noise overlay
+Add `<div className="absolute inset-0 noise-overlay pointer-events-none" />`.
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+### 5. Add faded hero image at bottom
+Same blurred background image at 5% opacity used on the appointment page.
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+### 6. Increase dot grid opacity
+Change `opacity-30` to `opacity-40` to match.
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
+### 7. Adjust content padding
+Change `py-12` to `pt-24 pb-32` to account for navbar and floating bar.
 
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
