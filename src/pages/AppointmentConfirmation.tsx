@@ -353,31 +353,34 @@ const AppointmentConfirmation = () => {
         transition={{ delay: 1.6, duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
         className="fixed bottom-6 left-4 right-4 z-50 max-w-sm mx-auto"
       >
-        <div className="bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-elevated p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center justify-around">
-          {[
-            { icon: MessageCircle, label: t.whatsapp, href: "https://wa.me/212XXXXXXXXX", color: "text-green-500", bg: "bg-green-500/10" },
-            { icon: Phone, label: t.call, href: "tel:+212XXXXXXXXX", color: "text-primary", bg: "bg-primary/10" },
-            { icon: MapPin, label: t.directions, href: "https://maps.google.com/?q=placeholder", color: "text-accent-foreground", bg: "bg-accent/10" },
-          ].map((item, i, arr) => (
-            <div key={item.label} className="flex items-center">
-              <motion.a
-                href={item.href}
-                target={item.icon === MapPin ? "_blank" : undefined}
-                rel={item.icon === MapPin ? "noopener noreferrer" : undefined}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.8 + i * 0.1 }}
-                whileTap={{ scale: 0.92 }}
-                className="flex flex-col items-center gap-1.5 px-4 py-1.5 rounded-xl transition-colors hover:bg-muted/50"
-              >
-                <div className={`w-10 h-10 rounded-full ${item.bg} flex items-center justify-center`}>
-                  <item.icon className={`w-5 h-5 ${item.color}`} />
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
-              </motion.a>
-              {i < arr.length - 1 && <div className="h-8 w-px bg-border/30 mx-1" />}
-            </div>
-          ))}
+        <div className="relative bg-background/60 backdrop-blur-xl border border-border/50 rounded-2xl shadow-elevated py-2 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary/10 via-transparent to-accent/10 pointer-events-none" />
+
+          <div className="relative flex items-center justify-around">
+            {[
+              { icon: MessageCircle, label: t.whatsapp, href: "https://wa.me/212XXXXXXXXX", color: "text-green-500" },
+              { icon: PhoneCall, label: t.call, href: "tel:+212XXXXXXXXX", color: "text-primary" },
+              { icon: Navigation, label: t.directions, href: "https://maps.google.com/?q=placeholder", color: "text-accent-foreground" },
+            ].map((item, i, arr) => (
+              <div key={item.label} className="flex items-center">
+                <motion.a
+                  href={item.href}
+                  target={item.icon === Navigation ? "_blank" : undefined}
+                  rel={item.icon === Navigation ? "noopener noreferrer" : undefined}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.8 + i * 0.1 }}
+                  whileTap={{ scale: 0.92 }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-colors hover:bg-muted/50"
+                >
+                  <item.icon className={`w-4 h-4 ${item.color}`} />
+                  <span className="text-xs font-medium text-foreground">{item.label}</span>
+                </motion.a>
+                {i < arr.length - 1 && <div className="h-5 w-px bg-border/40 mx-1" />}
+              </div>
+            ))}
+          </div>
         </div>
       </motion.div>
     </div>
