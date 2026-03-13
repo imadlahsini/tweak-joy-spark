@@ -55,13 +55,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        purple: {
-          glow: "hsl(var(--purple-glow))",
-          deep: "hsl(var(--violet-deep))",
-          light: "hsl(var(--purple-light))",
+        medical: {
+          glow: "hsl(210 75% 55%)",
+          deep: "hsl(210 80% 30%)",
+          light: "hsl(210 70% 70%)",
         },
-        magenta: {
-          accent: "hsl(var(--magenta-accent))",
+        teal: {
+          accent: "hsl(185 65% 45%)",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -101,8 +101,8 @@ export default {
           "50%": { transform: "translateY(-10px)" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 20px hsla(270, 70%, 55%, 0.3)" },
-          "50%": { boxShadow: "0 0 40px hsla(270, 70%, 55%, 0.6)" },
+          "0%, 100%": { boxShadow: "0 0 20px hsla(210, 75%, 45%, 0.3)" },
+          "50%": { boxShadow: "0 0 40px hsla(210, 75%, 45%, 0.6)" },
         },
       },
       animation: {

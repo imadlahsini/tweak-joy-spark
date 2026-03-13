@@ -1,46 +1,86 @@
 
 
-# Switch from Purple to Medical Blue — Optimized Palette
+# Fix: Dashboard Frontend Invocation Issues
 
-The current palette is still entirely purple (hue 270/280). Here's the carefully chosen medical blue palette and all files that need updating.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-## Chosen Color Values
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-**Primary — Medical Blue (hue 210)**: A trustworthy, professional blue used by top health brands (Mayo Clinic, Zocdoc, One Medical). Not too saturated to avoid looking cheap.
+## Fix
 
-**Accent — Teal (hue 185)**: A calming teal that pairs beautifully with medical blue — evokes cleanliness and care. Better than `195` which would be too close to primary.
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-| Token | Light Mode | Dark Mode | Rationale |
-|-------|-----------|-----------|-----------|
-| **Primary** | `210 75% 45%` | `210 75% 58%` | Rich medical blue, not electric — professional and trustworthy |
-| **Accent** | `185 65% 45%` | `185 65% 55%` | Calming teal, classic healthcare complement |
-| **Foreground** | `210 25% 10%` | `210 15% 95%` | Slightly blue-tinted blacks for cohesion |
-| **Secondary** | `210 20% 96%` / `210 20% 15%` | Soft blue tint |
-| **Muted-fg** | `210 15% 45%` / `210 15% 60%` | |
-| **Border/Input** | `210 15% 88%` / `210 20% 18%` | |
-| **Dark bg** | `210 30% 6%` | Deep navy instead of purple-black |
-| **Dark card** | `210 25% 10%` | |
+**Simplify the `fetchStats` function (lines 45-82):**
 
-## Files to Change
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
 
-### 1. `src/index.css` — All CSS variables
-- Replace every `270` hue → `210`, every `280` hue → `185`
-- Dark mode background from `270 30% 6%` → `210 30% 6%` (deep navy)
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
 
-### 2. `tailwind.config.ts`
-- `pulse-glow` keyframe: `hsla(270, 70%, 55%,...)` → `hsla(210, 75%, 45%,...)`
-- Rename `purple` color group to `blue` (glow, deep, light)
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
 
-### 3. `src/components/shared/SectionBadge.tsx`
-- `purple-500/15` → `blue-500/15`, `purple-200` → `blue-200`, `purple-400` → `blue-400`
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
 
-### 4. `src/components/landing/LogoBar.tsx`
-- `purple-500/30` → `blue-500/30`
-- `purple-600/10` → `blue-600/10`
-- `purple-400/30` → `blue-400/30`
-- `purple-300` → `blue-300`
-- `rgba(139,92,246,0.15)` → `rgba(59,130,246,0.15)` (Tailwind blue-500 hex)
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
 
-### 5. `src/components/landing/Testimonial.tsx`
-- `from-purple-500 to-pink-500` → `from-blue-500 to-cyan-500`
+## Changes
 
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
