@@ -721,7 +721,7 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
               whileHover={{ scale: 1.06, y: -3 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onSelect(slot.time)}
-              className={`group relative rounded-xl overflow-hidden transition-all duration-300 ${
+              className={`group relative rounded-xl transition-all duration-300 ${
                 isSelected ? "shadow-[0_0_25px_hsl(var(--primary)/0.3)]" : ""
               }`}
             >
