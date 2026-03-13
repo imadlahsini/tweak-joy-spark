@@ -486,6 +486,8 @@ const Appointment = () => {
           className="w-full max-w-sm mx-auto mb-5"
         >
           <div className="relative bg-card/60 backdrop-blur-2xl border border-border/30 rounded-3xl p-5 overflow-hidden">
+            {/* Left-side ambient glow */}
+            <div className={`absolute top-0 bottom-0 ${isRTL ? 'right-0' : 'left-0'} w-1/3 ${isRTL ? 'bg-gradient-to-l' : 'bg-gradient-to-r'} from-primary/15 to-transparent blur-2xl pointer-events-none`} />
             {/* Top gradient accent line */}
             <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
