@@ -1,42 +1,86 @@
 
 
-## Redo Time Buttons for Mobile — Premium Design
+# Fix: Dashboard Frontend Invocation Issues
 
-The current buttons are plain outlined rectangles in a 3-column grid. They lack visual impact and feel generic. Here's the redesign:
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-### Design Direction
-Compact, touch-friendly **gradient-bordered pill chips** with bold typography and satisfying tap feedback. Optimized for 390px width.
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-### Changes in `src/pages/Appointment.tsx` — TimeGroup component
+## Fix
 
-**1. Layout: 4-column grid**
-- Switch back to `grid-cols-4 gap-2.5` — on 390px this gives ~80px per button which is perfect for 5-char time strings ("09:00"). The current 3-col makes them feel too wide and wastes space.
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-**2. Unselected state — minimal elegance**
-- Remove the `border-l-2` accent, the shimmer pseudo-element, and the gradient border hover overlay — too many layers for a simple time chip
-- Clean style: `bg-white/80 dark:bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl py-2.5 px-2`
-- Text: `text-sm font-semibold text-foreground/70` — slightly muted but readable
-- Hover: gentle `border-primary/40` transition
+**Simplify the `fetchStats` function (lines 45-82):**
 
-**3. Selected state — bold and clear**
-- Solid `bg-gradient-to-r from-primary to-accent` fill with white text
-- `text-sm font-bold text-white`
-- Subtle glow: `shadow-[0_4px_16px_hsl(var(--primary)/0.3)]`
-- Remove the animated gradient border wrapper (the rotating backgroundPosition div) — it's over-engineered for a time chip
-- Remove the diagonal shine overlay
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
 
-**4. Interactions — snappy, not floaty**
-- Remove `whileHover` scale/y transforms (irrelevant on mobile touch)
-- `whileTap`: `scale: 0.95` with a quick spring — satisfying press feel
-- Remove the complex box-shadow hover animation
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
 
-**5. Check badge — simplify**
-- Remove the check badge entirely. The filled gradient background already clearly communicates selection. The badge adds clutter on small buttons.
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
 
-**6. Remove unnecessary elements**
-- Delete: animated gradient border div, hover border div, shimmer div, shine overlay div, check badge AnimatePresence block
-- Result: ~20 lines of clean code instead of ~65 lines of layered effects
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
 
-### Net Result
-Clean, iOS-style time chips that feel native on mobile. Bold gradient fill for selected, subtle outline for unselected, snappy tap animation.
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
 
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
