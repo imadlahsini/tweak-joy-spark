@@ -76,7 +76,7 @@ const translations = {
     nameLabel: "Nom Complet",
     namePlaceholder: "Entrez votre nom",
     phoneLabel: "Numéro de Téléphone",
-    phonePlaceholder: "+212 6XX XXX XXX",
+    phonePlaceholder: "6XX XXX XXX",
     nameRequired: "Le nom est requis (min 2 caractères)",
     phoneRequired: "Le téléphone est requis (min 6 chiffres)",
   },
