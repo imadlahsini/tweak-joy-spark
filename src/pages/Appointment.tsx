@@ -349,7 +349,7 @@ const Appointment = () => {
           </div>
 
           {/* Step 2 */}
-          <div className="flex flex-col items-center gap-1.5 relative z-10">
+          <button onClick={() => {}} className="flex flex-col items-center gap-1.5 relative z-10 cursor-default">
             <motion.div
               animate={currentStep === 2 ? { scale: [1, 1.15, 1] } : {}}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
