@@ -34,7 +34,7 @@ const Welcome = () => {
 
   useEffect(() => {
     if (language) {
-      navigate("/home", { replace: true });
+      navigate("/appointment", { replace: true });
     }
   }, [language, navigate]);
 
