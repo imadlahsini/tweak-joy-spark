@@ -1,86 +1,31 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Persistent Scroll Hint Animation for Date Slider
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+Replace the one-time nudge with a continuous animated indicator that disappears once the user scrolls.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### Approach: Bouncing Chevron Arrow
 
-## Fix
+Add a small bouncing arrow icon overlaid on the trailing edge of the date slider (right side in LTR, left in RTL). It pulses/bounces horizontally to signal "swipe to see more." Once the user scrolls the slider, it fades out permanently.
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+### Changes in `src/pages/Appointment.tsx`
 
-**Simplify the `fetchStats` function (lines 45-82):**
+1. **Replace `hasNudged` ref** with `hasScrolled` state: `const [hasScrolled, setHasScrolled] = useState(false);`
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+2. **Remove the nudge useEffect** (lines 166-179) entirely.
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+3. **Update the existing scroll handler** (inside the fade indicator useEffect) to set `hasScrolled = true` on the first scroll event.
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
+4. **Add a bouncing arrow overlay** inside the slider container (next to the right fade div):
+   - An `AnimatePresence`-wrapped `motion.div` shown when `!hasScrolled && showRightFade`
+   - Contains a `ChevronRight` (or `ChevronLeft` for RTL) icon
+   - Positioned absolutely on the trailing edge, vertically centered
+   - Uses framer-motion `animate={{ x: [0, 8, 0] }}` with `repeat: Infinity` for a continuous horizontal bounce
+   - Styled with a semi-transparent primary background pill (`bg-primary/80 text-white rounded-full p-1.5 shadow-lg`)
+   - Exits with `opacity: 0` transition
 
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
+5. **Import** `ChevronRight, ChevronLeft` from lucide-react (ChevronLeft may already be unused — just add ChevronRight if needed).
 
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
+### Result
+A persistent, eye-catching bouncing arrow that clearly communicates scrollability, disappearing the moment the user interacts with the slider.
 
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
