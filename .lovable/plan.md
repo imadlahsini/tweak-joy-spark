@@ -1,34 +1,86 @@
 
 
-# Fix Scroll Arrow Bugs & Improve Design
+# Fix: Dashboard Frontend Invocation Issues
 
-## Issues
-1. **AnimatePresence ref warning** — `AnimatePresence` wrapping `motion.div` children in several places triggers the "Function components cannot be given refs" console error. The hint arrow itself no longer uses `AnimatePresence`, but other `AnimatePresence` blocks in `Appointment.tsx` (lines 597, 619, 638, 705, 758, 803, 823, 896) wrapping `motion.div` conditionals are the source.
-2. **Hint visibility logic for RTL is fragile** — the condition `isRTL ? showLeftFade || !showRightFade : showRightFade` is overly complex and can fail on initial render when fades haven't been computed yet.
-3. **Arrow design is small and plain** — `p-1.5` with `w-4 h-4` icon is easy to miss on mobile.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-## Plan
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-### File: `src/pages/Appointment.tsx`
+## Fix
 
-**1. Fix AnimatePresence ref warnings**
-- Wrap each `motion.div` child inside `AnimatePresence` with `forwardRef` where needed, OR simpler: add explicit `key` props to all `AnimatePresence` children (they already have `key` implicitly via conditionals — the real fix is ensuring `motion.div` is the direct child, not a plain `div` or fragment). Audit each `AnimatePresence` block and ensure the direct child is always a single `motion.*` element with a `key` prop.
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-**2. Simplify hint visibility**
-- Replace the complex condition with: `!hasScrolled && showTrailingFade` where `showTrailingFade = isRTL ? showLeftFade : showRightFade`
-- Initialize `showRightFade` based on actual overflow check in the effect (already done), but also run it once on mount with a small `requestAnimationFrame` delay to ensure accurate initial values.
+**Simplify the `fetchStats` function (lines 45-82):**
 
-**3. Improve arrow design**
-- Increase size: `p-2.5` with `w-5 h-5` icon
-- Add a pulsing glow ring: `shadow-[0_0_12px_hsl(var(--primary)/0.5)]` with `animate-pulse-glow`
-- Add a subtle semi-transparent pill background behind it with a gradient matching the card edge fade
-- Position it slightly inward (`right-3` / `left-3`) so it doesn't overlap the fade gradient
-- Add a small label below like "Scroll" (localized) on first appearance that fades after 2s
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
 
-**4. Smoother dismiss**
-- Instead of instant disappear, animate out with `opacity: 0, scale: 0.5` over 300ms when `hasScrolled` becomes true (use a local state with timeout or `AnimatePresence` on a single `motion.div` with proper key).
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
 
-### Technical details
-- All changes in `src/pages/Appointment.tsx`
-- The `AnimatePresence` ref warning comes from framer-motion v10+ requiring `forwardRef` on custom components used as children — but since all children here are `motion.div` (not custom components), the actual cause is likely a `motion.div` inside a fragment or extra wrapper. Will audit and flatten.
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
 
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
+
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function

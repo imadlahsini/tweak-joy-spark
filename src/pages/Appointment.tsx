@@ -324,7 +324,12 @@ const Appointment = () => {
       {/* Sparkle burst overlay */}
       <AnimatePresence>
         {showSparkles && (
-          <div className="fixed inset-0 z-50 pointer-events-none">
+          <motion.div
+            key="sparkle-burst"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 pointer-events-none"
+          >
             {Array.from({ length: 12 }).map((_, i) => (
               <motion.div
                 key={i}
@@ -340,12 +345,11 @@ const Appointment = () => {
                   x: `${50 + (Math.random() - 0.5) * 60}%`,
                   y: `${50 + (Math.random() - 0.5) * 60}%`,
                 }}
-                exit={{ opacity: 0 }}
                 transition={{ duration: 1, delay: i * 0.05 }}
                 className="absolute w-2 h-2 rounded-full bg-primary"
               />
             ))}
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -507,21 +511,26 @@ const Appointment = () => {
               )}
 
               {/* Bouncing scroll hint arrow */}
-              {!hasScrolled && (isRTL ? showLeftFade || !showRightFade : showRightFade) && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20`}
-                >
+              <AnimatePresence>
+                {!hasScrolled && (isRTL ? showLeftFade : showRightFade) && (
                   <motion.div
-                    animate={{ x: isRTL ? [0, -6, 0] : [0, 6, 0] }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                    className="bg-primary/80 text-primary-foreground rounded-full p-1.5 shadow-lg backdrop-blur-sm"
+                    key="scroll-hint"
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1`}
                   >
-                    {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <motion.div
+                      animate={{ x: isRTL ? [0, -6, 0] : [0, 6, 0] }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                      className="bg-primary text-primary-foreground rounded-full p-2.5 shadow-[0_0_16px_hsl(var(--primary)/0.5)] backdrop-blur-sm"
+                    >
+                      {isRTL ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              )}
+                )}
+              </AnimatePresence>
               <div
                 ref={sliderRef}
                 className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
