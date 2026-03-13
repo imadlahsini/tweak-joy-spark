@@ -116,11 +116,17 @@ const Appointment = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [showSparkles, setShowSparkles] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeSectionRef = useRef<HTMLDivElement>(null);
   const dateSectionRef = useRef<HTMLDivElement>(null);
   const summarySectionRef = useRef<HTMLDivElement>(null);
+  const detailsSectionRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
