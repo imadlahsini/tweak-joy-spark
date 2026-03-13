@@ -170,7 +170,7 @@ const Welcome = () => {
             {/* Inner glass container */}
             <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-primary/20 via-card/80 to-accent/20 backdrop-blur-xl border border-primary/30 flex items-center justify-center shadow-[0_0_60px_hsl(var(--primary)/0.3)]">
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10" />
-              <Brain className="relative w-10 h-10 sm:w-12 sm:h-12 text-primary drop-shadow-lg" />
+              <img src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/ddfd.png" alt="Junior AI" className="relative w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-lg" />
             </div>
 
             {/* Orbital dots */}
