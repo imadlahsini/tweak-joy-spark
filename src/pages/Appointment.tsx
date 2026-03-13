@@ -614,12 +614,6 @@ const Appointment = () => {
                   className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] rounded-3xl"
                 />
                 <div className="relative m-[1.5px] bg-card/90 backdrop-blur-2xl rounded-[22px] p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
-                  <div className="flex items-center mb-4">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      {t.summaryTitle}
-                    </span>
-                  </div>
 
                   <div className="divide-y divide-border/30">
                     {/* Date row */}
