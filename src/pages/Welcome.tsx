@@ -32,18 +32,11 @@ const Welcome = () => {
     }
   };
 
-  useEffect(() => {
-    if (language) {
-      navigate("/appointment", { replace: true });
-    }
-  }, [language, navigate]);
 
   const handleSelect = (lang: Language) => {
     setLanguage(lang);
     navigate("/appointment");
   };
-
-  if (language) return null;
 
   return (
     <div
