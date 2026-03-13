@@ -144,26 +144,6 @@ const Welcome = () => {
         transition={{ duration: 0.8, ease: [0.2, 0.65, 0.3, 0.9] }}
         className="relative z-10 flex flex-col items-center gap-4 sm:gap-6 px-5 w-full max-w-lg sm:max-w-none"
       >
-        {/* Next-level animated logo */}
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
-          className="relative flex flex-col items-center gap-5"
-        >
-           {/* Clean logo */}
-           <div className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28">
-             {/* Pulsing glow */}
-             <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
-             {/* Glass container */}
-             <div className="relative w-22 h-22 sm:w-26 sm:h-26 rounded-3xl bg-gradient-to-br from-primary/20 via-card/80 to-accent/20 backdrop-blur-xl border border-primary/30 flex items-center justify-center shadow-[0_0_60px_hsl(var(--primary)/0.3)]">
-               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10" />
-               <img src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/ddfd.png" alt="Junior AI" className="relative w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-lg" />
-             </div>
-           </div>
-
-        </motion.div>
-
         {/* Language cards */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2 w-full sm:w-auto">
           {languages.map((lang, i) => (
