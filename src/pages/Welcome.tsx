@@ -34,13 +34,13 @@ const Welcome = () => {
 
   useEffect(() => {
     if (language) {
-      navigate("/home", { replace: true });
+      navigate("/appointment", { replace: true });
     }
   }, [language, navigate]);
 
   const handleSelect = (lang: Language) => {
     setLanguage(lang);
-    navigate("/home");
+    navigate("/appointment");
   };
 
   if (language) return null;
