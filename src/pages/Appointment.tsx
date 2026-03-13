@@ -99,6 +99,7 @@ const Appointment = () => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
+  const hasNudged = useRef(false);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -161,6 +162,23 @@ const Appointment = () => {
     slider.addEventListener("scroll", handleScroll, { passive: true });
     return () => slider.removeEventListener("scroll", handleScroll);
   }, [isRTL, next14Days]);
+
+  // Scroll hint nudge animation — run once to show dates are scrollable
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider || hasNudged.current) return;
+    hasNudged.current = true;
+
+    const nudgeDistance = isRTL ? -80 : 80;
+    const timer1 = setTimeout(() => {
+      slider.scrollTo({ left: nudgeDistance, behavior: "smooth" });
+    }, 800);
+    const timer2 = setTimeout(() => {
+      slider.scrollTo({ left: 0, behavior: "smooth" });
+    }, 1200);
+
+    return () => { clearTimeout(timer1); clearTimeout(timer2); };
+  }, [isRTL]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
