@@ -1,13 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft, ArrowRight, Stethoscope } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import { toast } from "@/components/ui/sonner";
-import { addDays, format, isToday, isSameDay, addHours } from "date-fns";
-
-const next14Days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
+import { addDays, format, isToday, isSameDay } from "date-fns";
+import { fr } from "date-fns/locale/fr";
+import { arSA } from "date-fns/locale/ar-SA";
 
 const timeSlots = [
   { time: "09:00", period: "morning" },
@@ -39,6 +39,8 @@ const translations = {
     consultation: "Consultation",
     today: "Today",
     summaryTitle: "Your Appointment",
+    duration: "1h • In-person",
+    at: "at",
   },
   fr: {
     title: "Réservez Votre",
@@ -58,6 +60,8 @@ const translations = {
     consultation: "Consultation",
     today: "Aujourd'hui",
     summaryTitle: "Votre Rendez-vous",
+    duration: "1h • En personne",
+    at: "à",
   },
   ar: {
     title: "احجز",
@@ -77,6 +81,8 @@ const translations = {
     consultation: "استشارة",
     today: "اليوم",
     summaryTitle: "موعدك",
+    duration: "ساعة • حضوري",
+    at: "في",
   },
 };
 
@@ -88,6 +94,10 @@ const Appointment = () => {
   const [showSparkles, setShowSparkles] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeSectionRef = useRef<HTMLDivElement>(null);
+  const dateSectionRef = useRef<HTMLDivElement>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [showLeftFade, setShowLeftFade] = useState(false);
+  const [showRightFade, setShowRightFade] = useState(true);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -98,8 +108,12 @@ const Appointment = () => {
 
   const t = translations[(language as "en" | "fr" | "ar") || "en"];
   const isRTL = language === "ar";
+  const dateLocale = language === "fr" ? fr : language === "ar" ? arSA : undefined;
 
   const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : 3;
+
+  // Bug 2 fix: compute dates inside component with useMemo
+  const next14Days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
 
   // Auto-scroll to time section when date selected
   useEffect(() => {
@@ -119,6 +133,25 @@ const Appointment = () => {
     }
   }, [selectedDate, selectedTime]);
 
+  // Bug 8 fix: scroll fade indicators
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const handleScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = slider;
+      if (isRTL) {
+        setShowRightFade(scrollLeft < 0);
+        setShowLeftFade(Math.abs(scrollLeft) + clientWidth < scrollWidth - 4);
+      } else {
+        setShowLeftFade(scrollLeft > 4);
+        setShowRightFade(scrollLeft + clientWidth < scrollWidth - 4);
+      }
+    };
+    handleScroll();
+    slider.addEventListener("scroll", handleScroll, { passive: true });
+    return () => slider.removeEventListener("scroll", handleScroll);
+  }, [isRTL, next14Days]);
+
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
@@ -130,10 +163,12 @@ const Appointment = () => {
   const morningSlots = timeSlots.filter((s) => s.period === "morning");
   const afternoonSlots = timeSlots.filter((s) => s.period === "afternoon");
 
+  const formatDate = (date: Date, pattern: string) => format(date, pattern, { locale: dateLocale });
+
   const handleConfirm = () => {
     if (selectedDate && selectedTime) {
       toast.success(t.successTitle, {
-        description: `${t.successDesc} ${format(selectedDate, "PPP")} at ${selectedTime}`,
+        description: `${t.successDesc} ${formatDate(selectedDate, "PPP")} ${t.at} ${selectedTime}`,
       });
       setTimeout(() => navigate("/home"), 1500);
     }
@@ -143,6 +178,16 @@ const Appointment = () => {
     const [h, m] = startTime.split(":").map(Number);
     return `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
+
+  // Bug 9 fix: clickable step to go back
+  const handleStepClick = (step: number) => {
+    if (step === 1 && currentStep > 1) {
+      setSelectedTime(null);
+      dateSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  const timeArrow = isRTL ? "←" : "→";
 
   return (
     <div
@@ -241,7 +286,8 @@ const Appointment = () => {
       </AnimatePresence>
 
       {/* === Main Content === */}
-      <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 pt-6 pb-28">
+      {/* Bug 10 fix: increased pb-36 */}
+      <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 pt-6 pb-36">
         {/* Back button */}
         <motion.button
           initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
@@ -272,15 +318,15 @@ const Appointment = () => {
           </p>
         </motion.div>
 
-        {/* ── Step Progress Indicator ── */}
+        {/* ── Step Progress Indicator (Bug 9: clickable) ── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
           className="flex items-center justify-center gap-0 mb-6 max-w-xs mx-auto w-full"
         >
-          {/* Step 1 */}
-          <div className="flex flex-col items-center gap-1.5 relative z-10">
+          {/* Step 1 — clickable */}
+          <button onClick={() => handleStepClick(1)} className="flex flex-col items-center gap-1.5 relative z-10 cursor-pointer">
             <motion.div
               animate={currentStep >= 1 ? { scale: [1, 1.15, 1] } : {}}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -301,15 +347,15 @@ const Appointment = () => {
             <span className={`text-[11px] font-semibold transition-colors duration-300 ${currentStep >= 1 ? "text-primary" : "text-muted-foreground"}`}>
               {t.step1}
             </span>
-          </div>
+          </button>
 
           {/* Connecting line */}
-          <div className="flex-1 h-[2px] bg-border/50 mx-3 relative -mt-5 rounded-full overflow-hidden">
+          <div className={`flex-1 h-[2px] bg-border/50 mx-3 relative -mt-5 rounded-full overflow-hidden ${isRTL ? "direction-rtl" : ""}`}>
             <motion.div
               initial={{ scaleX: 0 }}
               animate={{ scaleX: currentStep >= 2 ? 1 : 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="absolute inset-0 bg-gradient-to-r from-primary to-accent origin-left"
+              className={`absolute inset-0 bg-gradient-to-r from-primary to-accent ${isRTL ? "origin-right" : "origin-left"}`}
             />
           </div>
 
@@ -340,6 +386,7 @@ const Appointment = () => {
 
         {/* ── Step 1: Date — Glass Card ── */}
         <motion.div
+          ref={dateSectionRef}
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -360,9 +407,18 @@ const Appointment = () => {
               </div>
             </div>
 
-            {/* Horizontal day slider */}
+            {/* Horizontal day slider with scroll indicators (Bug 8) */}
             <div className="relative -mx-5 px-5">
+              {/* Left fade */}
+              {showLeftFade && (
+                <div className={`absolute ${isRTL ? "right-0" : "left-0"} top-0 bottom-3 w-8 bg-gradient-to-r ${isRTL ? "from-transparent to-card/80" : "from-card/80 to-transparent"} z-10 pointer-events-none rounded-l-2xl`} />
+              )}
+              {/* Right fade */}
+              {showRightFade && (
+                <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-3 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
+              )}
               <div
+                ref={sliderRef}
                 className="flex gap-2.5 overflow-x-auto pb-3 snap-x snap-mandatory"
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
               >
@@ -381,7 +437,7 @@ const Appointment = () => {
                         setSelectedDate(day);
                         setSelectedTime(null);
                       }}
-                      className={`group relative flex-shrink-0 snap-center rounded-2xl overflow-hidden transition-all duration-300 ${
+                      className={`group relative flex-shrink-0 snap-center rounded-2xl transition-all duration-300 ${
                         isSelected ? "shadow-[0_0_30px_hsl(var(--primary)/0.35)]" : ""
                       }`}
                     >
@@ -398,7 +454,7 @@ const Appointment = () => {
                         <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       )}
                       <div
-                        className={`relative m-[2px] rounded-[14px] w-[68px] py-3 flex flex-col items-center gap-1 transition-all duration-300 ${
+                        className={`relative m-[2px] rounded-[14px] w-[68px] py-3 pb-5 flex flex-col items-center gap-1 transition-all duration-300 ${
                           isSelected
                             ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
                             : "bg-card/80 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30 group-hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)]"
@@ -415,20 +471,19 @@ const Appointment = () => {
                           </div>
                         )}
                         <span className={`text-[10px] font-medium uppercase tracking-wider relative z-10 ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                          {format(day, "EEE")}
+                          {formatDate(day, "EEE")}
                         </span>
-                        <span className="text-xl font-bold relative z-10">{format(day, "d")}</span>
+                        <span className="text-xl font-bold relative z-10">{formatDate(day, "d")}</span>
                         <span className={`text-[10px] font-medium relative z-10 ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {format(day, "MMM")}
+                          {formatDate(day, "MMM")}
                         </span>
-                        {/* Today badge */}
-                        {today && !isSelected && (
-                          <span className="absolute -bottom-0.5 text-[7px] font-bold text-accent uppercase tracking-wider bg-accent/10 px-1.5 py-0.5 rounded-full">
-                            {t.today}
-                          </span>
-                        )}
-                        {today && isSelected && (
-                          <span className="absolute -bottom-0.5 text-[7px] font-bold text-primary-foreground/80 uppercase tracking-wider bg-white/15 px-1.5 py-0.5 rounded-full">
+                        {/* Bug 3 fix: Today badge inside padded area, bottom-1 */}
+                        {today && (
+                          <span className={`absolute bottom-1 text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                            isSelected
+                              ? "text-primary-foreground/80 bg-white/15"
+                              : "text-accent bg-accent/10"
+                          }`}>
                             {t.today}
                           </span>
                         )}
@@ -464,7 +519,7 @@ const Appointment = () => {
                 >
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary backdrop-blur-sm">
                     <Check className="w-3.5 h-3.5" />
-                    {format(selectedDate, "EEEE, MMM d, yyyy")}
+                    {formatDate(selectedDate, "EEEE, MMM d, yyyy")}
                   </span>
                 </motion.div>
               )}
@@ -507,6 +562,7 @@ const Appointment = () => {
                   onSelect={setSelectedTime}
                   delayOffset={0}
                   getEndTime={getEndTime}
+                  timeArrow={timeArrow}
                 />
 
                 {/* Gradient divider */}
@@ -531,6 +587,7 @@ const Appointment = () => {
                   onSelect={setSelectedTime}
                   delayOffset={4}
                   getEndTime={getEndTime}
+                  timeArrow={timeArrow}
                 />
               </div>
             </motion.div>
@@ -568,7 +625,7 @@ const Appointment = () => {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">{t.step1}</p>
-                        <p className="text-sm font-semibold text-foreground">{format(selectedDate, "EEEE, MMM d, yyyy")}</p>
+                        <p className="text-sm font-semibold text-foreground">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
                       </div>
                     </div>
 
@@ -590,7 +647,7 @@ const Appointment = () => {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">{t.consultation}</p>
-                        <p className="text-sm font-semibold text-foreground">1h • In-person</p>
+                        <p className="text-sm font-semibold text-foreground">{t.duration}</p>
                       </div>
                     </div>
                   </div>
@@ -644,7 +701,7 @@ const Appointment = () => {
   );
 };
 
-/* ── Time Group Component ── */
+/* ── Time Group Component (Bug 1 fix: forwardRef) ── */
 interface TimeGroupProps {
   label: string;
   icon: React.ReactNode;
@@ -653,85 +710,91 @@ interface TimeGroupProps {
   onSelect: (time: string) => void;
   delayOffset: number;
   getEndTime: (time: string) => string;
+  timeArrow: string;
 }
 
-const TimeGroup = ({ label, icon, slots, selectedTime, onSelect, delayOffset, getEndTime }: TimeGroupProps) => (
-  <div>
-    <div className="flex items-center gap-2 mb-2.5">
-      {icon}
-      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
-    </div>
-    <div className="grid grid-cols-4 gap-2">
-      {slots.map((slot, i) => {
-        const isSelected = selectedTime === slot.time;
-        return (
-          <motion.button
-            key={slot.time}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: 0.1 + (delayOffset + i) * 0.06 }}
-            whileHover={{ scale: 1.06, y: -3 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => onSelect(slot.time)}
-            className={`group relative rounded-xl overflow-hidden transition-all duration-300 ${
-              isSelected ? "shadow-[0_0_25px_hsl(var(--primary)/0.3)]" : ""
-            }`}
-          >
-            {/* Pulsing glow ring for selected */}
-            {isSelected && (
-              <motion.div
-                animate={{ opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-primary via-accent to-primary bg-[length:200%_200%] animate-gradient"
-              />
-            )}
-            {/* Hover border */}
-            {!isSelected && (
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            )}
-            <div
-              className={`relative m-[2px] rounded-[10px] py-2.5 text-center transition-all duration-300 flex flex-col items-center justify-center gap-0.5 ${
-                isSelected
-                  ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
-                  : "bg-card/80 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30 group-hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)]"
+const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
+  ({ label, icon, slots, selectedTime, onSelect, delayOffset, getEndTime, timeArrow }, ref) => (
+    <div ref={ref}>
+      <div className="flex items-center gap-2 mb-2.5">
+        {icon}
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {slots.map((slot, i) => {
+          const isSelected = selectedTime === slot.time;
+          return (
+            <motion.button
+              key={slot.time}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 + (delayOffset + i) * 0.06 }}
+              whileHover={{ scale: 1.06, y: -3 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => onSelect(slot.time)}
+              className={`group relative rounded-xl overflow-hidden transition-all duration-300 ${
+                isSelected ? "shadow-[0_0_25px_hsl(var(--primary)/0.3)]" : ""
               }`}
             >
-              {/* Inner shine */}
-              {isSelected && (
-                <div className="absolute inset-0 rounded-[10px] bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none" />
-              )}
-              {/* Shimmer */}
-              {!isSelected && (
-                <div className="absolute inset-0 rounded-[10px] overflow-hidden pointer-events-none">
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/8 to-transparent" />
-                </div>
-              )}
-              {/* Subtle clock icon */}
-              <Clock className={`w-3 h-3 mb-0.5 relative z-10 ${isSelected ? "text-primary-foreground/60" : "text-muted-foreground/40"}`} />
-              <span className="text-sm font-bold relative z-10">{slot.time}</span>
-              <span className={`text-[9px] font-medium relative z-10 ${isSelected ? "text-primary-foreground/60" : "text-muted-foreground/60"}`}>
-                → {getEndTime(slot.time)}
-              </span>
-            </div>
-            {/* Selected check */}
-            <AnimatePresence>
+              {/* Pulsing glow ring for selected */}
               {isSelected && (
                 <motion.div
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0, rotate: 90 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
-                >
-                  <Check className="w-3 h-3 text-accent-foreground" />
-                </motion.div>
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute -inset-[2px] rounded-xl bg-gradient-to-br from-primary via-accent to-primary bg-[length:200%_200%] animate-gradient"
+                />
               )}
-            </AnimatePresence>
-          </motion.button>
-        );
-      })}
+              {/* Hover border */}
+              {!isSelected && (
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              )}
+              <div
+                className={`relative m-[2px] rounded-[10px] py-2.5 text-center transition-all duration-300 flex flex-col items-center justify-center gap-0.5 ${
+                  isSelected
+                    ? "bg-gradient-to-br from-primary to-accent text-primary-foreground"
+                    : "bg-card/80 backdrop-blur-xl border border-border/40 text-foreground group-hover:border-primary/30 group-hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)]"
+                }`}
+              >
+                {/* Inner shine */}
+                {isSelected && (
+                  <div className="absolute inset-0 rounded-[10px] bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none" />
+                )}
+                {/* Shimmer */}
+                {!isSelected && (
+                  <div className="absolute inset-0 rounded-[10px] overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/8 to-transparent" />
+                  </div>
+                )}
+                {/* Subtle clock icon */}
+                <Clock className={`w-3 h-3 mb-0.5 relative z-10 ${isSelected ? "text-primary-foreground/60" : "text-muted-foreground/40"}`} />
+                <span className="text-sm font-bold relative z-10">{slot.time}</span>
+                {/* Bug 4 fix: RTL-aware arrow */}
+                <span className={`text-[9px] font-medium relative z-10 ${isSelected ? "text-primary-foreground/60" : "text-muted-foreground/60"}`}>
+                  {timeArrow} {getEndTime(slot.time)}
+                </span>
+              </div>
+              {/* Selected check */}
+              <AnimatePresence>
+                {isSelected && (
+                  <motion.div
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    exit={{ scale: 0, rotate: 90 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
+                  >
+                    <Check className="w-3 h-3 text-accent-foreground" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          );
+        })}
+      </div>
     </div>
-  </div>
+  )
 );
+
+TimeGroup.displayName = "TimeGroup";
 
 export default Appointment;
