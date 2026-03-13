@@ -216,7 +216,7 @@ const AppointmentConfirmation = () => {
               <div className="relative px-5 pt-5 pb-4">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-green-500">
+                  <span className={`text-[10px] font-semibold uppercase ${isRTL ? "tracking-normal" : "tracking-[0.15em]"} text-green-500`}>
                     {t.details}
                   </span>
                 </div>
