@@ -178,8 +178,7 @@ const Welcome = () => {
                 <div className="relative flex items-center gap-4 px-5 py-5 sm:flex-col sm:items-center sm:gap-3 sm:px-6 sm:py-7">
                   {/* Flag with glow */}
                   <div className="relative flex-shrink-0">
-                    <div className="absolute inset-0 scale-150 bg-primary/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <span className="relative text-5xl sm:text-6xl block leading-none drop-shadow-lg">
+                    <span className="relative text-5xl sm:text-6xl block leading-none">
                       {lang.flag}
                     </span>
                   </div>
