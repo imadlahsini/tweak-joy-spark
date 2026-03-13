@@ -868,7 +868,7 @@ const Appointment = () => {
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step3}</p>
                         <p className="text-[15px] font-bold text-foreground truncate">{clientName}</p>
-                        <p className="text-[13px] text-muted-foreground" dir="ltr">{clientPhone}</p>
+                        <p className="text-[13px] text-muted-foreground" dir="ltr">+212 {clientPhone}</p>
                       </div>
                     </div>
 
