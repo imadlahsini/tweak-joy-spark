@@ -31,10 +31,10 @@ const LogoBar = () => {
       className="py-10 sm:py-16 md:py-24 relative overflow-hidden bg-gradient-to-b from-[#0f0a1f] via-[#1a1035] to-[#0f0a1f]"
     >
       {/* Subtle top glow line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
       
       {/* Subtle bottom glow line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
       
       {/* Noise texture overlay */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none noise-overlay" />
