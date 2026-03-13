@@ -210,7 +210,7 @@ const Appointment = () => {
         setShowRightFade(scrollLeft + clientWidth < scrollWidth - 4);
       }
     };
-    handleScroll();
+    requestAnimationFrame(() => handleScroll());
     slider.addEventListener("scroll", handleScroll, { passive: true });
     return () => slider.removeEventListener("scroll", handleScroll);
   }, [isRTL, next14Days]);
