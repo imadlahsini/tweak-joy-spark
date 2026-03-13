@@ -187,7 +187,7 @@ const Appointment = () => {
     }
   };
 
-  const timeArrow = isRTL ? "←" : "→";
+  const timeArrow = "–";
 
   return (
     <div
@@ -253,7 +253,7 @@ const Appointment = () => {
         <img
           src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
           alt=""
-          className="w-full h-full object-cover object-top opacity-15 blur-sm"
+          className="w-full h-full object-cover object-top opacity-5 blur-sm"
         />
       </div>
 
@@ -349,7 +349,7 @@ const Appointment = () => {
           </div>
 
           {/* Step 2 */}
-          <div className="flex flex-col items-center gap-1.5 relative z-10">
+          <button onClick={() => {}} className="flex flex-col items-center gap-1.5 relative z-10 cursor-default">
             <motion.div
               animate={currentStep === 2 ? { scale: [1, 1.15, 1] } : {}}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -370,7 +370,7 @@ const Appointment = () => {
             <span className={`text-[11px] font-semibold transition-colors duration-300 ${currentStep >= 2 ? "text-primary" : "text-muted-foreground"}`}>
               {t.step2}
             </span>
-          </div>
+          </button>
         </motion.div>
 
         {/* ── Step 1: Date — Glass Card ── */}
@@ -494,6 +494,8 @@ const Appointment = () => {
                     </motion.button>
                   );
                 })}
+                {/* Spacer to prevent last card from being hidden by fade */}
+                <div className="flex-shrink-0 w-6" aria-hidden="true" />
               </div>
             </div>
 
@@ -559,7 +561,7 @@ const Appointment = () => {
                   <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
                   <motion.div
                     animate={{ rotate: [0, 180, 360] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                    transition={{ duration: 8, ease: "linear" }}
                     className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center"
                   >
                     <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-accent" />
@@ -721,7 +723,7 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
               whileHover={{ scale: 1.06, y: -3 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onSelect(slot.time)}
-              className={`group relative rounded-xl overflow-hidden transition-all duration-300 ${
+              className={`group relative rounded-xl transition-all duration-300 ${
                 isSelected ? "shadow-[0_0_25px_hsl(var(--primary)/0.3)]" : ""
               }`}
             >
