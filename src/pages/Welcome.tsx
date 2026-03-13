@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import { Brain, Globe, Sparkles, ArrowRight } from "lucide-react";
+import { Brain, ArrowRight } from "lucide-react";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 
