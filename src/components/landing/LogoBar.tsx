@@ -44,7 +44,7 @@ const LogoBar = () => {
         style={{ y: orbY }}
         className="absolute inset-0 pointer-events-none hidden sm:block"
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] md:w-[600px] h-[200px] md:h-[300px] bg-purple-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] md:w-[600px] h-[200px] md:h-[300px] bg-blue-600/10 rounded-full blur-3xl" />
       </motion.div>
       
       <div className="container mx-auto px-3 sm:px-6 relative z-10">
