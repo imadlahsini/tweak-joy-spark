@@ -144,59 +144,78 @@ const Welcome = () => {
         transition={{ duration: 0.8, ease: [0.2, 0.65, 0.3, 0.9] }}
         className="relative z-10 flex flex-col items-center gap-5 sm:gap-8 px-5 w-full max-w-lg sm:max-w-none"
       >
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <span className="inline-flex items-center gap-2 bg-primary/10 text-primary font-medium text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-primary/20 backdrop-blur-sm">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse" />
-            Choose Your Experience
-          </span>
-        </motion.div>
-
-        {/* Logo */}
+        {/* Next-level animated logo */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex items-center gap-3"
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
+          className="relative flex flex-col items-center gap-5"
         >
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/30 rounded-2xl blur-xl" />
-            <div className="relative bg-primary rounded-2xl p-3">
-              <Brain className="w-8 h-8 text-primary-foreground" />
+          {/* Icon with layered rings */}
+          <div className="relative flex items-center justify-center w-32 h-32 sm:w-36 sm:h-36">
+            {/* Outer rotating dashed ring */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-full border-2 border-dashed border-primary/30"
+            />
+            {/* Second ring rotating opposite */}
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-2 rounded-full border border-accent/20"
+            />
+            {/* Middle pulsing glow */}
+            <div className="absolute inset-4 rounded-full bg-primary/20 blur-xl animate-pulse" />
+            {/* Inner glass container */}
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-primary/20 via-card/80 to-accent/20 backdrop-blur-xl border border-primary/30 flex items-center justify-center shadow-[0_0_60px_hsl(var(--primary)/0.3)]">
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10" />
+              <Brain className="relative w-10 h-10 sm:w-12 sm:h-12 text-primary drop-shadow-lg" />
             </div>
-          </div>
-          <span className="font-display text-3xl font-bold text-foreground tracking-tight">
-            Junior AI
-          </span>
-        </motion.div>
 
-        {/* Welcome text */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center space-y-2"
-        >
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold leading-[0.95] tracking-[-0.04em]">
-            <span className="text-foreground">مرحباً · </span>
-            <motion.span
-              initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.6, delay: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
-              className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient"
+            {/* Orbital dots */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0"
             >
-              Welcome
-            </motion.span>
-            <span className="text-foreground"> · Bienvenue</span>
-          </h1>
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Globe className="w-4 h-4" />
-            <p className="text-base sm:text-lg">Choose your language</p>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.6)]" />
+            </motion.div>
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0"
+            >
+              <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-2 h-2 rounded-full bg-accent shadow-[0_0_10px_hsl(var(--accent)/0.6)]" />
+            </motion.div>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0"
+            >
+              <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-foreground/50 shadow-[0_0_8px_hsl(var(--foreground)/0.3)]" />
+            </motion.div>
           </div>
+
+          {/* Text below — stacked */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="flex flex-col items-center gap-1"
+          >
+            <div className="flex items-baseline gap-2 font-display">
+              <span className="text-5xl sm:text-6xl font-bold text-foreground tracking-tight">Junior</span>
+              <span className="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient tracking-tight">AI</span>
+            </div>
+            {/* Accent line */}
+            <motion.div
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+              className="w-16 h-[2px] mt-2 rounded-full bg-gradient-to-r from-primary to-accent"
+            />
+          </motion.div>
         </motion.div>
 
         {/* Language cards */}
