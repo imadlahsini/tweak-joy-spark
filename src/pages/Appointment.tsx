@@ -610,46 +610,48 @@ const Appointment = () => {
                 {/* Animated gradient border */}
                 <motion.div
                   animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
                   className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] rounded-3xl"
                 />
-                <div className="relative m-[2px] bg-card/90 backdrop-blur-2xl rounded-[22px] p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-bold text-foreground">{t.summaryTitle}</span>
+                <div className="relative m-[1.5px] bg-card/90 backdrop-blur-2xl rounded-[22px] p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
+                  <div className="flex items-center mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {t.summaryTitle}
+                    </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="divide-y divide-border/30">
                     {/* Date row */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <CalendarDays className="w-4.5 h-4.5 text-primary" />
+                    <div className="flex items-center gap-3 py-3 first:pt-0">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm flex items-center justify-center">
+                        <CalendarDays className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">{t.step1}</p>
-                        <p className="text-sm font-semibold text-foreground">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step1}</p>
+                        <p className="text-[15px] font-bold text-foreground">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
                       </div>
                     </div>
 
                     {/* Time row */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <Clock className="w-4.5 h-4.5 text-accent" />
+                    <div className="flex items-center gap-3 py-3">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-accent/15 to-accent/5 shadow-sm flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-accent" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">{t.step2}</p>
-                        <p className="text-sm font-semibold text-foreground">{selectedTime} – {getEndTime(selectedTime)}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step2}</p>
+                        <p className="text-[15px] font-bold text-foreground">{selectedTime} – {getEndTime(selectedTime)}</p>
                       </div>
                     </div>
 
                     {/* Consultation row */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
-                        <Stethoscope className="w-4.5 h-4.5 text-primary" />
+                    <div className="flex items-center gap-3 py-3 last:pb-0">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 shadow-sm flex items-center justify-center">
+                        <Stethoscope className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">{t.consultation}</p>
-                        <p className="text-sm font-semibold text-foreground">{t.duration}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.consultation}</p>
+                        <p className="text-[15px] font-bold text-foreground">{t.duration}</p>
                       </div>
                     </div>
                   </div>
