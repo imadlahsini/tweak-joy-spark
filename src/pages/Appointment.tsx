@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft, ArrowRight, Stethoscope, ChevronRight, ChevronLeft } from "lucide-react";
+import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowLeft, ArrowRight, Stethoscope, ChevronRight, ChevronLeft, User, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import Navbar from "@/components/landing/Navbar";
@@ -28,6 +28,7 @@ const translations = {
     subtitle: "Select your preferred date and time for a consultation",
     step1: "Date",
     step2: "Time",
+    step3: "Details",
     selectDate: "Choose a Date",
     morning: "Morning",
     afternoon: "Afternoon",
@@ -42,6 +43,13 @@ const translations = {
     summaryTitle: "Your Appointment",
     duration: "1h • In-person",
     at: "at",
+    yourDetails: "Your Details",
+    nameLabel: "Full Name",
+    namePlaceholder: "Enter your name",
+    phoneLabel: "Phone Number",
+    phonePlaceholder: "+212 6XX XXX XXX",
+    nameRequired: "Name is required (min 2 characters)",
+    phoneRequired: "Phone is required (min 6 digits)",
   },
   fr: {
     title: "Réservez Votre",
@@ -49,6 +57,7 @@ const translations = {
     subtitle: "Sélectionnez votre date et heure préférées pour une consultation",
     step1: "Date",
     step2: "Heure",
+    step3: "Détails",
     selectDate: "Choisir une Date",
     morning: "Matin",
     afternoon: "Après-midi",
@@ -63,6 +72,13 @@ const translations = {
     summaryTitle: "Votre Rendez-vous",
     duration: "1h • En personne",
     at: "à",
+    yourDetails: "Vos Informations",
+    nameLabel: "Nom Complet",
+    namePlaceholder: "Entrez votre nom",
+    phoneLabel: "Numéro de Téléphone",
+    phonePlaceholder: "+212 6XX XXX XXX",
+    nameRequired: "Le nom est requis (min 2 caractères)",
+    phoneRequired: "Le téléphone est requis (min 6 chiffres)",
   },
   ar: {
     title: "احجز",
@@ -70,6 +86,7 @@ const translations = {
     subtitle: "اختر التاريخ والوقت المفضل لديك للاستشارة",
     step1: "التاريخ",
     step2: "الوقت",
+    step3: "البيانات",
     selectDate: "اختر التاريخ",
     morning: "صباحاً",
     afternoon: "مساءً",
@@ -84,6 +101,13 @@ const translations = {
     summaryTitle: "موعدك",
     duration: "ساعة • حضوري",
     at: "في",
+    yourDetails: "بياناتك",
+    nameLabel: "الاسم الكامل",
+    namePlaceholder: "أدخل اسمك",
+    phoneLabel: "رقم الهاتف",
+    phonePlaceholder: "+212 6XX XXX XXX",
+    nameRequired: "الاسم مطلوب (حرفان على الأقل)",
+    phoneRequired: "الهاتف مطلوب (6 أرقام على الأقل)",
   },
 };
 
@@ -92,11 +116,17 @@ const Appointment = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [showSparkles, setShowSparkles] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeSectionRef = useRef<HTMLDivElement>(null);
   const dateSectionRef = useRef<HTMLDivElement>(null);
   const summarySectionRef = useRef<HTMLDivElement>(null);
+  const detailsSectionRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
@@ -114,7 +144,10 @@ const Appointment = () => {
   const isRTL = language === "ar";
   const dateLocale = language === "fr" ? fr : language === "ar" ? arSA : undefined;
 
-  const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : 3;
+  const isNameValid = clientName.trim().length >= 2;
+  const isPhoneValid = clientPhone.replace(/\D/g, "").length >= 6;
+  const isFormValid = isNameValid && isPhoneValid;
+  const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : !isFormValid ? 3 : 4;
 
   // Bug 2 fix: compute dates inside component with useMemo
   const next14Days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
@@ -128,23 +161,33 @@ const Appointment = () => {
     }
   }, [selectedDate]);
 
-  // Auto-scroll to summary card when time selected
+  // Auto-scroll to details section when time selected
   useEffect(() => {
-    if (selectedDate && selectedTime && summarySectionRef.current) {
+    if (selectedDate && selectedTime && detailsSectionRef.current) {
       setTimeout(() => {
-        summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        nameInputRef.current?.focus();
       }, 400);
     }
   }, [selectedTime]);
 
-  // Sparkle burst when both selected
+  // Auto-scroll to summary when form is valid
   useEffect(() => {
-    if (selectedDate && selectedTime) {
+    if (isFormValid && summarySectionRef.current) {
+      setTimeout(() => {
+        summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+    }
+  }, [isFormValid]);
+
+  // Sparkle burst when form becomes valid
+  useEffect(() => {
+    if (isFormValid) {
       setShowSparkles(true);
       const timer = setTimeout(() => setShowSparkles(false), 1500);
       return () => clearTimeout(timer);
     }
-  }, [selectedDate, selectedTime]);
+  }, [isFormValid]);
 
   // Bug 8 fix: scroll fade indicators
   useEffect(() => {
@@ -187,9 +230,9 @@ const Appointment = () => {
   const formatDate = (date: Date, pattern: string) => format(date, pattern, { locale: dateLocale });
 
   const handleConfirm = () => {
-    if (selectedDate && selectedTime) {
+    if (selectedDate && selectedTime && isFormValid) {
       toast.success(t.successTitle, {
-        description: `${t.successDesc} ${formatDate(selectedDate, "PPP")} ${t.at} ${selectedTime}`,
+        description: `${clientName} — ${t.successDesc} ${formatDate(selectedDate, "PPP")} ${t.at} ${selectedTime}`,
       });
       setTimeout(() => navigate("/home"), 1500);
     }
@@ -334,7 +377,7 @@ const Appointment = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
-          className="flex items-center justify-center gap-0 mb-6 max-w-xs mx-auto w-full"
+          className="flex items-center justify-center gap-0 mb-6 max-w-sm mx-auto w-full px-2"
         >
           {/* Step 1 — clickable */}
           <button onClick={() => handleStepClick(1)} className="flex flex-col items-center gap-1.5 relative z-10 cursor-pointer">
@@ -360,8 +403,8 @@ const Appointment = () => {
             </span>
           </button>
 
-          {/* Connecting line */}
-          <div className={`flex-1 h-[2px] bg-border/50 mx-3 relative -mt-5 rounded-full overflow-hidden ${isRTL ? "direction-rtl" : ""}`}>
+          {/* Connecting line 1 */}
+          <div className={`flex-1 h-[2px] bg-border/50 mx-2 relative -mt-5 rounded-full overflow-hidden ${isRTL ? "direction-rtl" : ""}`}>
             <motion.div
               initial={{ scaleX: 0 }}
               animate={{ scaleX: currentStep >= 2 ? 1 : 0 }}
@@ -391,6 +434,40 @@ const Appointment = () => {
             </motion.div>
             <span className={`text-[11px] font-semibold transition-colors duration-300 ${currentStep >= 2 ? "text-primary" : "text-muted-foreground"}`}>
               {t.step2}
+            </span>
+          </button>
+
+          {/* Connecting line 2 */}
+          <div className={`flex-1 h-[2px] bg-border/50 mx-2 relative -mt-5 rounded-full overflow-hidden ${isRTL ? "direction-rtl" : ""}`}>
+            <motion.div
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: currentStep >= 3 ? 1 : 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className={`absolute inset-0 bg-gradient-to-r from-accent to-primary ${isRTL ? "origin-right" : "origin-left"}`}
+            />
+          </div>
+
+          {/* Step 3 — Details */}
+          <button onClick={() => {}} className="flex flex-col items-center gap-1.5 relative z-10 cursor-default">
+            <motion.div
+              animate={currentStep === 3 ? { scale: [1, 1.15, 1] } : {}}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
+                currentStep >= 4
+                  ? "bg-primary border-primary shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
+                  : currentStep >= 3
+                  ? "border-primary bg-primary/10 shadow-[0_0_15px_hsl(var(--primary)/0.25)]"
+                  : "border-border bg-card/50"
+              }`}
+            >
+              {currentStep >= 4 ? (
+                <Check className="w-4 h-4 text-primary-foreground" />
+              ) : (
+                <User className={`w-4 h-4 ${currentStep >= 3 ? "text-primary" : "text-muted-foreground"}`} />
+              )}
+            </motion.div>
+            <span className={`text-[11px] font-semibold transition-colors duration-300 ${currentStep >= 3 ? "text-primary" : "text-muted-foreground"}`}>
+              {t.step3}
             </span>
           </button>
         </motion.div>
@@ -624,9 +701,127 @@ const Appointment = () => {
           )}
         </AnimatePresence>
 
-        {/* ── Summary Card ── */}
+        {/* ── Step 3: Your Details — Glass Card ── */}
         <AnimatePresence>
           {selectedDate && selectedTime && (
+            <motion.div
+              ref={detailsSectionRef}
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.5, ease: [0.2, 0.65, 0.3, 0.9] }}
+              className="w-full max-w-sm mx-auto mb-5"
+            >
+              <div className="relative bg-card/60 backdrop-blur-2xl border border-border/30 rounded-3xl p-5 overflow-hidden">
+                {/* Top gradient accent line */}
+                <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+                {/* Section label */}
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20">
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-bold text-foreground">{t.yourDetails}</span>
+                </div>
+
+                {/* Name input */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
+                      <User className="w-3.5 h-3.5 text-muted-foreground" />
+                      {t.nameLabel}
+                      {isNameValid && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", bounce: 0.5 }}
+                        >
+                          <Check className="w-3.5 h-3.5 text-green-500" />
+                        </motion.div>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        ref={nameInputRef}
+                        type="text"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        onBlur={() => setNameTouched(true)}
+                        placeholder={t.namePlaceholder}
+                        className={`w-full h-12 rounded-xl bg-background/50 backdrop-blur-sm border px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                          nameTouched && !isNameValid
+                            ? "border-destructive focus:border-destructive"
+                            : "border-border/60 focus:border-primary"
+                        }`}
+                      />
+                    </div>
+                    <AnimatePresence>
+                      {nameTouched && !isNameValid && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: "auto" }}
+                          exit={{ opacity: 0, y: -4, height: 0 }}
+                          className="text-xs text-destructive"
+                        >
+                          {t.nameRequired}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Phone input */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
+                      <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                      {t.phoneLabel}
+                      {isPhoneValid && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", bounce: 0.5 }}
+                        >
+                          <Check className="w-3.5 h-3.5 text-green-500" />
+                        </motion.div>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        dir="ltr"
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        onBlur={() => setPhoneTouched(true)}
+                        placeholder={t.phonePlaceholder}
+                        className={`w-full h-12 rounded-xl bg-background/50 backdrop-blur-sm border px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                          phoneTouched && !isPhoneValid
+                            ? "border-destructive focus:border-destructive"
+                            : "border-border/60 focus:border-primary"
+                        } ${isRTL ? "text-left" : ""}`}
+                      />
+                    </div>
+                    <AnimatePresence>
+                      {phoneTouched && !isPhoneValid && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: "auto" }}
+                          exit={{ opacity: 0, y: -4, height: 0 }}
+                          className="text-xs text-destructive"
+                        >
+                          {t.phoneRequired}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Summary Card ── */}
+        <AnimatePresence>
+          {selectedDate && selectedTime && isFormValid && (
             <motion.div
               ref={summarySectionRef}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
@@ -645,8 +840,20 @@ const Appointment = () => {
                 <div className="relative m-[1.5px] bg-card/90 backdrop-blur-2xl rounded-[22px] p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
 
                   <div className="divide-y divide-border/30">
-                    {/* Date row */}
+                    {/* Client info row */}
                     <div className="flex items-center gap-3 py-3 first:pt-0">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-accent/5 shadow-sm flex items-center justify-center">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step3}</p>
+                        <p className="text-[15px] font-bold text-foreground truncate">{clientName}</p>
+                        <p className="text-[13px] text-muted-foreground" dir="ltr">{clientPhone}</p>
+                      </div>
+                    </div>
+
+                    {/* Date row */}
+                    <div className="flex items-center gap-3 py-3">
                       <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm flex items-center justify-center">
                         <CalendarDays className="w-5 h-5 text-primary" />
                       </div>
@@ -687,7 +894,7 @@ const Appointment = () => {
 
       {/* ── Fixed bottom CTA ── */}
       <AnimatePresence>
-        {selectedDate && selectedTime && (
+        {selectedDate && selectedTime && isFormValid && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
