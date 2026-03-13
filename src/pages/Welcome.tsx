@@ -151,51 +151,16 @@ const Welcome = () => {
           transition={{ duration: 0.8, delay: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
           className="relative flex flex-col items-center gap-5"
         >
-          {/* Icon with layered rings */}
-          <div className="relative flex items-center justify-center w-32 h-32 sm:w-36 sm:h-36">
-            {/* Outer rotating dashed ring */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 rounded-full border-2 border-dashed border-primary/30"
-            />
-            {/* Second ring rotating opposite */}
-            <motion.div
-              animate={{ rotate: -360 }}
-              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-2 rounded-full border border-accent/20"
-            />
-            {/* Middle pulsing glow */}
-            <div className="absolute inset-4 rounded-full bg-primary/20 blur-xl animate-pulse" />
-            {/* Inner glass container */}
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-primary/20 via-card/80 to-accent/20 backdrop-blur-xl border border-primary/30 flex items-center justify-center shadow-[0_0_60px_hsl(var(--primary)/0.3)]">
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10" />
-              <img src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/ddfd.png" alt="Junior AI" className="relative w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-lg" />
-            </div>
-
-            {/* Orbital dots */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0"
-            >
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.6)]" />
-            </motion.div>
-            <motion.div
-              animate={{ rotate: -360 }}
-              transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0"
-            >
-              <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-2 h-2 rounded-full bg-accent shadow-[0_0_10px_hsl(var(--accent)/0.6)]" />
-            </motion.div>
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0"
-            >
-              <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-foreground/50 shadow-[0_0_8px_hsl(var(--foreground)/0.3)]" />
-            </motion.div>
-          </div>
+           {/* Clean logo */}
+           <div className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28">
+             {/* Pulsing glow */}
+             <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
+             {/* Glass container */}
+             <div className="relative w-22 h-22 sm:w-26 sm:h-26 rounded-3xl bg-gradient-to-br from-primary/20 via-card/80 to-accent/20 backdrop-blur-xl border border-primary/30 flex items-center justify-center shadow-[0_0_60px_hsl(var(--primary)/0.3)]">
+               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-accent/10" />
+               <img src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/ddfd.png" alt="Junior AI" className="relative w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-lg" />
+             </div>
+           </div>
 
         </motion.div>
 
