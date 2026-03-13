@@ -1,22 +1,86 @@
 
 
-## Plan: Match Welcome Page Design to Main Landing Page
+# Fix: Dashboard Frontend Invocation Issues
 
-The Welcome page currently has a plain light background with simple floating orbs. The main landing page (Hero section) has rich design elements including animated gradient mesh backgrounds, dot grid patterns, floating geometric shapes, noise texture overlays, and parallax mouse-tracking effects.
+## Root Cause
+The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
 
-### Changes to `src/pages/Welcome.tsx`
+1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
+2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
+3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
+4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
 
-Add the following design elements from the Hero section:
+## Fix
 
-1. **Animated gradient mesh background** — Large animated radial gradients that scale and rotate (the purple/accent blobs behind the hero)
-2. **Dot grid pattern overlay** — The subtle dot-grid texture visible on the main page
-3. **Floating geometric shapes** — Rotating triangle, bouncing circle, spinning square, ring, and plus sign scattered around the page
-4. **Noise texture overlay** — The `noise-overlay` CSS class for subtle grain
-5. **Mouse-tracking parallax** — `useMotionValue`/`useTransform` on the orbs so they respond to mouse movement, matching the Hero's interactivity
-6. **Gradient text on the welcome heading** — Apply the same `bg-gradient-to-r from-primary via-accent to-primary` animated gradient to part of the heading text
-7. **Language cards with glow hover effect** — Add the `hover:shadow-[0_0_30px_rgba(139,92,246,0.15)]` glow and glass-morphism styling similar to the LogoBar company cards
-8. **Sparkle badge** — Add a small animated badge similar to the Hero's "AI-Powered SEO" badge
+### File: `src/pages/admin/AdminDashboard.tsx`
 
-### Files to modify
-- `src/pages/Welcome.tsx` — Add all the background layers, geometric shapes, noise overlay, parallax, and enhanced card styling from the Hero component
+**Simplify the `fetchStats` function (lines 45-82):**
 
+- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
+- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
+- If no session exists, set an error message and stop loading
+
+```typescript
+const fetchStats = async (forceRefresh = false) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
+
+    if (forceRefresh) {
+      setRefreshing(true);
+      try {
+        const res = await fetch(
+          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+          }
+        );
+        const freshData = await res.json();
+        if (res.ok) {
+          setStats(freshData);
+          setIsCached(false);
+        }
+      } catch {
+        // Keep showing stale data
+      }
+      setRefreshing(false);
+      return;
+    }
+
+    // Simplified: no body, no method, no manual headers
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "fetch-dashboard-stats"
+    );
+
+    if (fnError) {
+      setError("Failed to load dashboard stats");
+    } else {
+      setStats(data);
+      setIsCached(!!data?.cached);
+    }
+  } catch {
+    setError("Failed to load dashboard stats");
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
+
+## Result
+- The SDK handles auth automatically -- no manual header needed
+- No `body: null` serialization issue
+- Loading spinner always resolves, even on errors
+- Dashboard loads correctly from the Supabase-backed edge function
