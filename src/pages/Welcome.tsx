@@ -137,6 +137,16 @@ const Welcome = () => {
       {/* Noise overlay */}
       <div className="absolute inset-0 noise-overlay pointer-events-none" />
 
+      {/* Bottom background image — faded & blurred */}
+      <div className="absolute bottom-0 left-0 right-0 h-[50%] pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-transparent z-10" />
+        <img
+          src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/hero-image2.webp"
+          alt=""
+          className="w-full h-full object-cover object-top opacity-20 blur-sm"
+        />
+      </div>
+
       {/* Content */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
