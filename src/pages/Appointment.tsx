@@ -230,9 +230,9 @@ const Appointment = () => {
   const formatDate = (date: Date, pattern: string) => format(date, pattern, { locale: dateLocale });
 
   const handleConfirm = () => {
-    if (selectedDate && selectedTime) {
+    if (selectedDate && selectedTime && isFormValid) {
       toast.success(t.successTitle, {
-        description: `${t.successDesc} ${formatDate(selectedDate, "PPP")} ${t.at} ${selectedTime}`,
+        description: `${clientName} — ${t.successDesc} ${formatDate(selectedDate, "PPP")} ${t.at} ${selectedTime}`,
       });
       setTimeout(() => navigate("/home"), 1500);
     }
