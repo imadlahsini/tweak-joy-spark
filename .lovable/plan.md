@@ -1,86 +1,26 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Auto-scroll to Summary Card on Time Selection
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+### What
+When the user selects a time slot, auto-scroll the page down so the summary card (with date/time details and confirm button) is visible — mirroring the existing behavior when selecting a date.
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### Changes in `src/pages/Appointment.tsx`
 
-## Fix
+1. **Add a ref** for the summary card section: `const summarySectionRef = useRef<HTMLDivElement>(null);`
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+2. **Add a useEffect** that scrolls to the summary card when `selectedTime` changes (similar to the existing date→time scroll on line 118-125):
+   ```
+   useEffect(() => {
+     if (selectedDate && selectedTime && summarySectionRef.current) {
+       setTimeout(() => {
+         summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+       }, 400);
+     }
+   }, [selectedTime]);
+   ```
 
-**Simplify the `fetchStats` function (lines 45-82):**
+3. **Attach the ref** to the summary card's `motion.div` wrapper (line ~591): add `ref={summarySectionRef}`.
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+Three lines of new code total.
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
-
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
