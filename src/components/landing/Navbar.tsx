@@ -123,11 +123,6 @@ const Navbar = () => {
                 </div>
                 
                 {/* Brand Name */}
-                <div className="flex items-center gap-1.5">
-                  <span className="font-display font-bold text-lg md:text-xl text-foreground tracking-tight">
-                    Tweaks
-                  </span>
-                </div>
               </motion.a>
 
               {/* Desktop Navigation */}
