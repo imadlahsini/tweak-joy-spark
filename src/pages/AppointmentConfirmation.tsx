@@ -201,9 +201,19 @@ const AppointmentConfirmation = () => {
         {/* Animated Checkmark */}
         <div className="relative mb-8">
           {/* Confetti particles */}
-          {Array.from({ length: 20 }).map((_, i) => (
+          {Array.from({ length: 30 }).map((_, i) => (
             <Particle key={i} index={i} />
           ))}
+
+          {/* Green success glow halo */}
+          <motion.div
+            animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.15, 1] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 -m-8 rounded-full"
+            style={{
+              background: "radial-gradient(circle, hsl(142 71% 45% / 0.25) 0%, transparent 70%)",
+            }}
+          />
 
           {/* Outer ring */}
           <motion.div
