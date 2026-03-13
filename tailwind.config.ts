@@ -55,13 +55,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        purple: {
-          glow: "hsl(var(--purple-glow))",
-          deep: "hsl(var(--violet-deep))",
-          light: "hsl(var(--purple-light))",
+        medical: {
+          glow: "hsl(210 75% 55%)",
+          deep: "hsl(210 80% 30%)",
+          light: "hsl(210 70% 70%)",
         },
-        magenta: {
-          accent: "hsl(var(--magenta-accent))",
+        teal: {
+          accent: "hsl(185 65% 45%)",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
