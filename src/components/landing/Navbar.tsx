@@ -182,7 +182,7 @@ const Navbar = () => {
                   {/* Animated gradient border */}
                   <div className="absolute -inset-[1px] bg-gradient-to-r from-primary via-primary/50 to-primary rounded-lg opacity-70 group-hover:opacity-100 transition-opacity duration-300 blur-[1px] group-hover:blur-0" />
                   <Button 
-                    onClick={() => navigate("/checkout")}
+                    onClick={() => navigate("/appointment")}
                     className="relative bg-foreground text-background hover:bg-foreground/90 text-sm font-medium px-5 h-10 gap-2 shadow-soft group-hover:shadow-prominent transition-all duration-300"
                   >
                     <Sparkles className="w-4 h-4" />
