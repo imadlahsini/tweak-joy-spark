@@ -1,0 +1,16 @@
+project_id = "clqbumovauiuoeizwbhd"
+
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.save-order]
+verify_jwt = false
+
+[functions.fetch-orders]
+verify_jwt = false
+
+[functions.fetch-subscriptions]
+verify_jwt = false
+
+[functions.fetch-dashboard-stats]
+verify_jwt = false
