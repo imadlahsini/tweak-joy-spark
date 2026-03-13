@@ -1,86 +1,27 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Plan: Replace Brain Icon with Logo Image & Redesign Header
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+### Changes to `src/pages/Welcome.tsx`
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+**1. Replace Brain icon with logo image**
+- Remove `Brain` import from lucide-react
+- Replace the Brain icon (line 173) with `<img src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/ddfd.png" alt="Junior AI" />` 
+- Size the image `w-14 h-14 sm:w-16 sm:h-16 object-contain` inside the existing glass container
+- Keep all the animated rings, pulsing glow, and orbital dots — they frame the logo beautifully
 
-## Fix
+**2. Remove "Junior AI" text block**
+- Remove lines 200-218 (the "Junior" + "AI" text and accent line) since the logo image contains the brand identity
+- This makes the logo image the sole hero element, cleaner and more impactful
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+**3. Tighten spacing**
+- Reduce gap between logo and language cards (from `gap-5` to `gap-4`) since the text block is gone
+- Ensure everything stays centered and balanced on 390px mobile viewport
 
-**Simplify the `fetchStats` function (lines 45-82):**
+### What stays unchanged
+- All animated rings, orbital dots, glass container, and background effects remain
+- Language cards remain exactly as they are
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+### File to modify
+- `src/pages/Welcome.tsx`
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
-
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
