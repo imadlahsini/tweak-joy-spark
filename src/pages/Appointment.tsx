@@ -419,6 +419,26 @@ const Appointment = () => {
               {showRightFade && (
                 <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
               )}
+
+              {/* Bouncing scroll hint arrow */}
+              <AnimatePresence>
+                {!hasScrolled && showRightFade && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+                    className={`absolute ${isRTL ? "left-1" : "right-1"} top-1/2 -translate-y-1/2 z-20`}
+                  >
+                    <motion.div
+                      animate={{ x: isRTL ? [0, -6, 0] : [0, 6, 0] }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                      className="bg-primary/80 text-primary-foreground rounded-full p-1.5 shadow-lg backdrop-blur-sm"
+                    >
+                      {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div
                 ref={sliderRef}
                 className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
