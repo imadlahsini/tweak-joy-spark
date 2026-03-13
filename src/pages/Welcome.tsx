@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 
