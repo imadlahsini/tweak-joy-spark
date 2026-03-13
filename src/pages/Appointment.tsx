@@ -893,7 +893,7 @@ const Appointment = () => {
                         <Clock className="w-5 h-5 text-accent" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.step2}</p>
+                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step2}</p>
                         <p className="text-[15px] font-bold text-foreground">{selectedTime} – {getEndTime(selectedTime)}</p>
                       </div>
                     </div>
