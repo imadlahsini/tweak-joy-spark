@@ -27,7 +27,7 @@ const SectionBadge = ({
           ? "bg-blue-500/15 text-blue-200 border-blue-400/25 backdrop-blur-sm" 
           : "bg-primary/10 text-primary border-primary/20"
       } ${className}`}>
-        <span className={`w-2 h-2 rounded-full animate-pulse ${isLight ? "bg-purple-400" : "bg-primary"}`} />
+        <span className={`w-2 h-2 rounded-full animate-pulse ${isLight ? "bg-blue-400" : "bg-primary"}`} />
         {children}
       </span>
     </motion.div>

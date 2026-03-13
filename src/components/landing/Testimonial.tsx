@@ -15,7 +15,7 @@ const testimonials = [
     title: "Marketing Director",
     company: "GrowthLabs",
     initials: "SC",
-    gradient: "from-purple-500 to-pink-500",
+    gradient: "from-blue-500 to-cyan-500",
   },
   {
     id: 2,
