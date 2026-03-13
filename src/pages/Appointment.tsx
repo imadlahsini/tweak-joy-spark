@@ -904,7 +904,7 @@ const Appointment = () => {
                         <Stethoscope className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{t.consultation}</p>
+                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.consultation}</p>
                         <p className="text-[15px] font-bold text-foreground">{t.duration}</p>
                       </div>
                     </div>

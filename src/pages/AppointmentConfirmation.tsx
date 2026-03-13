@@ -277,7 +277,7 @@ const AppointmentConfirmation = () => {
           {/* Shimmer sweep */}
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
-            animate={{ x: ["-150%", "150%"] }}
+            animate={{ x: isRTL ? ["150%", "-150%"] : ["-150%", "150%"] }}
             transition={{ duration: 3, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" }}
           />
           <span className="relative z-10 flex items-center justify-center gap-2">
