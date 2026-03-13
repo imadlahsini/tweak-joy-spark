@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import { Brain, Globe, Sparkles } from "lucide-react";
+import { Brain, Globe, Sparkles, ArrowRight } from "lucide-react";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 
-const languages: { code: Language; label: string; subtitle: string }[] = [
-  { code: "ar", label: "العربية", subtitle: "Arabic" },
-  { code: "en", label: "English", subtitle: "English" },
-  { code: "fr", label: "Français", subtitle: "French" },
+const languages: { code: Language; label: string; subtitle: string; flag: string; greeting: string }[] = [
+  { code: "ar", label: "العربية", subtitle: "Arabic", flag: "🇸🇦", greeting: "مرحباً" },
+  { code: "en", label: "English", subtitle: "English", flag: "🇺🇸", greeting: "Hello" },
+  { code: "fr", label: "Français", subtitle: "French", flag: "🇫🇷", greeting: "Bonjour" },
 ];
 
 const Welcome = () => {
@@ -79,12 +79,12 @@ const Welcome = () => {
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 0.6, y: 0 }}
           transition={{ duration: 1, delay: 0.5 }}
-          className="absolute top-[15%] left-[10%] hidden lg:block"
+          className="absolute top-[15%] left-[10%]"
         >
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-2 border-primary/20"
+            className="w-10 h-10 md:w-16 md:h-16 border-2 border-primary/20"
             style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }}
           />
         </motion.div>
@@ -92,19 +92,19 @@ const Welcome = () => {
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 0.5, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.7 }}
-          className="absolute top-[25%] right-[15%] hidden md:block"
+          className="absolute top-[20%] right-[12%]"
         >
           <motion.div
             animate={{ y: [-10, 10, -10] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="w-12 h-12 rounded-full border-2 border-accent/30 bg-accent/5"
+            className="w-8 h-8 md:w-12 md:h-12 rounded-full border-2 border-accent/30 bg-accent/5"
           />
         </motion.div>
         <motion.div
           initial={{ opacity: 0, rotate: -45 }}
           animate={{ opacity: 0.4, rotate: 45 }}
           transition={{ duration: 1, delay: 0.9 }}
-          className="absolute bottom-[30%] left-[8%] hidden lg:block"
+          className="absolute bottom-[30%] left-[8%] hidden md:block"
         >
           <motion.div
             animate={{ rotate: [45, 135, 45] }}
@@ -116,39 +116,23 @@ const Welcome = () => {
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 0.3, scale: 1 }}
           transition={{ duration: 1.2, delay: 1.1 }}
-          className="absolute bottom-[20%] right-[10%] hidden md:block"
+          className="absolute bottom-[20%] right-[10%]"
         >
           <motion.div
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="w-20 h-20 rounded-full border-4 border-primary/15"
+            className="w-14 h-14 md:w-20 md:h-20 rounded-full border-4 border-primary/15"
           />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, rotate: 0 }}
-          animate={{ opacity: 0.5, rotate: 180 }}
-          transition={{ duration: 1.5, delay: 1.3 }}
-          className="absolute top-[60%] right-[25%] hidden lg:block"
-        >
-          <motion.div
-            animate={{ rotate: [0, 90, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="relative w-8 h-8"
-          >
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-accent/30 -translate-y-1/2" />
-            <div className="absolute left-1/2 top-0 w-0.5 h-full bg-accent/30 -translate-x-1/2" />
-          </motion.div>
         </motion.div>
       </motion.div>
 
-      {/* Parallax floating orbs */}
-      <motion.div style={{ x: orbX1, y: orbY1 }} className="absolute inset-0 pointer-events-none hidden sm:block">
-        <FloatingOrb className="bg-primary/15 -top-20 -right-32" size="w-[300px] h-[300px] md:w-[500px] md:h-[500px]" delay={0.2} />
+      {/* Parallax floating orbs — visible on mobile too */}
+      <motion.div style={{ x: orbX1, y: orbY1 }} className="absolute inset-0 pointer-events-none">
+        <FloatingOrb className="bg-primary/15 -top-20 -right-32" size="w-[200px] h-[200px] md:w-[500px] md:h-[500px]" delay={0.2} />
       </motion.div>
-      <motion.div style={{ x: orbX2, y: orbY2 }} className="absolute inset-0 pointer-events-none hidden md:block">
-        <FloatingOrb className="bg-accent/10 top-1/3 -left-40" size="w-[400px] h-[400px] lg:w-[600px] lg:h-[600px]" delay={0.5} />
+      <motion.div style={{ x: orbX2, y: orbY2 }} className="absolute inset-0 pointer-events-none">
+        <FloatingOrb className="bg-accent/10 top-1/3 -left-40" size="w-[250px] h-[250px] lg:w-[600px] lg:h-[600px]" delay={0.5} />
       </motion.div>
-      <FloatingOrb className="bg-primary/8 bottom-20 right-1/4 hidden lg:block" size="w-[400px] h-[400px]" delay={0.8} />
 
       {/* Noise overlay */}
       <div className="absolute inset-0 noise-overlay pointer-events-none" />
@@ -158,7 +142,7 @@ const Welcome = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.2, 0.65, 0.3, 0.9] }}
-        className="relative z-10 flex flex-col items-center gap-8 px-6"
+        className="relative z-10 flex flex-col items-center gap-5 sm:gap-8 px-5 w-full max-w-lg sm:max-w-none"
       >
         {/* Badge */}
         <motion.div
@@ -190,14 +174,14 @@ const Welcome = () => {
           </span>
         </motion.div>
 
-        {/* Welcome text with gradient */}
+        {/* Welcome text */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center space-y-3"
+          className="text-center space-y-2"
         >
-          <h1 className="font-display text-4xl md:text-5xl font-bold leading-[0.95] tracking-[-0.04em]">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold leading-[0.95] tracking-[-0.04em]">
             <span className="text-foreground">مرحباً · </span>
             <motion.span
               initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
@@ -211,40 +195,71 @@ const Welcome = () => {
           </h1>
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Globe className="w-4 h-4" />
-            <p className="text-lg">Choose your language</p>
+            <p className="text-base sm:text-lg">Choose your language</p>
           </div>
         </motion.div>
 
-        {/* Language cards with glow */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="flex flex-col sm:flex-row gap-4 mt-4"
-        >
+        {/* Language cards */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2 w-full sm:w-auto">
           {languages.map((lang, i) => (
             <motion.button
               key={lang.code}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, delay: 0.7 + i * 0.1 }}
-              whileHover={{ scale: 1.05, y: -4 }}
-              whileTap={{ scale: 0.97 }}
+              initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.5, delay: 0.7 + i * 0.12, ease: [0.2, 0.65, 0.3, 0.9] }}
+              whileHover={{ scale: 1.04, y: -6 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => handleSelect(lang.code)}
-              className="group relative w-48 rounded-2xl border border-border/50 bg-card/60 backdrop-blur-md p-8 text-center cursor-pointer transition-all duration-300 hover:border-primary/50 hover:bg-card/80 hover:shadow-[0_0_30px_hsl(var(--primary)/0.15)]"
+              className="group relative w-full sm:w-56 rounded-2xl cursor-pointer overflow-hidden"
             >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative space-y-2">
-                <span className={`block text-2xl font-bold text-foreground font-display ${lang.code === 'ar' ? 'font-sans' : ''}`}>
-                  {lang.label}
-                </span>
-                <span className="block text-sm text-muted-foreground">
-                  {lang.subtitle}
-                </span>
+              {/* Animated gradient border */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/40 via-accent/30 to-primary/40 bg-[length:200%_200%] animate-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-[1px] rounded-2xl bg-gradient-to-br from-primary/20 via-transparent to-accent/20 opacity-50 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              {/* Card inner */}
+              <div className="relative m-[1px] rounded-2xl bg-card/70 backdrop-blur-xl border border-border/40 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-[0_0_40px_hsl(var(--primary)/0.2),0_0_80px_hsl(var(--primary)/0.08)]">
+                {/* Shimmer sweep */}
+                <div className="absolute inset-0 rounded-2xl overflow-hidden">
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
+                </div>
+
+                {/* Top gradient accent */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                <div className="relative flex items-center gap-4 px-5 py-5 sm:flex-col sm:items-center sm:gap-3 sm:px-6 sm:py-7">
+                  {/* Flag with glow */}
+                  <div className="relative flex-shrink-0">
+                    <div className="absolute inset-0 scale-150 bg-primary/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <span className="relative text-5xl sm:text-6xl block leading-none drop-shadow-lg">
+                      {lang.flag}
+                    </span>
+                  </div>
+
+                  {/* Text content */}
+                  <div className="flex-1 text-left sm:text-center min-w-0">
+                    <span className="block text-xs text-primary/80 font-medium tracking-wider uppercase mb-0.5">
+                      {lang.greeting}
+                    </span>
+                    <span className={`block text-xl sm:text-2xl font-bold text-foreground font-display ${lang.code === 'ar' ? 'font-sans' : ''}`}>
+                      {lang.label}
+                    </span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      {lang.subtitle}
+                    </span>
+                  </div>
+
+                  {/* Arrow — slides in on hover */}
+                  <div className="flex-shrink-0 sm:hidden">
+                    <ArrowRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
+                  </div>
+                  <div className="hidden sm:block">
+                    <ArrowRight className="w-4 h-4 text-muted-foreground/0 group-hover:text-primary transition-all duration-300 translate-y-1 group-hover:translate-y-0" />
+                  </div>
+                </div>
               </div>
             </motion.button>
           ))}
-        </motion.div>
+        </div>
       </motion.div>
     </div>
   );
