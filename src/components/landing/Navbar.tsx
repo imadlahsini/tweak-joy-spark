@@ -327,7 +327,7 @@ const Navbar = () => {
                   {/* Animated gradient border */}
                   <div className="absolute -inset-[2px] bg-gradient-to-r from-primary via-primary/50 to-primary rounded-2xl opacity-70 blur-[2px]" />
                   <Button 
-                    onClick={() => { navigate("/checkout"); setIsOpen(false); }}
+                    onClick={() => { navigate("/appointment"); setIsOpen(false); }}
                     className="relative w-full h-16 bg-foreground text-background hover:bg-foreground/90 font-semibold text-lg gap-3 rounded-2xl shadow-prominent"
                   >
                     <Sparkles className="w-5 h-5" />
