@@ -7,15 +7,9 @@ import Index from "./pages/Index";
 import Welcome from "./pages/Welcome";
 import Appointment from "./pages/Appointment";
 import NotFound from "./pages/NotFound";
-import CheckoutSuccess from "./pages/CheckoutSuccess";
-import CheckoutCancel from "./pages/CheckoutCancel";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
-import Checkout from "./pages/Checkout";
-import PlanCheckout from "./pages/PlanCheckout";
-import BundleCheckout from "./pages/BundleCheckout";
-import YearSpecialCheckout from "./pages/YearSpecialCheckout";
 import { CTAModalProvider } from "@/contexts/CTAModalContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import CTAModal from "@/components/landing/CTAModal";
@@ -38,11 +32,6 @@ const App = () => (
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/refund" element={<RefundPolicy />} />
-              <Route path="/checkout/success" element={<CheckoutSuccess />} />
-              <Route path="/checkout/cancel" element={<CheckoutCancel />} />
-              <Route path="/checkout/1-year-special" element={<YearSpecialCheckout />} />
-              <Route path="/checkout/:planSlug" element={<PlanCheckout />} />
-              <Route path="/checkout" element={<Checkout />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
