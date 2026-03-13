@@ -1,86 +1,37 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+## Plan: Premium Mobile-First Language Selector with Flags
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+### Changes to `src/pages/Welcome.tsx`
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+**1. Add flag emojis + richer data model**
+- Update languages array: `🇸🇦` Arabic, `🇺🇸` English, `🇫🇷` French
+- Add a greeting per language ("مرحباً", "Hello", "Bonjour")
 
-## Fix
+**2. Redesign language cards — premium, mobile-first**
+Each card becomes a full-width glass card on mobile with:
+- Large flag emoji (text-5xl) with a subtle circular glow behind it
+- Native language name in bold + subtitle underneath
+- Animated gradient border using a pseudo-element or wrapper div
+- Shimmer/shine sweep animation on hover/tap
+- Right-arrow icon that slides in on hover
+- Full width on mobile (`w-full max-w-xs`), row layout on desktop
+- Generous touch targets (`py-5 px-6`) with rounded-2xl
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+**3. Mobile layout overhaul**
+- Reduce heading to `text-3xl` on mobile, tighten gaps (`gap-5` instead of `gap-8`)
+- Show some geometric shapes on mobile (remove `hidden lg:block` from a couple)
+- Show floating orbs on mobile (remove `hidden sm:block`)
+- Reduce overall vertical spacing so everything fits on one screen without scrolling
+- Cards stack vertically, full-width with `w-full` in a `max-w-sm` container
 
-**Simplify the `fetchStats` function (lines 45-82):**
+**4. Add animated gradient border ring on cards**
+- Each card gets a subtle animated gradient border (primary → accent) that glows on tap
+- Active/pressed state with scale-down and border color change
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+**5. Staggered entrance animation per card**
+- Each card slides up with increasing delay + slight blur-to-clear effect
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
+### File to modify
+- `src/pages/Welcome.tsx`
 
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
-
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
