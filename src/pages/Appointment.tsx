@@ -850,6 +850,11 @@ const Appointment = () => {
                       const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
                       const isSelectedAndOpen = isSelected && !isSunday;
                       const today = isToday(day);
+                      const dayLabel = formatDate(day, isRTL ? "EEEE" : "EEE");
+                      const dateCardWidthClass = isRTL ? "w-[88px]" : "w-[60px]";
+                      const dayLabelClass = isRTL
+                        ? "text-[11px] font-semibold tracking-normal whitespace-nowrap leading-none"
+                        : "text-xs font-medium uppercase tracking-wider";
                       return (
                         <motion.button
                           key={day.toISOString()}
@@ -863,7 +868,7 @@ const Appointment = () => {
                             setSelectedDate(day);
                             setSelectedTime(null);
                           }}
-                          className={`relative flex-shrink-0 snap-center flex flex-col items-center justify-center w-[60px] h-[76px] rounded-2xl border transition-all duration-300 ${
+                          className={`relative flex-shrink-0 snap-center flex flex-col items-center justify-center ${dateCardWidthClass} h-[76px] rounded-2xl border transition-all duration-300 ${
                             isSunday
                               ? "bg-muted/35 border-border/45 text-muted-foreground/70 opacity-75 cursor-not-allowed"
                               : isSelectedAndOpen
@@ -876,8 +881,8 @@ const Appointment = () => {
                           {today && !isSelected && !isSunday && (
                             <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
                           )}
-                          <span className={`text-xs font-medium uppercase tracking-wider ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                            {formatDate(day, "EEE")}
+                          <span className={`${dayLabelClass} ${isSelectedAndOpen ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                            {dayLabel}
                           </span>
                           <span className={`text-xl font-bold leading-tight ${isSelected ? "text-primary-foreground" : ""}`}>
                             {formatDate(day, "d")}
