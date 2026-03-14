@@ -1,86 +1,20 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+# Fix Mobile Menu Bugs
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+## Issues Identified
+1. **Z-index conflict**: Mobile menu is `z-40` but navbar is `z-50`, so the navbar sits on top of the menu content
+2. **Top padding insufficient**: Menu content starts at `pt-24` but the first contact row still clips behind the navbar area
+3. **Logo bleeds through**: The navbar logo is visible overlapping the first contact item icon because of the z-index issue
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+## Changes — `src/components/landing/Navbar.tsx`
 
-## Fix
+### 1. Fix z-index on mobile menu overlay
+Change the mobile menu container from `z-40` to `z-50` (same as navbar), and ensure the menu content sits above the navbar bar. Alternatively, bump it to `z-[60]` so it clearly sits above.
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+### 2. Increase top padding
+Bump `pt-24` to `pt-28` on the menu content wrapper so contact items clear the navbar height completely.
 
-**Simplify the `fetchStats` function (lines 45-82):**
+### 3. Hide navbar bar when menu is open
+Conditionally hide the navbar inner content (logo, hamburger) or set the menu backdrop to fully opaque so nothing bleeds through. The simplest fix: make the backdrop `bg-background` (fully opaque) instead of `bg-background/95`.
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
-
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
-
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
