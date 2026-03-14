@@ -364,22 +364,47 @@ const Appointment = () => {
       <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 pt-24 pb-36">
 
         {/* Heading */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
-          className="text-center mb-5"
-        >
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-foreground leading-tight">
-            {t.title}{" "}
-            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
-              {t.titleAccent}
-            </span>
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
-            {t.subtitle}
-          </p>
-        </motion.div>
+        <div className="relative text-center mb-6">
+          {/* Ambient glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
+            className="relative z-10"
+          >
+            {/* Badge */}
+            <motion.span
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="inline-flex items-center gap-2 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 mb-4"
+            >
+              <Stethoscope className="w-3.5 h-3.5" />
+              {t.consultation}
+            </motion.span>
+
+            {/* Title — stacked */}
+            <h1 className="font-display font-bold text-foreground leading-tight">
+              <span className="block text-xl sm:text-2xl md:text-3xl font-medium text-muted-foreground">
+                {t.title}
+              </span>
+              <span className="block text-4xl sm:text-5xl md:text-6xl mt-1 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient drop-shadow-sm">
+                {t.titleAccent}
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <span className="w-8 h-px bg-border" />
+              <p className="text-sm text-muted-foreground max-w-xs">
+                {t.subtitle}
+              </p>
+              <span className="w-8 h-px bg-border" />
+            </div>
+          </motion.div>
+        </div>
 
         {/* ── Step Progress Indicator (Bug 9: clickable) ── */}
         <motion.div
