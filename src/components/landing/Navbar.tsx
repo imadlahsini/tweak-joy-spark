@@ -205,49 +205,59 @@ const Navbar = () => {
               {/* Dot grid pattern */}
               <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none" />
 
-              {/* Navigation Links */}
+              {/* Contact Details */}
               <nav className="flex-1 flex flex-col gap-2 relative z-10">
-                {navLinks.map((link, i) => {
-                  const Icon = link.icon;
-                  const isActive = activeSection === link.href.replace("#", "");
-                  
+                {contactItems.map((item, i) => {
+                  const Icon = item.icon;
                   return (
-                    <motion.button
-                      key={link.name}
+                    <motion.a
+                      key={item.label}
+                      href={item.href}
+                      target={item.type === "whatsapp" ? "_blank" : undefined}
+                      rel={item.type === "whatsapp" ? "noopener noreferrer" : undefined}
                       initial={{ opacity: 0, x: 30 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 30 }}
                       transition={{ duration: 0.3, delay: 0.1 + i * 0.08 }}
-                      onClick={() => scrollToSection(link.href)}
-                      className={`flex items-center justify-between w-full p-4 rounded-2xl transition-all duration-300 min-h-[64px] ${
-                        isActive 
-                          ? "bg-primary/10 border border-primary/20" 
-                          : "bg-muted/30 hover:bg-muted/50 border border-transparent"
-                      }`}
+                      className="flex items-center gap-4 w-full p-4 rounded-2xl bg-muted/30 hover:bg-muted/50 border border-transparent transition-all duration-300 min-h-[64px]"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                          isActive 
-                            ? "bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-soft" 
-                            : "bg-muted text-muted-foreground"
-                        }`}>
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                        item.type === "whatsapp" 
+                          ? "bg-[hsl(142,70%,40%)] text-white" 
+                          : "bg-muted text-muted-foreground"
+                      }`}>
+                        {item.type === "whatsapp" ? (
+                          <WhatsAppIcon className="w-5 h-5" />
+                        ) : Icon ? (
                           <Icon className="w-5 h-5" />
-                        </div>
-                        <span className={`text-lg font-medium ${
-                          isActive ? "text-foreground" : "text-muted-foreground"
-                        }`}>
-                          {link.name}
-                        </span>
+                        ) : null}
                       </div>
-                      <ArrowRight className={`w-5 h-5 transition-transform duration-300 ${
-                        isActive ? "text-primary translate-x-1" : "text-muted-foreground"
-                      }`} />
-                    </motion.button>
+                      <span className="text-lg font-medium text-foreground">
+                        {item.label}
+                      </span>
+                    </motion.a>
                   );
                 })}
+
+                {/* Working Hours */}
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 30 }}
+                  transition={{ duration: 0.3, delay: 0.35 }}
+                  className="flex items-center gap-4 w-full p-4 rounded-2xl bg-muted/30 border border-transparent min-h-[64px]"
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-muted text-muted-foreground">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Horaires</span>
+                    <span className="text-base font-medium text-foreground">Lun-Ven: 9h-18h</span>
+                  </div>
+                </motion.div>
               </nav>
 
-              {/* CTA Button */}
+              {/* Call CTA Button */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -256,42 +266,36 @@ const Navbar = () => {
                 className="relative z-10 mb-8"
               >
                 <div className="relative group">
-                  {/* Animated gradient border */}
                   <div className="absolute -inset-[2px] bg-gradient-to-r from-primary via-primary/50 to-primary rounded-2xl opacity-70 blur-[2px]" />
                   <Button 
-                    onClick={() => { navigate("/appointment"); setIsOpen(false); }}
+                    asChild
                     className="relative w-full h-16 bg-foreground text-background hover:bg-foreground/90 font-semibold text-lg gap-3 rounded-2xl shadow-prominent"
                   >
-                    <Sparkles className="w-5 h-5" />
-                    Get Started
+                    <a href="tel:0528333836">
+                      <Phone className="w-5 h-5" />
+                      Appeler
+                    </a>
                   </Button>
                 </div>
               </motion.div>
 
-              {/* Social Links */}
+              {/* WhatsApp quick action */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3, delay: 0.5 }}
-                className="relative z-10 flex items-center justify-center gap-4"
+                className="relative z-10 flex items-center justify-center"
               >
-                {socialLinks.map((social, i) => {
-                  const Icon = social.icon;
-                  return (
-                    <motion.a
-                      key={social.label}
-                      href={social.href}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: 0.5 + i * 0.05 }}
-                      className="w-12 h-12 rounded-xl bg-muted/50 hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-300"
-                      aria-label={social.label}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </motion.a>
-                  );
-                })}
+                <a
+                  href="https://wa.me/212660077768"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 rounded-xl bg-[hsl(142,70%,40%)] hover:bg-[hsl(142,70%,35%)] flex items-center justify-center text-white transition-all duration-300"
+                  aria-label="WhatsApp"
+                >
+                  <WhatsAppIcon className="w-5 h-5" />
+                </a>
               </motion.div>
             </motion.div>
           </motion.div>
