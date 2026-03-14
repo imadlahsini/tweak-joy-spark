@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, forwardRef } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -296,6 +296,23 @@ const getNormalizedScrollLeft = (element: HTMLElement, isRTL: boolean) => {
   return Math.min(maxScroll, Math.max(0, normalized));
 };
 
+const APPOINTMENT_RESET_ON_RETURN_KEY = "appointment:reset-on-return";
+
+const markAppointmentResetOnReturn = () => {
+  if (typeof window !== "undefined") {
+    window.sessionStorage.setItem(APPOINTMENT_RESET_ON_RETURN_KEY, "1");
+  }
+};
+
+const consumeAppointmentResetOnReturn = () => {
+  if (typeof window === "undefined") return false;
+  const shouldReset = window.sessionStorage.getItem(APPOINTMENT_RESET_ON_RETURN_KEY) === "1";
+  if (shouldReset) {
+    window.sessionStorage.removeItem(APPOINTMENT_RESET_ON_RETURN_KEY);
+  }
+  return shouldReset;
+};
+
 const Appointment = () => {
   const { language } = useLanguage();
   const navigate = useNavigate();
@@ -331,6 +348,36 @@ const Appointment = () => {
   const t = translations[(language as "en" | "fr" | "ar" | "zgh") || "en"];
   const isRTL = language === "ar";
   const dateLocale = language === "fr" || language === "zgh" ? fr : language === "ar" ? arSA : undefined;
+
+  const resetAppointmentState = useCallback(() => {
+    setSelectedDate(undefined);
+    setSelectedTime(null);
+    setClientName("");
+    setClientPhone("");
+    setNameTouched(false);
+    setPhoneTouched(false);
+    setShowSparkles(false);
+    setIsConfirming(false);
+    confirmLockRef.current = false;
+    setHasScrolled(false);
+    setShowLeftFade(false);
+    setShowRightFade(true);
+    initialScrollLeftRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    confirmLockRef.current = false;
+    setIsConfirming(false);
+
+    if (consumeAppointmentResetOnReturn()) {
+      resetAppointmentState();
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: "auto" });
+        });
+      }
+    }
+  }, [resetAppointmentState]);
 
   const isNameValid = clientName.trim().length >= 2;
   const isPhoneValid = /^0[67]\d{8}$/.test(clientPhone);
@@ -513,6 +560,7 @@ const Appointment = () => {
           console.error("Telegram notification request error:", error);
         });
 
+      markAppointmentResetOnReturn();
       navigate("/appointment/confirmation", {
         state: confirmationState,
       });
@@ -546,7 +594,7 @@ const Appointment = () => {
       className="relative min-h-screen bg-background overflow-hidden"
     >
       {/* === Background layers === */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="sm:hidden absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-radial from-primary/14 via-transparent to-transparent blur-3xl" />
         <motion.div
           animate={{ scale: [1, 1.2, 1], rotate: [0, 5, 0] }}
@@ -565,7 +613,7 @@ const Appointment = () => {
         />
       </div>
 
-      <div className="absolute inset-0 dot-grid opacity-25 sm:opacity-40" />
+      <div className="absolute inset-0 dot-grid opacity-25 sm:opacity-40 pointer-events-none" />
 
       {/* Floating geometric shapes */}
       <div className="hidden md:block absolute inset-0 pointer-events-none overflow-hidden">

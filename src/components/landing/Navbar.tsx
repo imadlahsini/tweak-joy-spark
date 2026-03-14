@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Sparkles, Phone, Clock } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
@@ -24,6 +24,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const { scrollYProgress } = useScroll();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const progressWidth = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
   useEffect(() => {
@@ -36,6 +37,11 @@ const Navbar = () => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
+
+  useEffect(() => {
+    setIsOpen(false);
+    document.body.style.overflow = "";
+  }, [pathname]);
 
   return (
     <>

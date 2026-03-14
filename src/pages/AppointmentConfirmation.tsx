@@ -235,7 +235,7 @@ const AppointmentConfirmation = () => {
       <Navbar />
 
       {/* Animated gradient mesh background */}
-      <div className="fixed inset-0">
+      <div className="fixed inset-0 pointer-events-none">
         <motion.div
           animate={{ scale: [1, 1.2, 1], rotate: [0, 5, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
@@ -253,7 +253,7 @@ const AppointmentConfirmation = () => {
         />
       </div>
 
-      <div className="fixed inset-0 dot-grid opacity-40" />
+      <div className="fixed inset-0 dot-grid opacity-40 pointer-events-none" />
 
       {/* Floating geometric shapes */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
