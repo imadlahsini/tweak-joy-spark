@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Brain, Sparkles, ArrowRight, Zap, BarChart3, DollarSign, Twitter, Linkedin, Mail } from "lucide-react";
+import { Menu, X, Sparkles, ArrowRight, Zap, BarChart3, DollarSign, Twitter, Linkedin, Mail } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { useCTAModal } from "@/contexts/CTAModalContext";
 
