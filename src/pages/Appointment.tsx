@@ -5,6 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import Navbar from "@/components/landing/Navbar";
 import UiIcon from "@/components/shared/UiIcon";
+import { supabase } from "@/integrations/supabase/client";
 import { addDays, format, isToday, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale/fr";
 import { arSA } from "date-fns/locale/ar-SA";
@@ -19,6 +20,10 @@ const timeSlots = [
   { time: "15:00", period: "afternoon" },
   { time: "16:00", period: "afternoon" },
 ];
+
+const SATURDAY_LAST_BOOKABLE_TIME = "12:00";
+const isSundayDate = (date: Date) => date.getDay() === 0;
+const isSaturdayDate = (date: Date) => date.getDay() === 6;
 
 const translations = {
   en: {
@@ -39,6 +44,7 @@ const translations = {
     successDesc: "We'll see you on",
     consultation: "Consultation",
     today: "Today",
+    closed: "Closed",
     summaryTitle: "Your Appointment",
     duration: "1h • In-person",
     at: "at",
@@ -74,6 +80,7 @@ const translations = {
     successDesc: "Nous vous verrons le",
     consultation: "Consultation",
     today: "Aujourd'hui",
+    closed: "Fermé",
     summaryTitle: "Votre Rendez-vous",
     duration: "1h • En personne",
     at: "à",
@@ -109,6 +116,7 @@ const translations = {
     successDesc: "سنراك في",
     consultation: "استشارة",
     today: "اليوم",
+    closed: "مغلق",
     summaryTitle: "موعدك",
     duration: "ساعة • حضوري",
     at: "في",
@@ -144,6 +152,7 @@ const translations = {
     successDesc: "ⴰⴷ ⵏⵣⵔⴽ ⴳ",
     consultation: "ⴰⵙⵉⵡⴹ",
     today: "ⴰⵙⵙⴰ",
+    closed: "ⵉⵎⵖⵍⵉ",
     summaryTitle: "ⴰⵎⵓⵄⴷⵏⵏⴽ",
     duration: "1ⵙⴰⵄⴰ • ⵙ ⵓⴷⴷⵓⵔ",
     at: "ⴳ",
@@ -297,6 +306,7 @@ const Appointment = () => {
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [showSparkles, setShowSparkles] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeSectionRef = useRef<HTMLDivElement>(null);
   const dateSectionRef = useRef<HTMLDivElement>(null);
@@ -308,6 +318,7 @@ const Appointment = () => {
   const [showRightFade, setShowRightFade] = useState(true);
   const [hasScrolled, setHasScrolled] = useState(false);
   const initialScrollLeftRef = useRef<number | null>(null);
+  const confirmLockRef = useRef(false);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const prefersReducedMotion = useReducedMotion();
@@ -441,23 +452,69 @@ const Appointment = () => {
     }
   };
 
-  const morningSlots = timeSlots.filter((s) => s.period === "morning");
-  const afternoonSlots = timeSlots.filter((s) => s.period === "afternoon");
+  const availableTimeSlots = useMemo(() => {
+    if (!selectedDate) return [];
+    if (isSundayDate(selectedDate)) return [];
+    if (isSaturdayDate(selectedDate)) {
+      return timeSlots.filter((slot) => slot.time <= SATURDAY_LAST_BOOKABLE_TIME);
+    }
+    return timeSlots;
+  }, [selectedDate]);
+
+  const morningSlots = useMemo(
+    () => availableTimeSlots.filter((slot) => slot.period === "morning"),
+    [availableTimeSlots]
+  );
+  const afternoonSlots = useMemo(
+    () => availableTimeSlots.filter((slot) => slot.period === "afternoon"),
+    [availableTimeSlots]
+  );
 
   const formatDate = (date: Date, pattern: string) => format(date, pattern, { locale: dateLocale });
+
+  useEffect(() => {
+    if (selectedTime && !availableTimeSlots.some((slot) => slot.time === selectedTime)) {
+      setSelectedTime(null);
+    }
+  }, [availableTimeSlots, selectedTime]);
 
   const handleConfirm = () => {
     if (!isNameValid) setNameTouched(true);
     if (!isPhoneValid) setPhoneTouched(true);
 
+    if (confirmLockRef.current || isConfirming) return;
+
     if (selectedDate && selectedTime && isFormValid) {
+      confirmLockRef.current = true;
+      setIsConfirming(true);
+      const submittedAt = new Date().toISOString();
+      const bookingLanguage = (language as "en" | "fr" | "ar" | "zgh") || "en";
+      const confirmationState = {
+        clientName,
+        clientPhone,
+        selectedDate: selectedDate.toISOString(),
+        selectedTime,
+      };
+
+      void supabase.functions
+        .invoke("notify-appointment-telegram", {
+          body: {
+            ...confirmationState,
+            language: bookingLanguage,
+            submittedAt,
+          },
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.error("Telegram notification failed:", error);
+          }
+        })
+        .catch((error) => {
+          console.error("Telegram notification request error:", error);
+        });
+
       navigate("/appointment/confirmation", {
-        state: {
-          clientName,
-          clientPhone,
-          selectedDate: selectedDate.toISOString(),
-          selectedTime,
-        },
+        state: confirmationState,
       });
     }
   };
@@ -789,7 +846,9 @@ const Appointment = () => {
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", overflowY: "visible" }}
                   >
                     {next14Days.map((day, i) => {
+                      const isSunday = isSundayDate(day);
                       const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
+                      const isSelectedAndOpen = isSelected && !isSunday;
                       const today = isToday(day);
                       return (
                         <motion.button
@@ -797,20 +856,24 @@ const Appointment = () => {
                           initial={{ opacity: 0, scale: 0.8, y: 10 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: i * 0.04 }}
-                          whileTap={{ scale: 0.92 }}
+                          whileTap={isSunday ? undefined : { scale: 0.92 }}
+                          disabled={isSunday}
                           onClick={() => {
+                            if (isSunday) return;
                             setSelectedDate(day);
                             setSelectedTime(null);
                           }}
                           className={`relative flex-shrink-0 snap-center flex flex-col items-center justify-center w-[60px] h-[76px] rounded-2xl border transition-all duration-300 ${
-                            isSelected
+                            isSunday
+                              ? "bg-muted/35 border-border/45 text-muted-foreground/70 opacity-75 cursor-not-allowed"
+                              : isSelectedAndOpen
                               ? "bg-gradient-to-br from-primary to-accent border-primary/60 text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.45)]"
                               : today
                               ? "bg-card/80 border-accent/50 text-foreground hover:border-accent/70"
                               : "bg-card/50 border-border/30 text-foreground hover:border-primary/30 hover:bg-card/70"
                           }`}
                         >
-                          {today && !isSelected && (
+                          {today && !isSelected && !isSunday && (
                             <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
                           )}
                           <span className={`text-xs font-medium uppercase tracking-wider ${isSelected ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
@@ -819,11 +882,17 @@ const Appointment = () => {
                           <span className={`text-xl font-bold leading-tight ${isSelected ? "text-primary-foreground" : ""}`}>
                             {formatDate(day, "d")}
                           </span>
-                          <span className={`text-[11px] font-medium ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground/70"}`}>
-                            {formatDate(day, "MMM")}
-                          </span>
+                          {isSunday ? (
+                            <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-destructive/80">
+                              {t.closed}
+                            </span>
+                          ) : (
+                            <span className={`text-[11px] font-medium ${isSelectedAndOpen ? "text-primary-foreground/70" : "text-muted-foreground/70"}`}>
+                              {formatDate(day, "MMM")}
+                            </span>
+                          )}
                           <AnimatePresence>
-                            {isSelected && (
+                            {isSelectedAndOpen && (
                               <motion.div
                                 initial={{ scale: 0, rotate: -90 }}
                                 animate={{ scale: 1, rotate: 0 }}
@@ -907,38 +976,48 @@ const Appointment = () => {
                   </button>
                 ) : (
                   <>
-                    {/* Morning */}
-                    <TimeGroup
-                      label={t.morning}
-                      icon={<UiIcon icon="solar:sun-2-bold-duotone" size={18} tone="primary" />}
-                      slots={morningSlots}
-                      selectedTime={selectedTime}
-                      onSelect={setSelectedTime}
-                      delayOffset={0}
-                    />
+                    {morningSlots.length > 0 && (
+                      <TimeGroup
+                        label={t.morning}
+                        icon={<UiIcon icon="solar:sun-2-bold-duotone" size={18} tone="primary" />}
+                        slots={morningSlots}
+                        selectedTime={selectedTime}
+                        onSelect={setSelectedTime}
+                        delayOffset={0}
+                      />
+                    )}
 
-                    {/* Gradient divider */}
-                    <div className="flex items-center gap-3 my-3">
-                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-                      <motion.div
-                        animate={{ rotate: [0, 180, 360] }}
-                        transition={{ duration: 8, ease: "linear" }}
-                        className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center"
-                      >
-                        <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-accent" />
-                      </motion.div>
-                      <div className="flex-1 h-px bg-gradient-to-r from-border via-transparent to-transparent" />
-                    </div>
+                    {morningSlots.length > 0 && afternoonSlots.length > 0 && (
+                      <div className="flex items-center gap-3 my-3">
+                        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                        <motion.div
+                          animate={{ rotate: [0, 180, 360] }}
+                          transition={{ duration: 8, ease: "linear" }}
+                          className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center"
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-accent" />
+                        </motion.div>
+                        <div className="flex-1 h-px bg-gradient-to-r from-border via-transparent to-transparent" />
+                      </div>
+                    )}
 
-                    {/* Afternoon */}
-                    <TimeGroup
-                      label={t.afternoon}
-                      icon={<UiIcon icon="solar:cloud-sun-2-bold-duotone" size={18} tone="accent" />}
-                      slots={afternoonSlots}
-                      selectedTime={selectedTime}
-                      onSelect={setSelectedTime}
-                      delayOffset={4}
-                    />
+                    {afternoonSlots.length > 0 && (
+                      <TimeGroup
+                        label={t.afternoon}
+                        icon={<UiIcon icon="solar:cloud-sun-2-bold-duotone" size={18} tone="accent" />}
+                        slots={afternoonSlots}
+                        selectedTime={selectedTime}
+                        onSelect={setSelectedTime}
+                        delayOffset={4}
+                      />
+                    )}
+
+                    {morningSlots.length === 0 && afternoonSlots.length === 0 && (
+                      <div className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-3 text-sm font-semibold text-destructive/90 flex items-center gap-2">
+                        <UiIcon icon="solar:danger-triangle-bold-duotone" size={18} tone="current" />
+                        <span>{t.closed}</span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -1219,7 +1298,8 @@ const Appointment = () => {
                     }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     onClick={handleConfirm}
-                    className="relative w-full group overflow-hidden"
+                    disabled={isConfirming}
+                    className="relative w-full group overflow-hidden disabled:opacity-80 disabled:cursor-not-allowed"
                   >
                     <div className="absolute -inset-[2px] bg-gradient-to-r from-primary via-accent to-primary rounded-2xl opacity-70 transition-opacity duration-300 blur-[2px] bg-[length:200%_auto] animate-gradient" />
                     <div className="relative flex min-h-[56px] items-center justify-center gap-3 w-full font-semibold text-base rounded-2xl overflow-hidden transition-colors bg-foreground text-background">
@@ -1322,7 +1402,7 @@ const Appointment = () => {
                 : undefined
             }
             transition={canConfirm ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : undefined}
-            disabled={!canConfirm}
+            disabled={!canConfirm || isConfirming}
             onClick={handleConfirm}
             className="relative w-full group overflow-hidden disabled:cursor-not-allowed"
           >
