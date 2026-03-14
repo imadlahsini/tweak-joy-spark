@@ -45,13 +45,7 @@ const Navbar = () => {
     };
   }, [isOpen]);
 
-  const scrollToSection = (href: string) => {
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-    setIsOpen(false);
-  };
+
 
   return (
     <>
