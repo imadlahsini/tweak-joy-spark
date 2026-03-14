@@ -105,24 +105,11 @@ const Navbar = () => {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 whileHover={{ scale: 1.02 }}
               >
-                {/* Animated Brain Icon */}
-                <div className="relative">
-                  <motion.div
-                    className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-soft group-hover:shadow-prominent transition-shadow duration-300"
-                    whileHover={{ rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 400 }}
-                  >
-                    <Brain className="w-5 h-5 md:w-6 md:h-6 text-primary-foreground" />
-                  </motion.div>
-                  {/* Pulse ring */}
-                  <motion.div
-                    className="absolute inset-0 rounded-xl bg-primary/30"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                </div>
-                
-                {/* Brand Name */}
+                <img 
+                  src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/cropped-sounnyfav.webp" 
+                  alt="Logo" 
+                  className="w-9 h-9 md:w-10 md:h-10 rounded-xl object-contain"
+                />
               </motion.a>
 
               {/* Desktop Navigation */}
