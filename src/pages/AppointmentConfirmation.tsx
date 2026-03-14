@@ -103,6 +103,36 @@ const ActionConnector = ({
   );
 };
 
+const normalizeMoroccanPhone = (value: string) => {
+  const digitsOnly = value.replace(/\D/g, "");
+  if (!digitsOnly) return "";
+
+  let normalized = digitsOnly;
+
+  if (normalized.startsWith("00212")) {
+    normalized = normalized.slice(5);
+  } else if (normalized.startsWith("212")) {
+    normalized = normalized.slice(3);
+  }
+
+  if (normalized.startsWith("0")) {
+    normalized = normalized.slice(1);
+  }
+
+  return normalized.slice(0, 9);
+};
+
+const formatMoroccanPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 9);
+  return digits.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
+};
+
+const formatMoroccanPhoneDisplay = (value: string) => {
+  const normalized = normalizeMoroccanPhone(value);
+  const formatted = formatMoroccanPhone(normalized);
+  return formatted ? `+212 ${formatted}` : "+212";
+};
+
 // Confetti particle component
 const Particle = ({ index }: { index: number }) => {
   const colors = [
@@ -167,16 +197,13 @@ const AppointmentConfirmation = () => {
   const date = new Date(state.selectedDate);
   const formattedDate = format(date, "EEEE, d MMMM yyyy", { locale: dateLocale });
 
-  const getEndTime = (startTime: string) => {
-    const [h, m] = startTime.split(":").map(Number);
-    return `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-  };
+  const formattedClientPhone = formatMoroccanPhoneDisplay(state.clientPhone);
 
   const rows = [
     { icon: User, label: t.client, value: state.clientName },
-    { icon: Phone, label: t.phone, value: `+212 ${state.clientPhone}` },
+    { icon: Phone, label: t.phone, value: formattedClientPhone },
     { icon: CalendarDays, label: t.date, value: formattedDate },
-    { icon: Clock, label: t.time, value: `${state.selectedTime} — ${getEndTime(state.selectedTime)}` },
+    { icon: Clock, label: t.time, value: state.selectedTime },
     
   ];
   const actionItems = [

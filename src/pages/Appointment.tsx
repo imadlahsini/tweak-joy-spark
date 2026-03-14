@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion } from "framer-motion";
-import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowRight, Stethoscope, ChevronRight, ChevronLeft, User, Phone } from "lucide-react";
+import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowRight, ChevronRight, ChevronLeft, User, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import Navbar from "@/components/landing/Navbar";
@@ -48,7 +48,8 @@ const translations = {
     phoneLabel: "Phone Number",
     phonePlaceholder: "6XX XXX XXX",
     nameRequired: "Name is required (min 2 characters)",
-    phoneRequired: "Phone is required (min 6 digits)",
+    phoneRequired: "Enter a valid Moroccan mobile number",
+    phoneHint: "Start with 6 or 7 (9 digits)",
     edit: "Edit",
     ctaHintDate: "Choose a date to continue",
     ctaHintTime: "Pick a time to continue",
@@ -82,7 +83,8 @@ const translations = {
     phoneLabel: "Numéro de Téléphone",
     phonePlaceholder: "6XX XXX XXX",
     nameRequired: "Le nom est requis (min 2 caractères)",
-    phoneRequired: "Le téléphone est requis (min 6 chiffres)",
+    phoneRequired: "Entrez un numéro mobile marocain valide",
+    phoneHint: "Commencez par 6 ou 7 (9 chiffres)",
     edit: "Modifier",
     ctaHintDate: "Choisissez une date pour continuer",
     ctaHintTime: "Choisissez une heure pour continuer",
@@ -116,7 +118,8 @@ const translations = {
     phoneLabel: "رقم الهاتف",
     phonePlaceholder: "6XX XXX XXX",
     nameRequired: "الاسم مطلوب (حرفان على الأقل)",
-    phoneRequired: "الهاتف مطلوب (6 أرقام على الأقل)",
+    phoneRequired: "أدخل رقم هاتف مغربي صحيح",
+    phoneHint: "يبدأ بـ 6 أو 7 (9 أرقام)",
     edit: "تعديل",
     ctaHintDate: "اختر التاريخ للمتابعة",
     ctaHintTime: "اختر الوقت للمتابعة",
@@ -169,6 +172,35 @@ const StepConnector = ({ state, isRTL, reducedMotion, className = "" }: StepConn
   );
 };
 
+const normalizeMoroccanPhone = (value: string) => {
+  const digitsOnly = value.replace(/\D/g, "");
+  if (!digitsOnly) return "";
+
+  let normalized = digitsOnly;
+
+  if (normalized.startsWith("00212")) {
+    normalized = normalized.slice(5);
+  } else if (normalized.startsWith("212")) {
+    normalized = normalized.slice(3);
+  }
+
+  if (normalized.startsWith("0")) {
+    normalized = normalized.slice(1);
+  }
+
+  return normalized.slice(0, 9);
+};
+
+const formatMoroccanPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 9);
+  return digits.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
+};
+
+const formatMoroccanPhoneDisplay = (value: string) => {
+  const formatted = formatMoroccanPhone(value);
+  return formatted ? `+212 ${formatted}` : "+212";
+};
+
 const Appointment = () => {
   const { language } = useLanguage();
   const navigate = useNavigate();
@@ -204,8 +236,9 @@ const Appointment = () => {
   const dateLocale = language === "fr" ? fr : language === "ar" ? arSA : undefined;
 
   const isNameValid = clientName.trim().length >= 2;
-  const isPhoneValid = clientPhone.replace(/\D/g, "").length >= 9;
+  const isPhoneValid = /^(6|7)\d{8}$/.test(clientPhone);
   const isFormValid = isNameValid && isPhoneValid;
+  const formattedPhoneValue = formatMoroccanPhone(clientPhone);
   const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : !isFormValid ? 3 : 4;
   const progressStep = Math.min(currentStep, 3);
   const isDateCollapsed = Boolean(selectedDate) && currentStep > 1;
@@ -310,6 +343,9 @@ const Appointment = () => {
   const formatDate = (date: Date, pattern: string) => format(date, pattern, { locale: dateLocale });
 
   const handleConfirm = () => {
+    if (!isNameValid) setNameTouched(true);
+    if (!isPhoneValid) setPhoneTouched(true);
+
     if (selectedDate && selectedTime && isFormValid) {
       navigate("/appointment/confirmation", {
         state: {
@@ -320,11 +356,6 @@ const Appointment = () => {
         },
       });
     }
-  };
-
-  const getEndTime = (startTime: string) => {
-    const [h, m] = startTime.split(":").map(Number);
-    return `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
   const handleProgressStepClick = (step: number) => {
@@ -345,8 +376,6 @@ const Appointment = () => {
       detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };
-
-  const timeArrow = "–";
 
   return (
     <div
@@ -756,7 +785,7 @@ const Appointment = () => {
                   >
                     <div className="min-w-0">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-accent/80">{t.step2}</p>
-                      <p className="text-sm font-semibold text-foreground break-words">{selectedTime} {timeArrow} {getEndTime(selectedTime)}</p>
+                      <p className="text-sm font-semibold text-foreground break-words">{selectedTime}</p>
                     </div>
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent shrink-0">
                       {t.edit}
@@ -773,8 +802,6 @@ const Appointment = () => {
                       selectedTime={selectedTime}
                       onSelect={setSelectedTime}
                       delayOffset={0}
-                      getEndTime={getEndTime}
-                      timeArrow={timeArrow}
                     />
 
                     {/* Gradient divider */}
@@ -798,8 +825,6 @@ const Appointment = () => {
                       selectedTime={selectedTime}
                       onSelect={setSelectedTime}
                       delayOffset={4}
-                      getEndTime={getEndTime}
-                      timeArrow={timeArrow}
                     />
                   </>
                 )}
@@ -873,7 +898,7 @@ const Appointment = () => {
 
                   {/* Phone input */}
                   <div className="space-y-2">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
+                    <label htmlFor="client-phone" className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
                       <Phone className="w-3.5 h-3.5 text-muted-foreground" />
                       {t.phoneLabel}
                       {isPhoneValid && (
@@ -886,35 +911,39 @@ const Appointment = () => {
                         </motion.div>
                       )}
                     </label>
-                    <div className={`relative flex items-center h-12 rounded-xl bg-background/50 backdrop-blur-sm border overflow-hidden transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                    <div className={`relative flex items-center h-12 rounded-xl bg-background/60 backdrop-blur-sm border overflow-hidden transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
                           phoneTouched && !isPhoneValid
                             ? "border-destructive focus-within:border-destructive"
                             : "border-border/60 focus-within:border-primary"
                         }`} dir="ltr">
-                      <div className="flex items-center gap-1.5 px-3 h-full border-r border-border/40 bg-muted/30 select-none shrink-0">
+                      <div className="flex items-center gap-1.5 px-3.5 h-full border-r border-border/45 bg-gradient-to-b from-muted/55 to-muted/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] select-none shrink-0">
                         <span className="text-base leading-none">🇲🇦</span>
-                        <span className="text-sm font-medium text-foreground/80">+212</span>
+                        <span className="text-sm font-semibold text-foreground/85 tracking-[0.01em]">+212</span>
                       </div>
                       <input
+                        id="client-phone"
                         type="tel"
                         inputMode="numeric"
+                        autoComplete="tel-national"
+                        spellCheck={false}
+                        aria-invalid={phoneTouched && !isPhoneValid}
+                        aria-describedby="client-phone-help"
                         dir="ltr"
-                        value={clientPhone}
+                        value={formattedPhoneValue}
                         onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
-                          setClientPhone(digits);
+                          setClientPhone(normalizeMoroccanPhone(e.target.value));
                         }}
                         onBlur={() => setPhoneTouched(true)}
                         placeholder={t.phonePlaceholder}
-                        maxLength={9}
-                        className="flex-1 h-full px-3 text-base text-foreground bg-transparent placeholder:text-muted-foreground/60 outline-none"
+                        maxLength={11}
+                        className="flex-1 h-full px-3.5 text-base tracking-[0.02em] text-foreground bg-transparent placeholder:text-muted-foreground/55 outline-none"
                       />
                     </div>
-                    <div className="min-h-[18px]">
+                    <div id="client-phone-help" className="min-h-[18px]">
                       {phoneTouched && !isPhoneValid ? (
                         <p className="text-xs text-destructive">{t.phoneRequired}</p>
                       ) : (
-                        <p aria-hidden="true" className="text-xs opacity-0 select-none">.</p>
+                        <p className="text-xs text-muted-foreground/80">{t.phoneHint}</p>
                       )}
                     </div>
                   </div>
@@ -933,65 +962,70 @@ const Appointment = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               transition={{ duration: 0.5, ease: [0.2, 0.65, 0.3, 0.9], delay: 0.1 }}
-              className="w-full max-w-sm mx-auto mb-5"
+              className="w-full max-w-sm mx-auto mb-6 sm:mb-5"
             >
-              <div className="relative rounded-3xl overflow-hidden">
-                {/* Animated gradient border */}
-                <motion.div
-                  animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] rounded-3xl"
-                />
-                <div className="relative m-[1.5px] bg-card/90 backdrop-blur-2xl rounded-[22px] p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]">
-                  <div className="mb-1">
-                    <p className={`text-[11px] uppercase ${isRTL ? "tracking-normal" : "tracking-[0.14em]"} text-primary/80 font-semibold`}>
-                      {t.summaryTitle}
-                    </p>
-                  </div>
+              <div className="relative rounded-3xl border border-white/35 dark:border-white/20 bg-[linear-gradient(135deg,hsl(var(--background)/0.56),hsl(var(--primary)/0.11)_54%,hsl(var(--accent)/0.08))] backdrop-blur-3xl backdrop-saturate-150 shadow-[0_20px_44px_hsl(var(--foreground)/0.18),0_8px_18px_hsl(var(--foreground)/0.1)] overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/28 via-white/7 to-transparent dark:from-white/12 dark:via-white/5" />
+                <div className="absolute left-4 right-4 top-[2px] h-[1px] pointer-events-none bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/45" />
+                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(120%_90%_at_20%_0%,rgba(255,255,255,0.40),rgba(255,255,255,0)_58%)] dark:bg-[radial-gradient(120%_90%_at_20%_0%,rgba(255,255,255,0.16),rgba(255,255,255,0)_58%)]" />
+                <div className="absolute inset-0 pointer-events-none rounded-3xl ring-1 ring-white/35 dark:ring-white/15" />
+                {!prefersReducedMotion && (
+                  <motion.div
+                    aria-hidden="true"
+                    className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/70 to-transparent"
+                    animate={{ opacity: [0.35, 0.7, 0.35], scaleX: [0.96, 1, 0.96] }}
+                    transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                )}
 
-                  <div className="divide-y divide-border/30">
-                    {/* Client info row */}
-                    <div className="flex items-center gap-3 py-3 first:pt-0">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-accent/5 shadow-sm flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step3}</p>
-                        <p className="text-[15px] font-bold text-foreground break-words">{clientName}</p>
-                        <p className="text-[13px] text-muted-foreground" dir="ltr">+212 {clientPhone}</p>
+                <div className="relative p-4">
+                  <div className="space-y-2">
+                    <div className="rounded-2xl border border-white/35 dark:border-white/16 bg-background/42 dark:bg-background/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]">
+                      <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] flex items-center justify-center shrink-0">
+                          <User className="w-[18px] h-[18px] text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <p className={`text-[11px] leading-[1.15] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.11em]"} text-muted-foreground/72`}>
+                            {t.step3}
+                          </p>
+                          <p className="mt-1 text-[15px] leading-[1.35] font-semibold text-foreground break-words">{clientName}</p>
+                          <p className="mt-1 text-[13px] leading-[1.3] text-muted-foreground break-all" dir="ltr">
+                            {formatMoroccanPhoneDisplay(clientPhone)}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Date row */}
-                    <div className="flex items-center gap-3 py-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm flex items-center justify-center">
-                        <CalendarDays className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step1}</p>
-                        <p className="text-[15px] font-bold text-foreground">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
-                      </div>
-                    </div>
-
-                    {/* Time row */}
-                    <div className="flex items-center gap-3 py-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-accent/15 to-accent/5 shadow-sm flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-accent" />
-                      </div>
-                      <div>
-                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.step2}</p>
-                        <p className="text-[15px] font-bold text-foreground">{selectedTime} – {getEndTime(selectedTime)}</p>
+                    <div className="rounded-2xl border border-white/30 dark:border-white/14 bg-background/38 dark:bg-background/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                      <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/18 to-primary/8 border border-primary/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0">
+                          <CalendarDays className="w-[18px] h-[18px] text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <p className={`text-[11px] leading-[1.15] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.11em]"} text-muted-foreground/72`}>
+                            {t.step1}
+                          </p>
+                          <p className="mt-1 text-[15px] leading-[1.35] font-semibold text-foreground break-words">
+                            {formatDate(selectedDate, "EEEE, MMM d, yyyy")}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Consultation row */}
-                    <div className="flex items-center gap-3 py-3 last:pb-0">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 shadow-sm flex items-center justify-center">
-                        <Stethoscope className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className={`text-[11px] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-wider"} text-muted-foreground/70`}>{t.consultation}</p>
-                        <p className="text-[15px] font-bold text-foreground">{t.duration}</p>
+                    <div className="rounded-2xl border border-white/30 dark:border-white/14 bg-background/38 dark:bg-background/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                      <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/8 border border-accent/24 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0">
+                          <Clock className="w-[18px] h-[18px] text-accent" />
+                        </div>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <p className={`text-[11px] leading-[1.15] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.11em]"} text-muted-foreground/72`}>
+                            {t.step2}
+                          </p>
+                          <p className="mt-1 text-[15px] leading-[1.35] font-semibold text-foreground break-words">
+                            {selectedTime}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1172,12 +1206,10 @@ interface TimeGroupProps {
   selectedTime: string | null;
   onSelect: (time: string) => void;
   delayOffset: number;
-  getEndTime: (time: string) => string;
-  timeArrow: string;
 }
 
 const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
-  ({ label, icon, slots, selectedTime, onSelect, delayOffset, getEndTime, timeArrow }, ref) => (
+  ({ label, icon, slots, selectedTime, onSelect, delayOffset }, ref) => (
     <div ref={ref}>
       <div className="flex items-center gap-2 mb-2.5">
         {icon}
