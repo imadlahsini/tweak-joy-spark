@@ -359,9 +359,6 @@ const AppointmentConfirmation = () => {
 
           <div className="relative flex items-center justify-around">
             {[
-              { icon: MessageCircle, label: t.whatsapp, href: "https://wa.me/212XXXXXXXXX", color: "text-green-500" },
-              { icon: PhoneCall, label: t.call, href: "tel:+212XXXXXXXXX", color: "text-primary" },
-              { icon: Navigation, label: t.directions, href: "https://maps.google.com/?q=placeholder", color: "text-accent-foreground" },
             ].map((item, i, arr) => (
               <div key={item.label} className="flex items-center">
                 <motion.a
