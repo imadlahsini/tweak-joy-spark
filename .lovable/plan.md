@@ -1,86 +1,23 @@
 
 
-# Fix: Dashboard Frontend Invocation Issues
+# Navbar: Mobile Menu Redesign + Hide Nav Links on Desktop
 
-## Root Cause
-The edge functions are correct (already using `getUser()`). The issue is in `src/pages/admin/AdminDashboard.tsx`:
+## Changes — `src/components/landing/Navbar.tsx`
 
-1. **`body: null`** gets serialized as the string `"null"`, which the edge function receives as unexpected POST body content
-2. **`method: "POST"`** is unnecessary -- the SDK defaults to GET when no body is provided
-3. **Redundant `Authorization` header** -- the Supabase SDK automatically includes it from the current session
-4. **No error handling** -- if `getSession()` returns no session, `setLoading(false)` is never called, leaving the spinner stuck forever
+### 1. Hide desktop nav links (Services, Process, Pricing)
+Remove or hide the desktop navigation links section (lines 116-155). The hamburger menu button stays mobile-only. On desktop, show only logo + "Get Started" CTA button.
 
-## Fix
+### 2. Redesign mobile menu content
+Replace the current nav links + social links in the mobile menu with **contact details** and a **Call button**:
 
-### File: `src/pages/admin/AdminDashboard.tsx`
+- **Phone numbers**: Show `0528333836` and `0528333837` with `Phone` icon, tappable `tel:` links
+- **WhatsApp**: Show `0660077768` with WhatsApp SVG icon, tappable link to `https://wa.me/212660077768`
+- **Working hours**: Display business hours (need to confirm exact hours — will use a placeholder like "Lun-Ven: 9h-18h")
+- **CTA button**: Change from "Get Started" (navigates to /appointment) to **"Appeler"** / **"Call"** with `Phone` icon, linking to `tel:0528333836`
 
-**Simplify the `fetchStats` function (lines 45-82):**
+### 3. Remove social links from mobile menu
+Replace Twitter/LinkedIn/Mail social links at the bottom with the WhatsApp quick-action button.
 
-- Remove `headers`, `body: null`, and `method: "POST"` from the `supabase.functions.invoke` call
-- Wrap the entire function in `try/catch/finally` to ensure `setLoading(false)` always runs
-- If no session exists, set an error message and stop loading
+### 4. Keep desktop CTA unchanged
+The "Get Started" button on desktop remains as-is, navigating to `/appointment`.
 
-```typescript
-const fetchStats = async (forceRefresh = false) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    if (forceRefresh) {
-      setRefreshing(true);
-      try {
-        const res = await fetch(
-          `https://clqbumovauiuoeizwbhd.supabase.co/functions/v1/fetch-dashboard-stats?refresh=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            },
-          }
-        );
-        const freshData = await res.json();
-        if (res.ok) {
-          setStats(freshData);
-          setIsCached(false);
-        }
-      } catch {
-        // Keep showing stale data
-      }
-      setRefreshing(false);
-      return;
-    }
-
-    // Simplified: no body, no method, no manual headers
-    const { data, error: fnError } = await supabase.functions.invoke(
-      "fetch-dashboard-stats"
-    );
-
-    if (fnError) {
-      setError("Failed to load dashboard stats");
-    } else {
-      setStats(data);
-      setIsCached(!!data?.cached);
-    }
-  } catch {
-    setError("Failed to load dashboard stats");
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Remove `body: null`, `method: "POST"`, and redundant `headers` from invoke call; add try/catch/finally for resilient loading state |
-
-## Result
-- The SDK handles auth automatically -- no manual header needed
-- No `body: null` serialization issue
-- Loading spinner always resolves, even on errors
-- Dashboard loads correctly from the Supabase-backed edge function
