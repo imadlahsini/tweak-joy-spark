@@ -191,7 +191,7 @@ const Navbar = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="relative h-full flex flex-col pt-24 pb-8 px-6 safe-top safe-bottom"
+              className="relative h-full flex flex-col pt-28 pb-8 px-6 safe-top safe-bottom"
             >
               {/* Gradient accent line */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary/50 to-transparent" />
