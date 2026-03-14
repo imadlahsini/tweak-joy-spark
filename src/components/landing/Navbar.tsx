@@ -97,47 +97,7 @@ const Navbar = () => {
                 />
               </motion.a>
 
-              {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center gap-2">
-                {navLinks.map((link, i) => {
-                  const isActive = activeSection === link.href.replace("#", "");
-                  return (
-                    <motion.button
-                      key={link.name}
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: 0.3 + i * 0.08 }}
-                      onClick={() => scrollToSection(link.href)}
-                      className={`relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                        isActive 
-                          ? "text-foreground" 
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {/* Active/Hover Background */}
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeNav"
-                          className="absolute inset-0 bg-muted/60 rounded-full"
-                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        />
-                      )}
-                      <span className="relative z-10">{link.name}</span>
-                      
-                      {/* Gradient underline for active */}
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeUnderline"
-                          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-gradient-to-r from-primary to-primary/60 rounded-full"
-                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        />
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
+              {/* Desktop nav links hidden per design */}
 
               {/* Desktop CTA Button */}
               <motion.div 
