@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion } from "framer-motion";
-import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowRight, Stethoscope, ChevronsRight, ChevronsLeft, ChevronRight, ChevronLeft, User, Phone } from "lucide-react";
+import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowRight, Stethoscope, ChevronRight, ChevronLeft, User, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import Navbar from "@/components/landing/Navbar";
@@ -584,15 +584,47 @@ const Appointment = () => {
               <>
                 {/* Horizontal day slider with scroll indicators */}
                 <div className="relative -mx-8 px-8">
-                  {/* End-side gradient rail behind the hint arrow */}
+                  {/* End-side magnetic rail cue */}
                   {!hasScrolled && (isRTL ? showLeftFade : showRightFade) && (
                     <div
-                      className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-16 z-20 pointer-events-none ${
+                      className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-20 z-20 pointer-events-none overflow-hidden ${
                         isRTL
-                          ? "bg-gradient-to-r from-primary/24 via-primary/12 to-transparent"
-                          : "bg-gradient-to-l from-primary/24 via-primary/12 to-transparent"
+                          ? "bg-gradient-to-r from-primary/28 via-primary/14 to-transparent"
+                          : "bg-gradient-to-l from-primary/28 via-primary/14 to-transparent"
                       }`}
-                    />
+                    >
+                      <motion.div
+                        aria-hidden="true"
+                        animate={
+                          prefersReducedMotion
+                            ? undefined
+                            : {
+                                opacity: [0.48, 0.78, 0.48],
+                                scaleY: [0.86, 1, 0.86],
+                              }
+                        }
+                        transition={
+                          prefersReducedMotion
+                            ? undefined
+                            : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+                        }
+                        className={`absolute ${isRTL ? "left-[7px]" : "right-[7px]"} top-1/2 -translate-y-1/2 w-[2px] h-11 rounded-full bg-gradient-to-b from-primary/90 via-accent/80 to-primary/85 shadow-[0_0_12px_hsl(var(--primary)/0.32)]`}
+                      />
+                      <motion.div
+                        aria-hidden="true"
+                        animate={
+                          prefersReducedMotion
+                            ? undefined
+                            : { x: isRTL ? ["110%", "-115%"] : ["-115%", "110%"] }
+                        }
+                        transition={
+                          prefersReducedMotion
+                            ? undefined
+                            : { duration: 2.8, repeat: Infinity, ease: "linear" }
+                        }
+                        className="absolute inset-y-0 w-6 bg-gradient-to-r from-transparent via-white/28 to-transparent dark:via-white/18"
+                      />
+                    </div>
                   )}
                   {showLeftFade && (
                     <div className={`absolute ${isRTL ? "right-0" : "left-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-transparent to-card/80" : "from-card/80 to-transparent"} z-10 pointer-events-none rounded-l-2xl`} />
@@ -601,9 +633,19 @@ const Appointment = () => {
                     <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
                   )}
 
-                  <div
+                  <motion.div
                     ref={sliderRef}
                     className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
+                    animate={
+                      !prefersReducedMotion && !hasScrolled && (isRTL ? showLeftFade : showRightFade)
+                        ? { x: isRTL ? [0, -5, 0] : [0, 5, 0] }
+                        : undefined
+                    }
+                    transition={
+                      !prefersReducedMotion && !hasScrolled && (isRTL ? showLeftFade : showRightFade)
+                        ? { duration: 2.1, repeat: Infinity, ease: "easeInOut" }
+                        : undefined
+                    }
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", overflowY: "visible" }}
                   >
                     {next14Days.map((day, i) => {
@@ -657,47 +699,7 @@ const Appointment = () => {
                       );
                     })}
                     <div className="flex-shrink-0 w-14" aria-hidden="true" />
-                  </div>
-
-                  <AnimatePresence>
-                    {!hasScrolled && (isRTL ? showLeftFade : showRightFade) && (
-                      <motion.div
-                        key="scroll-hint"
-                        initial={{ opacity: 0, scale: 0.94 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.94 }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
-                        className={`absolute ${isRTL ? "left-5" : "right-5"} top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 pointer-events-none`}
-                      >
-                        <motion.div
-                          animate={
-                            prefersReducedMotion
-                              ? undefined
-                              : {
-                                  x: isRTL ? [0, -4, 0] : [0, 4, 0],
-                                  scale: [1, 1.03, 1],
-                                  boxShadow: [
-                                    "0 0 0px hsl(var(--primary)/0.20)",
-                                    "0 0 14px hsl(var(--primary)/0.28)",
-                                    "0 0 0px hsl(var(--primary)/0.20)",
-                                  ],
-                                }
-                          }
-                          transition={
-                            prefersReducedMotion
-                              ? undefined
-                              : { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
-                          }
-                          className="relative flex items-center justify-center rounded-full w-10 h-10 bg-card/75 backdrop-blur-xl border border-primary/25 text-primary"
-                        >
-                          {isRTL ? <ChevronsLeft className="w-5 h-5" /> : <ChevronsRight className="w-5 h-5" />}
-                        </motion.div>
-                        <span className="text-[10px] text-muted-foreground font-medium select-none">
-                          {language === "ar" ? "اسحب" : language === "fr" ? "Glisser" : "Swipe"}
-                        </span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  </motion.div>
                 </div>
 
                 <AnimatePresence>
