@@ -979,7 +979,7 @@ const Appointment = () => {
                     >
                       <label
                         htmlFor="client-name"
-                        className={`absolute top-2 inline-flex max-w-[calc(100%-3rem)] items-center gap-1.5 overflow-hidden text-[11px] font-semibold text-foreground/78 whitespace-nowrap ${
+                        className={`absolute top-2 inline-flex max-w-[calc(100%-3rem)] items-center gap-1.5 text-[11px] font-semibold text-foreground/78 ${
                           isRTL ? "right-3" : "left-3"
                         }`}
                         style={isRTL ? { direction: "ltr", unicodeBidi: "isolate" } : undefined}
@@ -993,7 +993,7 @@ const Appointment = () => {
                           />
                         </span>
                         <span
-                          className={`order-2 truncate leading-none ${isRTL ? "text-right" : ""}`}
+                          className={`order-2 leading-none ${isRTL ? "text-right" : ""}`}
                           dir={isRTL ? "rtl" : undefined}
                         >
                           {t.nameLabel}
@@ -1039,7 +1039,7 @@ const Appointment = () => {
                         }`}>
                       <label
                         htmlFor="client-phone"
-                        className={`absolute top-2 inline-flex max-w-[calc(100%-3rem)] items-center gap-1.5 overflow-hidden text-[11px] font-semibold text-foreground/78 whitespace-nowrap ${
+                        className={`absolute top-2 inline-flex max-w-[calc(100%-3rem)] items-center gap-1.5 text-[11px] font-semibold text-foreground/78 ${
                           isRTL ? "right-3" : "left-3"
                         }`}
                         style={isRTL ? { direction: "ltr", unicodeBidi: "isolate" } : undefined}
@@ -1053,7 +1053,7 @@ const Appointment = () => {
                           />
                         </span>
                         <span
-                          className={`order-2 truncate leading-none ${isRTL ? "text-right" : ""}`}
+                          className={`order-2 leading-none ${isRTL ? "text-right" : ""}`}
                           dir={isRTL ? "rtl" : undefined}
                         >
                           {t.phoneLabel}

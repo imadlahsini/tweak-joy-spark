@@ -225,9 +225,9 @@ const AppointmentConfirmation = () => {
     
   ];
   const actionItems = [
-    { label: t.whatsapp, href: "https://wa.me/212XXXXXXXXX", type: "whatsapp" as const, icon: "solar:chat-round-line-bold-duotone" },
-    { label: t.call, href: "tel:+212XXXXXXXXX", type: "phone" as const, icon: "solar:phone-calling-rounded-bold-duotone" },
-    { label: t.directions, href: "https://maps.google.com/?q=placeholder", type: "map" as const, icon: "solar:map-point-wave-bold-duotone" },
+    { label: t.whatsapp, href: "https://wa.me/212660077768", type: "whatsapp" as const, icon: "solar:chat-round-line-bold-duotone" },
+    { label: t.call, href: "tel:0528333836", type: "phone" as const, icon: "solar:phone-calling-rounded-bold-duotone" },
+    { label: t.directions, href: "https://maps.app.goo.gl/YbKTvN8aSjoe4amUA", type: "map" as const, icon: "solar:map-point-wave-bold-duotone" },
   ];
 
   return (
