@@ -968,8 +968,8 @@ const Appointment = () => {
                 </div>
 
                 {/* Name input */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
+                <div className="space-y-2.5">
+                  <div className="space-y-1.5">
                     <div
                       className={`relative overflow-hidden rounded-xl border bg-background/50 backdrop-blur-sm transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
                         nameTouched && !isNameValid
@@ -1021,7 +1021,7 @@ const Appointment = () => {
                         className="w-full h-14 rounded-xl bg-transparent px-3.5 pt-6 pb-2 text-base text-foreground placeholder:text-muted-foreground/60 outline-none"
                       />
                     </div>
-                    <div className="min-h-8">
+                    <div className="min-h-6">
                       {nameTouched && !isNameValid ? (
                         <p className="text-xs leading-4 text-destructive">{t.nameRequired}</p>
                       ) : (
@@ -1031,7 +1031,7 @@ const Appointment = () => {
                   </div>
 
                   {/* Phone input */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className={`relative overflow-hidden rounded-xl border bg-background/50 backdrop-blur-sm transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
                           phoneTouched && !isPhoneValid
                             ? "border-destructive focus-within:border-destructive"
@@ -1088,7 +1088,7 @@ const Appointment = () => {
                         className="w-full h-14 rounded-xl bg-transparent px-3.5 pt-6 pb-2 text-base tracking-[0.02em] text-foreground placeholder:text-muted-foreground/60 outline-none"
                       />
                     </div>
-                    <div id="client-phone-help" className="min-h-8">
+                    <div id="client-phone-help" className="min-h-6">
                       {phoneTouched && !isPhoneValid ? (
                         <p className="text-xs leading-4 text-destructive">{t.phoneRequired}</p>
                       ) : (
