@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion } from "framer-motion";
-import { CalendarDays, Clock, Sparkles, Check, Sun, CloudSun, ArrowRight, ChevronRight, ChevronLeft, User, Phone } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import Navbar from "@/components/landing/Navbar";
+import UiIcon from "@/components/shared/UiIcon";
 import { addDays, format, isToday, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale/fr";
 import { arSA } from "date-fns/locale/ar-SA";
@@ -46,10 +46,10 @@ const translations = {
     nameLabel: "Full Name",
     namePlaceholder: "Enter your name",
     phoneLabel: "Phone Number",
-    phonePlaceholder: "6XX XXX XXX",
+    phonePlaceholder: "06 12 34 56 78",
     nameRequired: "Name is required (min 2 characters)",
-    phoneRequired: "Enter a valid Moroccan mobile number",
-    phoneHint: "Start with 6 or 7 (9 digits)",
+    phoneRequired: "Enter a valid Moroccan mobile number (10 digits)",
+    phoneHint: "Start with 06 or 07 (10 digits)",
     edit: "Edit",
     ctaHintDate: "Choose a date to continue",
     ctaHintTime: "Pick a time to continue",
@@ -81,10 +81,10 @@ const translations = {
     nameLabel: "Nom Complet",
     namePlaceholder: "Entrez votre nom",
     phoneLabel: "Numéro de Téléphone",
-    phonePlaceholder: "6XX XXX XXX",
+    phonePlaceholder: "06 12 34 56 78",
     nameRequired: "Le nom est requis (min 2 caractères)",
-    phoneRequired: "Entrez un numéro mobile marocain valide",
-    phoneHint: "Commencez par 6 ou 7 (9 chiffres)",
+    phoneRequired: "Entrez un numéro mobile marocain valide (10 chiffres)",
+    phoneHint: "Commencez par 06 ou 07 (10 chiffres)",
     edit: "Modifier",
     ctaHintDate: "Choisissez une date pour continuer",
     ctaHintTime: "Choisissez une heure pour continuer",
@@ -116,15 +116,50 @@ const translations = {
     nameLabel: "الاسم الكامل",
     namePlaceholder: "أدخل اسمك",
     phoneLabel: "رقم الهاتف",
-    phonePlaceholder: "6XX XXX XXX",
+    phonePlaceholder: "06 12 34 56 78",
     nameRequired: "الاسم مطلوب (حرفان على الأقل)",
-    phoneRequired: "أدخل رقم هاتف مغربي صحيح",
-    phoneHint: "يبدأ بـ 6 أو 7 (9 أرقام)",
+    phoneRequired: "أدخل رقم هاتف مغربي صحيح (10 أرقام)",
+    phoneHint: "يبدأ بـ 06 أو 07 (10 أرقام)",
     edit: "تعديل",
     ctaHintDate: "اختر التاريخ للمتابعة",
     ctaHintTime: "اختر الوقت للمتابعة",
     ctaHintDetails: "أدخل بياناتك للتأكيد",
     ctaTrust: "ساعة • حضوري • تأكيد فوري",
+  },
+  zgh: {
+    title: "ⵃⵥⵥ",
+    titleAccent: "ⴰⵎⵓⵄⴷⴽ",
+    subtitle: "ⴼⵔⵏ ⴰⵣⵎⵣ ⴷ ⵓⴽⵓⴷ ⵉ ⵜⵔⵉⴷ",
+    step1: "ⴰⵣⵎⵣ",
+    step2: "ⴰⴽⵓⴷ",
+    step3: "ⵉⵙⴼⴽⴰ",
+    selectDate: "ⴼⵔⵏ ⴰⵣⵎⵣ",
+    morning: "ⵜⴰⴼⴰⵡⵜ",
+    afternoon: "ⵜⴰⴷⴳⴳⵯⴰⵜ",
+    selectTime: "ⴼⵔⵏ ⴰⴽⵓⴷ",
+    confirm: "ⵙⵙⵏⵜⵎ ⴰⵎⵓⵄⴷ",
+    selected: "ⵉⵜⵜⵓⴼⵔⵏ",
+    back: "ⵓⵔⴰⵔ",
+    successTitle: "!ⵉⵜⵜⵓⵃⵥⵥ ⵓⵎⵓⵄⴷ",
+    successDesc: "ⴰⴷ ⵏⵣⵔⴽ ⴳ",
+    consultation: "ⴰⵙⵉⵡⴹ",
+    today: "ⴰⵙⵙⴰ",
+    summaryTitle: "ⴰⵎⵓⵄⴷⵏⵏⴽ",
+    duration: "1ⵙⴰⵄⴰ • ⵙ ⵓⴷⴷⵓⵔ",
+    at: "ⴳ",
+    yourDetails: "ⵉⵙⴼⴽⴰⵏⵏⴽ",
+    nameLabel: "ⵉⵙⵎ ⴰⴽⴰⵎⴰⵍ",
+    namePlaceholder: "ⵙⴽⵛⵎ ⵉⵙⵎⵏⵏⴽ",
+    phoneLabel: "ⵓⵜⵟⵓⵏ ⵏ ⵓⵟⵟⵍ",
+    phonePlaceholder: "06 12 34 56 78",
+    nameRequired: "ⵉⵙⵎ ⵉⵍⵍⴰ ⴰⴷ ⵉⵍⵉ (ⵙⵉⵏ ⵉⵙⴽⴽⵉⵍⵏ)",
+    phoneRequired: "ⵙⴽⵛⵎ ⵓⵜⵟⵓⵏ ⵏ ⵓⵟⵟⵍ ⴰⵎⵓⵔⵓⴽⵉ ⵉⵎⵖⴰⵔ (10 ⵉⵎⵣⴳⴰⵏ)",
+    phoneHint: "ⵉⵙⵙⵏⵜⵉ ⵙ 06 ⵏⵖ 07 (10 ⵉⵎⵣⴳⴰⵏ)",
+    edit: "ⵙⵏⴼⵍ",
+    ctaHintDate: "ⴼⵔⵏ ⴰⵣⵎⵣ ⵉ ⵜⵙⵎⴷ",
+    ctaHintTime: "ⴼⵔⵏ ⴰⴽⵓⴷ ⵉ ⵜⵙⵎⴷ",
+    ctaHintDetails: "ⵙⴽⵛⵎ ⵉⵙⴼⴽⴰⵏⵏⴽ ⵉ ⵜⵙⵙⵏⵜⵎ",
+    ctaTrust: "1ⵙⴰⵄⴰ • ⵙ ⵓⴷⴷⵓⵔ • ⴰⵙⵙⵏⵜⵎ ⴰⵎⵉⵔⴰⵏ",
   },
 };
 
@@ -185,21 +220,25 @@ const normalizeMoroccanPhone = (value: string) => {
     normalized = normalized.slice(3);
   }
 
-  if (normalized.startsWith("0")) {
+  if ((normalized.startsWith("6") || normalized.startsWith("7")) && normalized.length <= 9) {
+    normalized = `0${normalized}`;
+  }
+
+  if (normalized.startsWith("00") && (normalized[2] === "6" || normalized[2] === "7")) {
     normalized = normalized.slice(1);
   }
 
-  return normalized.slice(0, 9);
+  return normalized.slice(0, 10);
 };
 
 const formatMoroccanPhone = (value: string) => {
-  const digits = value.replace(/\D/g, "").slice(0, 9);
-  return digits.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
 };
 
 const formatMoroccanPhoneDisplay = (value: string) => {
-  const formatted = formatMoroccanPhone(value);
-  return formatted ? `+212 ${formatted}` : "+212";
+  const normalized = normalizeMoroccanPhone(value);
+  return formatMoroccanPhone(normalized);
 };
 
 let cachedRtlScrollType: RtlScrollType | null = null;
@@ -278,12 +317,12 @@ const Appointment = () => {
   const orbX2 = useTransform(mouseX, [-500, 500], [15, -15]);
   const orbY2 = useTransform(mouseY, [-500, 500], [10, -10]);
 
-  const t = translations[(language as "en" | "fr" | "ar") || "en"];
+  const t = translations[(language as "en" | "fr" | "ar" | "zgh") || "en"];
   const isRTL = language === "ar";
-  const dateLocale = language === "fr" ? fr : language === "ar" ? arSA : undefined;
+  const dateLocale = language === "fr" || language === "zgh" ? fr : language === "ar" ? arSA : undefined;
 
   const isNameValid = clientName.trim().length >= 2;
-  const isPhoneValid = /^(6|7)\d{8}$/.test(clientPhone);
+  const isPhoneValid = /^0[67]\d{8}$/.test(clientPhone);
   const isFormValid = isNameValid && isPhoneValid;
   const formattedPhoneValue = formatMoroccanPhone(clientPhone);
   const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : !isFormValid ? 3 : 4;
@@ -293,9 +332,9 @@ const Appointment = () => {
   const canConfirm = Boolean(selectedDate && selectedTime && isFormValid);
   const ctaHint = !selectedDate ? t.ctaHintDate : !selectedTime ? t.ctaHintTime : t.ctaHintDetails;
   const progressItems = [
-    { id: 1, label: t.step1, icon: CalendarDays },
-    { id: 2, label: t.step2, icon: Clock },
-    { id: 3, label: t.step3, icon: User },
+    { id: 1, label: t.step1, icon: "solar:calendar-date-bold-duotone" },
+    { id: 2, label: t.step2, icon: "solar:clock-circle-bold-duotone" },
+    { id: 3, label: t.step3, icon: "solar:user-bold-duotone" },
   ] as const;
   const getConnectorState = (nextStepId: number): StepConnectorState => {
     if (currentStep > nextStepId) return "completed";
@@ -591,7 +630,7 @@ const Appointment = () => {
           <div className="max-w-sm mx-auto rounded-2xl border border-border/60 bg-background/85 backdrop-blur-xl shadow-soft px-3 py-2.5">
             <div className="flex items-center">
               {progressItems.map((step, index) => {
-                const Icon = step.icon;
+                const iconName = step.icon;
                 const isCompleted = currentStep > step.id;
                 const isActive = progressStep === step.id;
                 const canJump = canNavigateToStep(step.id);
@@ -616,7 +655,12 @@ const Appointment = () => {
                         !canJump && !isActive ? "opacity-80" : ""
                       }`}
                     >
-                      {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                      <UiIcon
+                        icon={isCompleted ? "solar:check-circle-bold" : iconName}
+                        size={18}
+                        tone="current"
+                        state={isCompleted ? "completed" : isActive ? "active" : "default"}
+                      />
                     </button>
                     {connectorState && (
                       <StepConnector
@@ -649,9 +693,7 @@ const Appointment = () => {
 
             {/* Section label */}
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20">
-                <CalendarDays className="w-4 h-4 text-primary" />
-              </div>
+              <UiIcon icon="solar:calendar-date-bold-duotone" size={18} tone="primary" />
               <span className="text-sm font-bold text-foreground">{t.selectDate}</span>
             </div>
 
@@ -671,7 +713,11 @@ const Appointment = () => {
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary shrink-0">
                   {t.edit}
-                  {isRTL ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  <UiIcon
+                    icon={isRTL ? "solar:alt-arrow-left-linear" : "solar:alt-arrow-right-linear"}
+                    size={18}
+                    tone="current"
+                  />
                 </span>
               </button>
             ) : (
@@ -785,7 +831,7 @@ const Appointment = () => {
                                 transition={{ type: "spring", stiffness: 500, damping: 20 }}
                                 className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
                               >
-                                <Check className="w-3 h-3 text-accent-foreground" />
+                                <UiIcon icon="solar:check-circle-bold" size={16} className="text-accent-foreground" />
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -805,7 +851,7 @@ const Appointment = () => {
                       className="mt-3 flex justify-center"
                     >
                       <span className="inline-flex max-w-full items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary backdrop-blur-sm text-center whitespace-normal break-words leading-snug">
-                        <Check className="w-3.5 h-3.5" />
+                        <UiIcon icon="solar:check-circle-bold-duotone" size={16} tone="current" />
                         {formatDate(selectedDate, "EEEE, MMM d, yyyy")}
                       </span>
                     </motion.div>
@@ -833,9 +879,7 @@ const Appointment = () => {
 
                 {/* Section label */}
                 <div className="flex items-center gap-2.5 mb-4">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent/20 to-primary/10 flex items-center justify-center border border-accent/20">
-                    <Clock className="w-4 h-4 text-accent" />
-                  </div>
+                  <UiIcon icon="solar:clock-circle-bold-duotone" size={18} tone="accent" />
                   <span className="text-sm font-bold text-foreground">{t.selectTime}</span>
                 </div>
 
@@ -854,7 +898,11 @@ const Appointment = () => {
                     </div>
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent shrink-0">
                       {t.edit}
-                      {isRTL ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      <UiIcon
+                        icon={isRTL ? "solar:alt-arrow-left-linear" : "solar:alt-arrow-right-linear"}
+                        size={18}
+                        tone="current"
+                      />
                     </span>
                   </button>
                 ) : (
@@ -862,7 +910,7 @@ const Appointment = () => {
                     {/* Morning */}
                     <TimeGroup
                       label={t.morning}
-                      icon={<Sun className="w-3.5 h-3.5 text-primary" />}
+                      icon={<UiIcon icon="solar:sun-2-bold-duotone" size={18} tone="primary" />}
                       slots={morningSlots}
                       selectedTime={selectedTime}
                       onSelect={setSelectedTime}
@@ -885,7 +933,7 @@ const Appointment = () => {
                     {/* Afternoon */}
                     <TimeGroup
                       label={t.afternoon}
-                      icon={<CloudSun className="w-3.5 h-3.5 text-accent" />}
+                      icon={<UiIcon icon="solar:cloud-sun-2-bold-duotone" size={18} tone="accent" />}
                       slots={afternoonSlots}
                       selectedTime={selectedTime}
                       onSelect={setSelectedTime}
@@ -915,76 +963,112 @@ const Appointment = () => {
 
                 {/* Section label */}
                 <div className="flex items-center gap-2.5 mb-5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20">
-                    <User className="w-4 h-4 text-primary" />
-                  </div>
+                  <UiIcon icon="solar:user-bold-duotone" size={18} tone="primary" />
                   <span className="text-sm font-bold text-foreground">{t.yourDetails}</span>
                 </div>
 
                 {/* Name input */}
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
-                      <User className="w-3.5 h-3.5 text-muted-foreground" />
-                      {t.nameLabel}
+                    <div
+                      className={`relative overflow-hidden rounded-xl border bg-background/50 backdrop-blur-sm transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                        nameTouched && !isNameValid
+                          ? "border-destructive focus-within:border-destructive"
+                          : "border-border/60 focus-within:border-primary"
+                      }`}
+                    >
+                      <label
+                        htmlFor="client-name"
+                        className={`absolute top-2 inline-flex max-w-[calc(100%-3rem)] items-center gap-1.5 overflow-hidden text-[11px] font-semibold text-foreground/78 whitespace-nowrap ${
+                          isRTL ? "right-3" : "left-3"
+                        }`}
+                        style={isRTL ? { direction: "ltr", unicodeBidi: "isolate" } : undefined}
+                      >
+                        <span className="order-1 inline-flex items-center">
+                          <UiIcon
+                            icon="solar:user-bold-duotone"
+                            size={16}
+                            tone={isNameValid ? "success" : "muted"}
+                            className={isRTL ? "-scale-x-100" : ""}
+                          />
+                        </span>
+                        <span
+                          className={`order-2 truncate leading-none ${isRTL ? "text-right" : ""}`}
+                          dir={isRTL ? "rtl" : undefined}
+                        >
+                          {t.nameLabel}
+                        </span>
+                      </label>
                       {isNameValid && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ type: "spring", bounce: 0.5 }}
+                          className={`absolute top-2 ${isRTL ? "left-3" : "right-3"}`}
                         >
-                          <Check className="w-3.5 h-3.5 text-green-500" />
+                          <UiIcon icon="solar:check-circle-bold" size={16} tone="success" />
                         </motion.div>
                       )}
-                    </label>
-                    <div className="relative">
                       <input
+                        id="client-name"
                         ref={nameInputRef}
                         type="text"
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
                         onBlur={() => setNameTouched(true)}
+                        aria-invalid={nameTouched && !isNameValid}
                         placeholder={t.namePlaceholder}
-                        className={`w-full h-12 rounded-xl bg-background/50 backdrop-blur-sm border px-4 text-base text-foreground placeholder:text-muted-foreground/60 outline-none transition-all duration-300 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
-                          nameTouched && !isNameValid
-                            ? "border-destructive focus:border-destructive"
-                            : "border-border/60 focus:border-primary"
-                        }`}
+                        className="w-full h-14 rounded-xl bg-transparent px-3.5 pt-6 pb-2 text-base text-foreground placeholder:text-muted-foreground/60 outline-none"
                       />
                     </div>
-                    <div className="min-h-[18px]">
+                    <div className="min-h-8">
                       {nameTouched && !isNameValid ? (
-                        <p className="text-xs text-destructive">{t.nameRequired}</p>
+                        <p className="text-xs leading-4 text-destructive">{t.nameRequired}</p>
                       ) : (
-                        <p aria-hidden="true" className="text-xs opacity-0 select-none">.</p>
+                        <p aria-hidden="true" className="text-xs leading-4 opacity-0 select-none">.</p>
                       )}
                     </div>
                   </div>
 
                   {/* Phone input */}
                   <div className="space-y-2">
-                    <label htmlFor="client-phone" className="flex items-center gap-1.5 text-sm font-medium text-foreground/80">
-                      <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                      {t.phoneLabel}
+                    <div className={`relative overflow-hidden rounded-xl border bg-background/50 backdrop-blur-sm transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
+                          phoneTouched && !isPhoneValid
+                            ? "border-destructive focus-within:border-destructive"
+                            : "border-border/60 focus-within:border-primary"
+                        }`}>
+                      <label
+                        htmlFor="client-phone"
+                        className={`absolute top-2 inline-flex max-w-[calc(100%-3rem)] items-center gap-1.5 overflow-hidden text-[11px] font-semibold text-foreground/78 whitespace-nowrap ${
+                          isRTL ? "right-3" : "left-3"
+                        }`}
+                        style={isRTL ? { direction: "ltr", unicodeBidi: "isolate" } : undefined}
+                      >
+                        <span className="order-1 inline-flex items-center">
+                          <UiIcon
+                            icon="solar:phone-calling-rounded-bold-duotone"
+                            size={16}
+                            tone={isPhoneValid ? "success" : "muted"}
+                            className={isRTL ? "-scale-x-100" : ""}
+                          />
+                        </span>
+                        <span
+                          className={`order-2 truncate leading-none ${isRTL ? "text-right" : ""}`}
+                          dir={isRTL ? "rtl" : undefined}
+                        >
+                          {t.phoneLabel}
+                        </span>
+                      </label>
                       {isPhoneValid && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ type: "spring", bounce: 0.5 }}
+                          className={`absolute top-2 ${isRTL ? "left-3" : "right-3"}`}
                         >
-                          <Check className="w-3.5 h-3.5 text-green-500" />
+                          <UiIcon icon="solar:check-circle-bold" size={16} tone="success" />
                         </motion.div>
                       )}
-                    </label>
-                    <div className={`relative flex items-center h-12 rounded-xl bg-background/60 backdrop-blur-sm border overflow-hidden transition-all duration-300 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)] ${
-                          phoneTouched && !isPhoneValid
-                            ? "border-destructive focus-within:border-destructive"
-                            : "border-border/60 focus-within:border-primary"
-                        }`} dir="ltr">
-                      <div className="flex items-center gap-1.5 px-3.5 h-full border-r border-border/45 bg-gradient-to-b from-muted/55 to-muted/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] select-none shrink-0">
-                        <span className="text-base leading-none">🇲🇦</span>
-                        <span className="text-sm font-semibold text-foreground/85 tracking-[0.01em]">+212</span>
-                      </div>
                       <input
                         id="client-phone"
                         type="tel"
@@ -1000,15 +1084,15 @@ const Appointment = () => {
                         }}
                         onBlur={() => setPhoneTouched(true)}
                         placeholder={t.phonePlaceholder}
-                        maxLength={11}
-                        className="flex-1 h-full px-3.5 text-base tracking-[0.02em] text-foreground bg-transparent placeholder:text-muted-foreground/55 outline-none"
+                        maxLength={14}
+                        className="w-full h-14 rounded-xl bg-transparent px-3.5 pt-6 pb-2 text-base tracking-[0.02em] text-foreground placeholder:text-muted-foreground/60 outline-none"
                       />
                     </div>
-                    <div id="client-phone-help" className="min-h-[18px]">
+                    <div id="client-phone-help" className="min-h-8">
                       {phoneTouched && !isPhoneValid ? (
-                        <p className="text-xs text-destructive">{t.phoneRequired}</p>
+                        <p className="text-xs leading-4 text-destructive">{t.phoneRequired}</p>
                       ) : (
-                        <p className="text-xs text-muted-foreground/80">{t.phoneHint}</p>
+                        <p className="text-xs leading-4 text-muted-foreground/80">{t.phoneHint}</p>
                       )}
                     </div>
                   </div>
@@ -1045,10 +1129,10 @@ const Appointment = () => {
 
                 <div className="relative p-4">
                   <div className="space-y-2">
-                    <div className="rounded-2xl border border-white/35 dark:border-white/16 bg-background/42 dark:bg-background/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]">
+                    <div className="rounded-2xl border border-white/24 dark:border-white/10 p-3">
                       <div className="flex items-start gap-3">
                         <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] flex items-center justify-center shrink-0">
-                          <User className="w-[18px] h-[18px] text-primary" />
+                          <UiIcon icon="solar:user-bold-duotone" size={20} tone="primary" />
                         </div>
                         <div className="min-w-0 flex-1 pt-0.5">
                           <p className={`text-[11px] leading-[1.15] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.11em]"} text-muted-foreground/72`}>
@@ -1062,10 +1146,10 @@ const Appointment = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/30 dark:border-white/14 bg-background/38 dark:bg-background/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                    <div className="rounded-2xl border border-white/20 dark:border-white/10 p-3">
                       <div className="flex items-start gap-3">
                         <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/18 to-primary/8 border border-primary/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0">
-                          <CalendarDays className="w-[18px] h-[18px] text-primary" />
+                          <UiIcon icon="solar:calendar-date-bold-duotone" size={20} tone="primary" />
                         </div>
                         <div className="min-w-0 flex-1 pt-0.5">
                           <p className={`text-[11px] leading-[1.15] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.11em]"} text-muted-foreground/72`}>
@@ -1078,10 +1162,10 @@ const Appointment = () => {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/30 dark:border-white/14 bg-background/38 dark:bg-background/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
+                    <div className="rounded-2xl border border-white/20 dark:border-white/10 p-3">
                       <div className="flex items-start gap-3">
                         <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/8 border border-accent/24 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] flex items-center justify-center shrink-0">
-                          <Clock className="w-[18px] h-[18px] text-accent" />
+                          <UiIcon icon="solar:clock-circle-bold-duotone" size={20} tone="accent" />
                         </div>
                         <div className="min-w-0 flex-1 pt-0.5">
                           <p className={`text-[11px] leading-[1.15] font-medium uppercase ${isRTL ? "tracking-normal" : "tracking-[0.11em]"} text-muted-foreground/72`}>
@@ -1140,14 +1224,18 @@ const Appointment = () => {
                     <div className="absolute -inset-[2px] bg-gradient-to-r from-primary via-accent to-primary rounded-2xl opacity-70 transition-opacity duration-300 blur-[2px] bg-[length:200%_auto] animate-gradient" />
                     <div className="relative flex min-h-[56px] items-center justify-center gap-3 w-full font-semibold text-base rounded-2xl overflow-hidden transition-colors bg-foreground text-background">
                       <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                      <Sparkles className="w-5 h-5 relative z-10" />
+                      <UiIcon icon="solar:star-shine-bold-duotone" size={20} className="relative z-10 text-background" />
                       <span className="relative z-10">{t.confirm}</span>
                       <motion.div
                         className="relative z-10"
                         animate={{ x: isRTL ? [0, -4, 0] : [0, 4, 0] }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                       >
-                        <ArrowRight className={`w-4 h-4 ${isRTL ? "rotate-180" : ""}`} />
+                        <UiIcon
+                          icon="solar:arrow-right-linear"
+                          size={16}
+                          className={isRTL ? "rotate-180 text-background" : "text-background"}
+                        />
                       </motion.div>
                     </div>
                   </motion.button>
@@ -1163,7 +1251,7 @@ const Appointment = () => {
                 >
                   <div className="mx-auto flex w-fit items-center justify-center gap-1.5">
                     {progressItems.map((step, index) => {
-                      const Icon = step.icon;
+                      const iconName = step.icon;
                       const isCompleted = currentStep > step.id;
                       const isActive = progressStep === step.id;
                       const canJump = canNavigateToStep(step.id);
@@ -1186,7 +1274,12 @@ const Appointment = () => {
                               !canJump && !isActive ? "opacity-85" : ""
                             }`}
                           >
-                            {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                            <UiIcon
+                              icon={isCompleted ? "solar:check-circle-bold" : iconName}
+                              size={20}
+                              tone="current"
+                              state={isCompleted ? "completed" : isActive ? "active" : "default"}
+                            />
                           </button>
                           {connectorState && (
                             <StepConnector
@@ -1246,14 +1339,22 @@ const Appointment = () => {
               {canConfirm && (
                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/10 to-transparent" />
               )}
-              <Sparkles className={`w-5 h-5 relative z-10 ${canConfirm ? "" : "opacity-50"}`} />
+              <UiIcon
+                icon="solar:star-shine-bold-duotone"
+                size={20}
+                className={`relative z-10 ${canConfirm ? "text-background" : "text-muted-foreground opacity-50"}`}
+              />
               <span className="relative z-10">{t.confirm}</span>
               <motion.div
                 className="relative z-10"
                 animate={canConfirm ? { x: isRTL ? [0, -4, 0] : [0, 4, 0] } : undefined}
                 transition={canConfirm ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : undefined}
               >
-                <ArrowRight className={`w-4 h-4 ${isRTL ? "rotate-180" : ""}`} />
+                <UiIcon
+                  icon="solar:arrow-right-linear"
+                  size={16}
+                  className={`${isRTL ? "rotate-180" : ""} ${canConfirm ? "text-background" : "text-muted-foreground opacity-60"}`}
+                />
               </motion.div>
             </div>
           </motion.button>

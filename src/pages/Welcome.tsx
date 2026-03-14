@@ -4,11 +4,20 @@ import { motion, useMotionValue, useTransform } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
+import LanguageFlag from "@/components/shared/LanguageFlag";
 
-const languages: { code: Language; label: string; subtitle: string; flag: string; greeting: string }[] = [
-  { code: "ar", label: "العربية", subtitle: "Arabic", flag: "🇸🇦", greeting: "مرحباً" },
-  { code: "en", label: "English", subtitle: "English", flag: "🇺🇸", greeting: "Hello" },
-  { code: "fr", label: "Français", subtitle: "French", flag: "🇫🇷", greeting: "Bonjour" },
+type LanguageOption = {
+  code: Exclude<Language, null>;
+  label: string;
+  subtitle: string;
+  greeting: string;
+};
+
+const languages: LanguageOption[] = [
+  { code: "ar", label: "العربية", subtitle: "Arabic", greeting: "مرحباً" },
+  { code: "zgh", label: "ⵜⴰⵎⴰⵣⵉⵖⵜ", subtitle: "Tamazight", greeting: "ⴰⵣⵓⵍ" },
+  { code: "en", label: "English", subtitle: "English", greeting: "Hello" },
+  { code: "fr", label: "Français", subtitle: "French", greeting: "Bonjour" },
 ];
 
 const Welcome = () => {
@@ -166,7 +175,7 @@ const Welcome = () => {
               <div className="absolute inset-[1px] rounded-2xl bg-gradient-to-br from-primary/20 via-transparent to-accent/20 opacity-50 group-hover:opacity-100 transition-opacity duration-300" />
               
               {/* Card inner */}
-              <div className="relative m-[1px] rounded-2xl bg-card/70 backdrop-blur-xl border border-border/40 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]">
+	              <div className="relative m-[1px] rounded-2xl bg-card/70 backdrop-blur-xl border border-border/40 overflow-hidden group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]">
                 {/* Shimmer sweep */}
                 <div className="absolute inset-0 rounded-2xl overflow-hidden">
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out bg-gradient-to-r from-transparent via-primary/5 to-transparent" />
@@ -175,38 +184,38 @@ const Welcome = () => {
                 {/* Top gradient accent */}
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                <div className="relative flex items-center gap-4 px-5 py-5 sm:flex-col sm:items-center sm:gap-3 sm:px-6 sm:py-7">
-                  {/* Flag with glow */}
-                  <div className="relative flex-shrink-0">
-                    <span className="relative text-5xl sm:text-6xl block leading-none">
-                      {lang.flag}
-                    </span>
-                  </div>
+	                <div className="relative z-10 flex items-stretch">
+	                  <div className="relative z-[1] w-[42%] sm:w-[40%] shrink-0 pointer-events-none overflow-hidden">
+	                    <LanguageFlag code={lang.code} variant="embed" className="h-full w-full opacity-[0.84] saturate-[1.04]" />
+	                    <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,transparent_22%,hsl(var(--card)/0.22)_52%,hsl(var(--card)/0.62)_72%,hsl(var(--card)/0.92)_88%,hsl(var(--card))_100%)]" />
+	                  </div>
 
-                  {/* Text content */}
-                  <div className="flex-1 text-left sm:text-center min-w-0">
-                    <span className="block text-xs text-primary/80 font-medium tracking-wider uppercase mb-0.5">
-                      {lang.greeting}
+	                  <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
+	                    {/* Text content */}
+	                    <div className="min-w-0 flex-1 text-left">
+	                    <span className="block text-[11px] text-primary/80 font-medium tracking-wider uppercase mb-0.5">
+	                      {lang.greeting}
+	                    </span>
+	                    <span className={`block text-lg sm:text-xl leading-tight font-bold text-foreground font-display ${lang.code === "ar" || lang.code === "zgh" ? "font-sans" : ""}`}>
+	                      {lang.label}
                     </span>
-                    <span className={`block text-xl sm:text-2xl font-bold text-foreground font-display ${lang.code === 'ar' ? 'font-sans' : ''}`}>
-                      {lang.label}
-                    </span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">
+                    <span className="block text-[11px] text-muted-foreground mt-0">
                       {lang.subtitle}
                     </span>
-                  </div>
+	                    </div>
 
-                  {/* Arrow — slides in on hover */}
-                  <div className="flex-shrink-0 sm:hidden">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-all duration-300">
-                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-300" />
-                    </div>
-                  </div>
-                  <div className="hidden sm:block">
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-all duration-300" />
-                  </div>
-                </div>
-              </div>
+	                    {/* Arrow — slides in on hover */}
+	                    <div className="flex-shrink-0 sm:hidden">
+	                      <div className="w-8 h-8 rounded-full bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-all duration-300">
+	                        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-300" />
+	                      </div>
+	                    </div>
+	                    <div className="hidden sm:block">
+	                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-all duration-300" />
+	                    </div>
+	                  </div>
+	                </div>
+	              </div>
             </motion.button>
           ))}
         </div>
