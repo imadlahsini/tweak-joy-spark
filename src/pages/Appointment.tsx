@@ -129,6 +129,7 @@ const translations = {
 };
 
 type StepConnectorState = "completed" | "active" | "pending";
+type RtlScrollType = "negative" | "reverse" | "default";
 
 interface StepConnectorProps {
   state: StepConnectorState;
@@ -199,6 +200,52 @@ const formatMoroccanPhone = (value: string) => {
 const formatMoroccanPhoneDisplay = (value: string) => {
   const formatted = formatMoroccanPhone(value);
   return formatted ? `+212 ${formatted}` : "+212";
+};
+
+let cachedRtlScrollType: RtlScrollType | null = null;
+
+const detectRtlScrollType = (): RtlScrollType => {
+  if (cachedRtlScrollType) return cachedRtlScrollType;
+  if (typeof document === "undefined" || !document.body) return "negative";
+
+  const probe = document.createElement("div");
+  const content = document.createElement("div");
+  probe.dir = "rtl";
+  probe.style.width = "4px";
+  probe.style.height = "1px";
+  probe.style.position = "absolute";
+  probe.style.top = "-9999px";
+  probe.style.overflow = "scroll";
+  content.style.width = "8px";
+  content.style.height = "1px";
+  probe.appendChild(content);
+  document.body.appendChild(probe);
+
+  let rtlType: RtlScrollType = "reverse";
+  if (probe.scrollLeft > 0) {
+    rtlType = "default";
+  } else {
+    probe.scrollLeft = 1;
+    if (probe.scrollLeft === 0) rtlType = "negative";
+  }
+
+  document.body.removeChild(probe);
+  cachedRtlScrollType = rtlType;
+  return rtlType;
+};
+
+const getNormalizedScrollLeft = (element: HTMLElement, isRTL: boolean) => {
+  const maxScroll = Math.max(0, element.scrollWidth - element.clientWidth);
+  if (!isRTL) {
+    return Math.min(maxScroll, Math.max(0, element.scrollLeft));
+  }
+
+  const rtlType = detectRtlScrollType();
+  const raw = element.scrollLeft;
+  const normalized =
+    rtlType === "negative" ? -raw : rtlType === "default" ? maxScroll - raw : raw;
+
+  return Math.min(maxScroll, Math.max(0, normalized));
 };
 
 const Appointment = () => {
@@ -306,26 +353,44 @@ const Appointment = () => {
   useEffect(() => {
     const slider = sliderRef.current;
     if (!slider) return;
-    initialScrollLeftRef.current = slider.scrollLeft;
+
+    const fadeThreshold = 4;
+    const swipeThreshold = 8;
+    const updateFades = (normalized?: number) => {
+      const maxScroll = Math.max(0, slider.scrollWidth - slider.clientWidth);
+      if (maxScroll <= 0) {
+        setShowLeftFade(false);
+        setShowRightFade(false);
+        return;
+      }
+
+      const offset = normalized ?? getNormalizedScrollLeft(slider, isRTL);
+      setShowLeftFade(offset > fadeThreshold);
+      setShowRightFade(offset < maxScroll - fadeThreshold);
+    };
+
+    initialScrollLeftRef.current = getNormalizedScrollLeft(slider, isRTL);
     const handleScroll = () => {
+      const normalized = getNormalizedScrollLeft(slider, isRTL);
       if (initialScrollLeftRef.current !== null) {
-        const delta = Math.abs(slider.scrollLeft - initialScrollLeftRef.current);
-        if (delta > 8) {
+        const delta = Math.abs(normalized - initialScrollLeftRef.current);
+        if (delta > swipeThreshold) {
           setHasScrolled(true);
         }
       }
-      const { scrollLeft, scrollWidth, clientWidth } = slider;
-      if (isRTL) {
-        setShowRightFade(scrollLeft < 0);
-        setShowLeftFade(Math.abs(scrollLeft) + clientWidth < scrollWidth - 4);
-      } else {
-        setShowLeftFade(scrollLeft > 4);
-        setShowRightFade(scrollLeft + clientWidth < scrollWidth - 4);
-      }
+      updateFades(normalized);
     };
-    requestAnimationFrame(() => handleScroll());
+    const handleResize = () => {
+      updateFades();
+    };
+
+    requestAnimationFrame(() => updateFades(initialScrollLeftRef.current ?? undefined));
     slider.addEventListener("scroll", handleScroll, { passive: true });
-    return () => slider.removeEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      slider.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
+    };
   }, [isRTL, next14Days]);
 
 
@@ -1215,7 +1280,7 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
         {icon}
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {slots.map((slot, i) => {
           const isSelected = selectedTime === slot.time;
           return (
@@ -1226,13 +1291,13 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
               transition={{ duration: 0.3, delay: 0.1 + (delayOffset + i) * 0.06 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onSelect(slot.time)}
-              className={`rounded-xl min-h-[48px] py-3 px-2 text-center transition-all duration-200 ${
+              className={`rounded-lg min-h-[44px] py-2 px-1.5 text-center transition-all duration-200 border backdrop-blur-sm ${
                 isSelected
-                  ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_4px_16px_hsl(var(--primary)/0.3)]"
-                  : "bg-card/80 backdrop-blur-sm border border-border/50 text-foreground/70 hover:border-primary/40"
+                  ? "bg-gradient-to-r from-primary to-accent text-primary-foreground border-primary/75 shadow-[0_0_0_1px_hsl(var(--primary)/0.45),0_8px_18px_hsl(var(--primary)/0.28)]"
+                  : "bg-card/70 border-border/45 text-foreground/80 hover:border-primary/45 hover:bg-card/85"
               }`}
             >
-              <span className={`${isSelected ? "text-sm font-bold" : "text-sm font-semibold"}`}>
+              <span className={`tabular-nums leading-none ${isSelected ? "text-[13px] font-bold" : "text-[13px] font-semibold"}`}>
                 {slot.time}
               </span>
             </motion.button>
