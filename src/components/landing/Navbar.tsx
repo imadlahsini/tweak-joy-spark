@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, forwardRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles, Phone, Clock, MapPin, ChevronRight } from "lucide-react";
+import { Menu, X, Sparkles, Phone, Clock, MapPin, ChevronRight, Globe, Check } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getClinicAvailability } from "@/lib/clinicAvailability";
@@ -33,6 +33,12 @@ interface MenuCopy {
   directionsLabel: string;
   hoursLabel: string;
   hoursValue: string;
+  hoursWeekdaysLabel: string;
+  hoursWeekdaysValue: string;
+  hoursSaturdayLabel: string;
+  hoursSaturdayValue: string;
+  languageLabel: string;
+  languageHint: string;
   getStarted: string;
   openMenuAria: string;
   closeMenuAria: string;
@@ -95,6 +101,12 @@ const menuTranslations: Record<MenuLanguage, MenuCopy> = {
     directionsLabel: "Directions",
     hoursLabel: "Hours",
     hoursValue: "Mon - Fri: 09:00 - 18:00 • Sat: 09:00 - 12:00",
+    hoursWeekdaysLabel: "Mon - Fri",
+    hoursWeekdaysValue: "09:00 - 18:00",
+    hoursSaturdayLabel: "Sat",
+    hoursSaturdayValue: "09:00 - 12:00",
+    languageLabel: "Language",
+    languageHint: "Tap to switch",
     getStarted: "Get Started",
     openMenuAria: "Open menu",
     closeMenuAria: "Close menu",
@@ -115,6 +127,12 @@ const menuTranslations: Record<MenuLanguage, MenuCopy> = {
     directionsLabel: "Itineraire",
     hoursLabel: "Horaires",
     hoursValue: "Lun - Ven: 09:00 - 18:00 • Sam: 09:00 - 12:00",
+    hoursWeekdaysLabel: "Lun - Ven",
+    hoursWeekdaysValue: "09:00 - 18:00",
+    hoursSaturdayLabel: "Sam",
+    hoursSaturdayValue: "09:00 - 12:00",
+    languageLabel: "Langue",
+    languageHint: "Appuyez pour changer",
     getStarted: "Commencer",
     openMenuAria: "Ouvrir le menu",
     closeMenuAria: "Fermer le menu",
@@ -135,6 +153,12 @@ const menuTranslations: Record<MenuLanguage, MenuCopy> = {
     directionsLabel: "الاتجاهات",
     hoursLabel: "ساعات العمل",
     hoursValue: "الإثنين - الجمعة: 09:00 - 18:00 • السبت: 09:00 - 12:00",
+    hoursWeekdaysLabel: "الإثنين - الجمعة",
+    hoursWeekdaysValue: "09:00 - 18:00",
+    hoursSaturdayLabel: "السبت",
+    hoursSaturdayValue: "09:00 - 12:00",
+    languageLabel: "اللغة",
+    languageHint: "انقر للتبديل",
     getStarted: "ابدأ الآن",
     openMenuAria: "فتح القائمة",
     closeMenuAria: "إغلاق القائمة",
@@ -155,6 +179,12 @@ const menuTranslations: Record<MenuLanguage, MenuCopy> = {
     directionsLabel: "ⵜⴰⵏⴰⵎⵎⴰⵙⵜ",
     hoursLabel: "ⵉⵙⵔⴰⴳⵏ",
     hoursValue: "ⴰⵢⵏⴰⵙ - ⴰⵙⵎⵉⵙ: 09:00 - 18:00 • ⴰⵙⵉⴹⵢⴰⵙ: 09:00 - 12:00",
+    hoursWeekdaysLabel: "ⴰⵢⵏⴰⵙ - ⴰⵙⵎⵉⵙ",
+    hoursWeekdaysValue: "09:00 - 18:00",
+    hoursSaturdayLabel: "ⴰⵙⵉⴹⵢⴰⵙ",
+    hoursSaturdayValue: "09:00 - 12:00",
+    languageLabel: "ⵜⴰⵓⵜⵍⴰⵢⵜ",
+    languageHint: "ⴰⴷ ⵜⵙⵏⴼⵍⵜ",
     getStarted: "ⴱⴷⵓ",
     openMenuAria: "ⴽⵛⵎ ⵜⴰⴳⴰⵍⵉⵙⵜ",
     closeMenuAria: "ⵇⵇⵏ ⵜⴰⴳⴰⵍⵉⵙⵜ",
@@ -167,6 +197,20 @@ const SECONDARY_PHONE = "0528 333 837";
 const SECONDARY_PHONE_HREF = "tel:0528333837";
 const WHATSAPP_HREF = "https://wa.me/212660077768";
 const DIRECTIONS_HREF = "https://maps.app.goo.gl/YbKTvN8aSjoe4amUA";
+
+const menuLanguageOptions: Array<{
+  code: MenuLanguage;
+  nativeLabel: string;
+  englishLabel: string;
+  flag: string;
+  dir: "ltr" | "rtl";
+  fontClass: string;
+}> = [
+  { code: "ar", nativeLabel: "العربية", englishLabel: "Arabic", flag: "🇲🇦", dir: "rtl", fontClass: "font-greeting-ar" },
+  { code: "zgh", nativeLabel: "ⵜⴰⵎⴰⵣⵉⵖⵜ", englishLabel: "Tamazight", flag: "🇲🇦", dir: "ltr", fontClass: "font-greeting-zgh" },
+  { code: "en", nativeLabel: "English", englishLabel: "English", flag: "🇬🇧", dir: "ltr", fontClass: "font-greeting-latin" },
+  { code: "fr", nativeLabel: "Français", englishLabel: "French", flag: "🇫🇷", dir: "ltr", fontClass: "font-greeting-latin" },
+];
 
 const clearInteractionLocks = () => {
   if (typeof document === "undefined") return;
@@ -213,7 +257,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const { scrollYProgress } = useScroll();
   const shouldReduceMotion = useReducedMotion();
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -221,15 +265,23 @@ const Navbar = () => {
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   const lockSnapshotRef = useRef<ScrollLockSnapshot | null>(null);
 
-  const currentLanguage: MenuLanguage = (language ?? "fr") as MenuLanguage;
+  const currentLanguage: MenuLanguage = (language ?? "en") as MenuLanguage;
   const t = menuTranslations[currentLanguage];
   const isRTL = currentLanguage === "ar";
   const availability = useMemo(() => getClinicAvailability(menuNow), [menuNow]);
   const isClinicOpen = availability.isOpen;
   const heroIsCall = availability.heroChannel === "call";
+  const localizedHoursUntilOpen = useMemo(() => {
+    if (currentLanguage !== "ar") return String(availability.hoursUntilOpen);
+    try {
+      return new Intl.NumberFormat("ar-MA").format(availability.hoursUntilOpen);
+    } catch {
+      return String(availability.hoursUntilOpen);
+    }
+  }, [availability.hoursUntilOpen, currentLanguage]);
   const greetingText = isClinicOpen
     ? t.greetingOpen
-    : t.greetingClosed.replace("{{hours}}", String(availability.hoursUntilOpen));
+    : t.greetingClosed.replace("{{hours}}", localizedHoursUntilOpen);
   const nextOpenLabelParts = formatNextOpenLabelForMenu(availability.nextOpenLabel, currentLanguage);
   const statusDotClass =
     availability.statusDotColor === "teal"
@@ -574,7 +626,7 @@ const Navbar = () => {
               <div className="flex min-h-16 items-center justify-between gap-3">
                 <button
                   type="button"
-                  className={`flex items-center gap-2.5 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
+                  className={`flex items-center gap-2.5 ${isRTL ? "text-right" : "text-left"}`}
                   onClick={() => {
                     closeMenu(false);
                     navigate("/");
@@ -609,39 +661,40 @@ const Navbar = () => {
 
             {/* Scrollable Content */}
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] sm:px-6 sm:py-5">
-              <motion.section
-                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
-                transition={{ duration: shouldReduceMotion ? 0.14 : 0.24 }}
-                className={`relative overflow-hidden rounded-[28px] p-4 text-white shadow-[0_30px_64px_-36px_hsl(220_30%_5%/0.9)] sm:p-5 ${widgetSurfaceClass}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/12 via-white/6 to-transparent"
-                />
-                <span
-                  aria-hidden="true"
-                  style={{ insetInlineStart: "-3.5rem" }}
-                  className={`pointer-events-none absolute -top-14 h-32 w-32 rounded-full blur-3xl ${
-                    isClinicOpen ? "bg-[hsl(175_64%_45%/0.24)]" : "bg-[hsl(217_18%_46%/0.18)]"
-                  }`}
-                />
+              <div className="space-y-[14px]">
+                <motion.section
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
+                  transition={{ duration: shouldReduceMotion ? 0.14 : 0.24 }}
+                  className={`relative overflow-hidden rounded-[28px] p-4 text-white shadow-[0_30px_64px_-36px_hsl(220_30%_5%/0.9)] sm:p-5 ${widgetSurfaceClass}`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/12 via-white/6 to-transparent"
+                  />
+                  <span
+                    aria-hidden="true"
+                    style={{ insetInlineStart: "-3.5rem" }}
+                    className={`pointer-events-none absolute -top-14 h-32 w-32 rounded-full blur-3xl ${
+                      isClinicOpen ? "bg-[hsl(175_64%_45%/0.24)]" : "bg-[hsl(217_18%_46%/0.18)]"
+                    }`}
+                  />
 
-                <div className="relative">
+                  <div className="relative">
                   <motion.div
                     initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: shouldReduceMotion ? 0.12 : 0.2, delay: shouldReduceMotion ? 0 : 0.05 }}
-                    className={`flex items-start gap-2.5 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
+                    className={isRTL ? "relative w-full pl-5 text-right" : "flex items-start gap-2.5 text-left"}
                   >
                     <motion.span
                       aria-hidden="true"
-                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass}`}
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${isRTL ? "absolute left-0 top-1" : "mt-1"} ${statusDotClass}`}
                       animate={shouldReduceMotion ? undefined : { scale: [1, 1.3, 1], opacity: [0.86, 1, 0.9] }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
                     />
-                    <div className={`min-w-0 flex-1 ${isRTL ? "text-right" : "text-left"}`}>
+                    <div className={`min-w-0 ${isRTL ? "w-full text-right" : "flex-1 text-left"}`}>
                       <p className={`text-[17px] font-semibold leading-[1.32] text-white ${isRTL ? "w-full text-right" : ""}`}>
                         {greetingText}
                       </p>
@@ -651,8 +704,8 @@ const Navbar = () => {
                       {!isClinicOpen && (
                         <p className={`mt-0.5 text-[12px] leading-relaxed text-white/56 ${isRTL ? "w-full text-right" : ""}`}>
                           {isRTL ? (
-                            <span className="flex w-full justify-end">
-                              <span className="flex max-w-full flex-wrap items-baseline justify-end gap-x-1 gap-y-0.5 text-right">
+                            <span className="block w-full text-right">
+                              <span className="flex w-full max-w-full flex-wrap items-baseline justify-end gap-x-1 gap-y-0.5 text-right">
                                 <span>{t.nextOpenAt}: </span>
                                 {nextOpenLabelParts.localized && nextOpenLabelParts.day ? (
                                   <>
@@ -740,12 +793,12 @@ const Navbar = () => {
                           rel={action.external ? "noopener noreferrer" : undefined}
                           aria-label={action.label}
                           onClick={() => closeMenu(false)}
-                          className={`flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-[13px] font-medium text-white/90 transition-all duration-200 active:scale-[0.98] ${
+                          className={`flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-[13px] font-medium text-white/90 transition-all duration-200 active:scale-[0.98] ${
                             isRTL ? "text-right" : "text-left"
                           }`}
                         >
                           {action.icon}
-                          <span className="truncate">{action.label}</span>
+                          <span className="whitespace-normal break-words text-center leading-tight">{action.label}</span>
                         </a>
                       ))}
                     </div>
@@ -760,14 +813,23 @@ const Navbar = () => {
                     <a
                       href={PRIMARY_PHONE_HREF}
                       onClick={() => closeMenu(false)}
-                      className={`flex w-full min-h-[54px] items-center justify-between gap-3 rounded-2xl bg-white/9 px-3.5 py-2.5 transition-all duration-200 active:scale-[0.99] ${
-                        isRTL ? "text-right" : "text-left"
+                      dir={isRTL ? "rtl" : "ltr"}
+                      className={`w-full min-h-[54px] gap-3 rounded-2xl bg-white/9 px-3.5 py-2.5 transition-all duration-200 active:scale-[0.99] ${
+                        isRTL
+                          ? "grid grid-cols-[1fr_auto] items-center text-right"
+                          : "flex items-center justify-between text-left"
                       }`}
                     >
-                      <span className={`flex min-w-0 flex-1 flex-col ${isRTL ? "items-end" : "items-start"}`}>
-                        <span className="text-[11px] font-medium text-white/62">{t.lineMain}</span>
-                        <span dir="ltr" className="text-[15px] font-semibold leading-tight text-white/94 tabular-nums">
-                          {PRIMARY_PHONE}
+                      <span className={`flex min-w-0 flex-1 flex-col ${isRTL ? "items-stretch text-right" : "items-start text-left"}`}>
+                        <span className={`block w-full text-[11px] font-medium text-white/62 ${isRTL ? "text-right" : "text-left"}`}>{t.lineMain}</span>
+                        <span className={`block w-full ${isRTL ? "text-right" : "text-left"}`}>
+                          <span
+                            dir="ltr"
+                            style={{ unicodeBidi: "isolate" }}
+                            className="inline-block text-[15px] font-semibold leading-tight text-white/94 tabular-nums"
+                          >
+                            {PRIMARY_PHONE}
+                          </span>
                         </span>
                       </span>
                       <ChevronRight className={`h-4 w-4 text-white/55 ${isRTL ? "rotate-180" : ""}`} />
@@ -776,43 +838,174 @@ const Navbar = () => {
                     <a
                       href={SECONDARY_PHONE_HREF}
                       onClick={() => closeMenu(false)}
-                      className={`flex w-full min-h-[54px] items-center justify-between gap-3 rounded-2xl bg-white/7 px-3.5 py-2.5 transition-all duration-200 active:scale-[0.99] ${
-                        isRTL ? "text-right" : "text-left"
+                      dir={isRTL ? "rtl" : "ltr"}
+                      className={`w-full min-h-[54px] gap-3 rounded-2xl bg-white/7 px-3.5 py-2.5 transition-all duration-200 active:scale-[0.99] ${
+                        isRTL
+                          ? "grid grid-cols-[1fr_auto] items-center text-right"
+                          : "flex items-center justify-between text-left"
                       }`}
                     >
-                      <span className={`flex min-w-0 flex-1 flex-col ${isRTL ? "items-end" : "items-start"}`}>
-                        <span className="text-[11px] font-medium text-white/58">{t.lineSupport}</span>
-                        <span dir="ltr" className="text-[15px] font-semibold leading-tight text-white/92 tabular-nums">
-                          {SECONDARY_PHONE}
+                      <span className={`flex min-w-0 flex-1 flex-col ${isRTL ? "items-stretch text-right" : "items-start text-left"}`}>
+                        <span className={`block w-full text-[11px] font-medium text-white/58 ${isRTL ? "text-right" : "text-left"}`}>{t.lineSupport}</span>
+                        <span className={`block w-full ${isRTL ? "text-right" : "text-left"}`}>
+                          <span
+                            dir="ltr"
+                            style={{ unicodeBidi: "isolate" }}
+                            className="inline-block text-[15px] font-semibold leading-tight text-white/92 tabular-nums"
+                          >
+                            {SECONDARY_PHONE}
+                          </span>
                         </span>
                       </span>
                       <ChevronRight className={`h-4 w-4 text-white/50 ${isRTL ? "rotate-180" : ""}`} />
                     </a>
 
-                    <div className={`flex min-h-[52px] items-center gap-3 rounded-2xl bg-white/7 px-3.5 py-2 ${
-                      isRTL ? "text-right" : "text-left"
-                    }`}>
-                      <Clock className="h-4 w-4 shrink-0 text-white/62" />
-                      <span className={`flex min-w-0 flex-col ${isRTL ? "items-end" : "items-start"}`}>
-                        <span className="text-[11px] font-medium text-white/58">{t.hoursLabel}</span>
-                        <span className="text-[12px] font-medium leading-5 text-white/82">
-                          {currentLanguage === "ar" ? (
-                            <>
-                              <span>الإثنين - الجمعة: </span>
-                              <span dir="ltr" style={{ unicodeBidi: "isolate" }} className="tabular-nums whitespace-nowrap">09:00 - 18:00</span>
-                              <span> • السبت: </span>
-                              <span dir="ltr" style={{ unicodeBidi: "isolate" }} className="tabular-nums whitespace-nowrap">09:00 - 12:00</span>
-                            </>
-                          ) : (
-                            t.hoursValue
-                          )}
+                    <div
+                      dir={isRTL ? "rtl" : "ltr"}
+                      className={`min-h-[52px] w-full gap-3 rounded-2xl bg-white/7 px-3.5 py-2 ${
+                        isRTL
+                          ? "flex items-center text-right"
+                          : "flex items-center justify-between text-left"
+                      }`}
+                    >
+                      <Clock className={`h-4 w-4 shrink-0 text-white/62 ${isRTL ? "-scale-x-100" : ""}`} />
+                      <span className={`flex min-w-0 flex-1 flex-col items-stretch ${isRTL ? "text-right" : "text-left"}`}>
+                        <span className={`block w-full text-[11px] font-medium text-white/58 ${isRTL ? "text-right" : "text-left"}`}>
+                          {t.hoursLabel}
+                        </span>
+                        <span
+                          className={`mt-0.5 flex w-full flex-col gap-0.5 text-[12px] font-medium leading-5 text-white/82 ${
+                            isRTL ? "items-end" : "items-start"
+                          }`}
+                        >
+                          <span className={`block w-full ${isRTL ? "text-right" : "text-left"}`}>
+                            <span>{t.hoursWeekdaysLabel}: </span>
+                            <span
+                              dir="ltr"
+                              style={{ unicodeBidi: "isolate" }}
+                              className="inline-block tabular-nums whitespace-nowrap align-baseline"
+                            >
+                              {t.hoursWeekdaysValue}
+                            </span>
+                          </span>
+                          <span className={`block w-full ${isRTL ? "text-right" : "text-left"}`}>
+                            <span>{t.hoursSaturdayLabel}: </span>
+                            <span
+                              dir="ltr"
+                              style={{ unicodeBidi: "isolate" }}
+                              className="inline-block tabular-nums whitespace-nowrap align-baseline"
+                            >
+                              {t.hoursSaturdayValue}
+                            </span>
+                          </span>
                         </span>
                       </span>
                     </div>
                   </motion.div>
 
-                </div>
-              </motion.section>
+                  </div>
+                </motion.section>
+
+                <motion.div
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: shouldReduceMotion ? 0.12 : 0.22, delay: shouldReduceMotion ? 0 : 0.25 }}
+                  className="relative isolate overflow-hidden rounded-[22px] border border-[rgba(255,255,255,0.95)] bg-[linear-gradient(145deg,rgba(255,255,255,0.85),rgba(255,255,255,0.6))] p-5 text-[#1a2a3a] shadow-[0_1px_2px_rgba(0,0,0,0.012),0_6px_16px_rgba(0,0,0,0.022)] backdrop-blur-[20px]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 -z-10 rounded-[22px] bg-[radial-gradient(120%_100%_at_50%_0%,rgba(255,255,255,0.42),rgba(255,255,255,0.08)_64%,rgba(255,255,255,0.02)_100%)]"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-[20%] top-0 h-[1.5px] bg-[linear-gradient(90deg,transparent,rgba(58,168,160,0.3),transparent)]"
+                  />
+
+                  <div className={`mb-4 flex items-center justify-between gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+                    <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[linear-gradient(145deg,rgba(58,168,160,0.1),rgba(58,168,160,0.05))]">
+                        <Globe className="h-3.5 w-3.5 text-[hsl(170_52%_42%)]" />
+                      </span>
+                      <span className="text-[13px] font-semibold text-[#4a5568]">{t.languageLabel}</span>
+                    </div>
+                    <span className={`text-[11px] font-medium text-[#b0bec5] ${isRTL ? "text-left" : "text-right"}`}>{t.languageHint}</span>
+                  </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {menuLanguageOptions.map((option) => {
+                        const isActiveLanguage = currentLanguage === option.code;
+                        return (
+                          <motion.button
+                          key={option.code}
+                          type="button"
+                          onClick={() => setLanguage(option.code)}
+                          aria-pressed={isActiveLanguage}
+                            className={`group relative flex min-h-[94px] flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] px-[14px] py-[14px] transition-all duration-200 ${
+                              isActiveLanguage
+                                ? "border-[rgba(58,168,160,0.3)] bg-white shadow-[0_1px_4px_rgba(58,168,160,0.08),0_4px_12px_rgba(0,0,0,0.028)]"
+                                : "border-[rgba(0,0,0,0.04)] bg-[rgba(255,255,255,0.4)] shadow-none"
+                            } ${
+                              shouldReduceMotion
+                                ? ""
+                                : "hover:-translate-y-px hover:border-[rgba(58,168,160,0.15)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
+                            } ${option.dir === "rtl" ? "text-right" : "text-left"}`}
+                          whileTap={{ scale: shouldReduceMotion ? 1 : 0.985 }}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`pointer-events-none absolute inset-0 rounded-2xl ${
+                                isActiveLanguage ? "bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(255,255,255,0.86))]" : ""
+                              }`}
+                            />
+                            <span
+                              aria-hidden="true"
+                              className={`pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(58,168,160,0.12),rgba(58,168,160,0.03))] transition-opacity duration-200 ${
+                                shouldReduceMotion ? "opacity-0" : "opacity-0 group-hover:opacity-100"
+                              }`}
+                          />
+
+                          {isActiveLanguage &&
+                            (shouldReduceMotion ? (
+                              <span
+                                className={`absolute top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[hsl(170_52%_42%)] text-white ${
+                                  isRTL ? "left-2" : "right-2"
+                                }`}
+                              >
+                                <Check className="h-3 w-3 stroke-[3]" />
+                              </span>
+                            ) : (
+                              <motion.span
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                className={`absolute top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[hsl(170_52%_42%)] text-white ${
+                                  isRTL ? "left-2" : "right-2"
+                                }`}
+                              >
+                                <Check className="h-3 w-3 stroke-[3]" />
+                              </motion.span>
+                            ))}
+
+                          <span
+                            dir={option.dir}
+                            className={`relative z-10 text-[20px] font-bold leading-[1.1] ${option.fontClass} ${
+                              isActiveLanguage ? "text-[#1a2a3a]" : "text-[#4a5568]"
+                            }`}
+                          >
+                            {option.nativeLabel}
+                          </span>
+                          <span className="relative z-10 flex items-center gap-1.5 text-[11px] font-medium text-[#9ca8b8]">
+                            <span className="text-[14px] leading-none" role="img" aria-hidden="true">
+                              {option.flag}
+                            </span>
+                            <span>{option.englishLabel}</span>
+                          </span>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              </div>
             </div>
           </motion.div>
         )}
