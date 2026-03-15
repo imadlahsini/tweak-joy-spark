@@ -7,7 +7,7 @@ type SelectorLanguage = Exclude<Language, null>;
 interface LanguageFlagProps {
   code: SelectorLanguage;
   className?: string;
-  variant?: "badge" | "embed";
+  variant?: "badge" | "embed" | "selector-circle";
 }
 
 const flagIconByLanguage: Partial<Record<SelectorLanguage, string>> = {
@@ -46,6 +46,24 @@ const FlagArtwork = ({ code, embed = false }: { code: SelectorLanguage; embed?: 
 };
 
 const LanguageFlag = ({ code, className, variant = "badge" }: LanguageFlagProps) => {
+  if (variant === "selector-circle") {
+    return (
+      <div
+        className={cn("relative h-11 w-11 overflow-hidden rounded-full", className)}
+        aria-hidden="true"
+        dir="ltr"
+      >
+        {code === "zgh" ? (
+          <FlagArtwork code={code} />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Icon icon={flagIconByLanguage[code] || "flagpack:un"} className="block h-full w-auto max-w-none shrink-0" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (variant === "embed") {
     return (
       <div className={cn("relative w-full h-full overflow-hidden", className)} aria-hidden="true">

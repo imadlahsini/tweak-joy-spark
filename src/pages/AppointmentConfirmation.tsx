@@ -207,7 +207,7 @@ const AppointmentConfirmation = () => {
   }, [lang]);
 
   useEffect(() => {
-    if (!state) navigate("/appointment", { replace: true });
+    if (!state) navigate("/", { replace: true });
   }, [state, navigate]);
 
   if (!state) return null;

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Noto+Sans+Tifinagh:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -211,5 +211,17 @@
 
   .safe-top {
     padding-top: env(safe-area-inset-top);
+  }
+
+  .font-greeting-ar {
+    font-family: "Noto Naskh Arabic", "Amiri", serif;
+  }
+
+  .font-greeting-zgh {
+    font-family: "Noto Sans Tifinagh", "Inter", sans-serif;
+  }
+
+  .font-greeting-latin {
+    font-family: "Inter", "Space Grotesk", sans-serif;
   }
 }

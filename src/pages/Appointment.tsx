@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback, forwardRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useNavigationType } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import FloatingOrb from "@/components/shared/FloatingOrb";
@@ -61,6 +61,13 @@ const translations = {
     ctaHintTime: "Pick a time to continue",
     ctaHintDetails: "Enter your details to confirm",
     ctaTrust: "1h • In-person • Instant confirmation",
+    journeyPromptStart: "Pick a day to get started",
+    journeyPromptSlot: "Choose your slot",
+    journeyPromptDetails: "Confirm your details",
+    journeyNextTime: "Next: Pick a time",
+    journeyConfirmDetails: "Confirm details",
+    journeyBookNow: "Book now",
+    journeyEditDateAria: "Edit selected date",
   },
   fr: {
     title: "Réservez Votre",
@@ -97,6 +104,13 @@ const translations = {
     ctaHintTime: "Choisissez une heure pour continuer",
     ctaHintDetails: "Entrez vos informations pour confirmer",
     ctaTrust: "1h • En personne • Confirmation immédiate",
+    journeyPromptStart: "Choisissez un jour pour commencer",
+    journeyPromptSlot: "Choisissez votre créneau",
+    journeyPromptDetails: "Confirmez vos informations",
+    journeyNextTime: "Suivant: Choisir l'heure",
+    journeyConfirmDetails: "Confirmer les détails",
+    journeyBookNow: "Réserver",
+    journeyEditDateAria: "Modifier la date choisie",
   },
   ar: {
     title: "احجز",
@@ -133,6 +147,13 @@ const translations = {
     ctaHintTime: "اختر الوقت للمتابعة",
     ctaHintDetails: "أدخل بياناتك للتأكيد",
     ctaTrust: "ساعة • حضوري • تأكيد فوري",
+    journeyPromptStart: "اختر يوماً للبدء",
+    journeyPromptSlot: "اختر الوقت المناسب",
+    journeyPromptDetails: "أكمل بياناتك",
+    journeyNextTime: "التالي: اختر الوقت",
+    journeyConfirmDetails: "تأكيد البيانات",
+    journeyBookNow: "احجز الآن",
+    journeyEditDateAria: "تعديل التاريخ المختار",
   },
   zgh: {
     title: "ⵃⵥⵥ",
@@ -169,6 +190,13 @@ const translations = {
     ctaHintTime: "ⴼⵔⵏ ⴰⴽⵓⴷ ⵉ ⵜⵙⵎⴷ",
     ctaHintDetails: "ⵙⴽⵛⵎ ⵉⵙⴼⴽⴰⵏⵏⴽ ⵉ ⵜⵙⵙⵏⵜⵎ",
     ctaTrust: "1ⵙⴰⵄⴰ • ⵙ ⵓⴷⴷⵓⵔ • ⴰⵙⵙⵏⵜⵎ ⴰⵎⵉⵔⴰⵏ",
+    journeyPromptStart: "ⴼⵔⵏ ⴰⵣⵎⵣ ⵉ ⵜⴱⴷⵓ",
+    journeyPromptSlot: "ⴼⵔⵏ ⴰⴽⵓⴷⵏⵏⴽ",
+    journeyPromptDetails: "ⵙⵙⵏⵜⵎ ⵉⵙⴼⴽⴰⵏⵏⴽ",
+    journeyNextTime: "ⵉⴹⴼⴼⵔ: ⴼⵔⵏ ⴰⴽⵓⴷ",
+    journeyConfirmDetails: "ⵙⵙⵏⵜⵎ ⵉⵙⴼⴽⴰ",
+    journeyBookNow: "ⵃⵥⵥ ⵖⵉⵍⴰⴷ",
+    journeyEditDateAria: "ⵙⵏⴼⵍ ⴰⵣⵎⵣ ⵉⵜⵜⵓⴼⵔⵏ",
   },
 };
 
@@ -216,6 +244,18 @@ const StepConnector = ({ state, isRTL, reducedMotion, className = "" }: StepConn
     </div>
   );
 };
+
+const ThinArrow = ({ className = "" }: { className?: string }) => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+  >
+    <path d="M3 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M8.5 4.5L12 8l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 const normalizeMoroccanPhone = (value: string) => {
   const digitsOnly = value.replace(/\D/g, "");
@@ -313,9 +353,30 @@ const consumeAppointmentResetOnReturn = () => {
   return shouldReset;
 };
 
+const clearInteractionLocks = () => {
+  if (typeof document === "undefined") return;
+
+  const targets = [document.documentElement, document.body];
+  targets.forEach((target) => {
+    target.style.removeProperty("overflow");
+    target.style.removeProperty("pointer-events");
+    target.style.removeProperty("touch-action");
+    target.style.removeProperty("position");
+    target.style.removeProperty("top");
+    target.style.removeProperty("left");
+    target.style.removeProperty("right");
+    target.style.removeProperty("width");
+    target.style.removeProperty("padding-right");
+    target.removeAttribute("data-scroll-locked");
+    target.classList.remove("overflow-hidden");
+  });
+};
+
 const Appointment = () => {
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
@@ -324,6 +385,7 @@ const Appointment = () => {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [showSparkles, setShowSparkles] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [detailsJourneyActive, setDetailsJourneyActive] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeSectionRef = useRef<HTMLDivElement>(null);
   const dateSectionRef = useRef<HTMLDivElement>(null);
@@ -366,10 +428,18 @@ const Appointment = () => {
   }, []);
 
   useEffect(() => {
+    const shouldResetFromMarker = consumeAppointmentResetOnReturn();
+    const shouldResetFromPop = navigationType === "POP";
+
+    clearInteractionLocks();
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => clearInteractionLocks());
+    }
+
     confirmLockRef.current = false;
     setIsConfirming(false);
 
-    if (consumeAppointmentResetOnReturn()) {
+    if (shouldResetFromMarker || shouldResetFromPop) {
       resetAppointmentState();
       if (typeof window !== "undefined") {
         window.requestAnimationFrame(() => {
@@ -377,7 +447,18 @@ const Appointment = () => {
         });
       }
     }
-  }, [resetAppointmentState]);
+
+    const handlePageShow = () => clearInteractionLocks();
+    const handlePopState = () => clearInteractionLocks();
+
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("popstate", handlePopState);
+      clearInteractionLocks();
+    };
+  }, [location.key, navigationType, resetAppointmentState]);
 
   const isNameValid = clientName.trim().length >= 2;
   const isPhoneValid = /^0[67]\d{8}$/.test(clientPhone);
@@ -404,6 +485,15 @@ const Appointment = () => {
     if (stepId === 2) return Boolean(selectedDate) && currentStep > 2;
     if (stepId === 3) return Boolean(selectedDate && selectedTime);
     return false;
+  };
+
+  const jumpToTimeSection = () => {
+    timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const jumpToDetailsSection = () => {
+    setDetailsJourneyActive(true);
+    detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   // Bug 2 fix: compute dates inside component with useMemo
@@ -445,6 +535,23 @@ const Appointment = () => {
       return () => clearTimeout(timer);
     }
   }, [isFormValid]);
+
+  useEffect(() => {
+    if (!selectedTime) {
+      setDetailsJourneyActive(false);
+      return;
+    }
+
+    if (
+      isFormValid ||
+      nameTouched ||
+      phoneTouched ||
+      clientName.trim().length > 0 ||
+      clientPhone.trim().length > 0
+    ) {
+      setDetailsJourneyActive(true);
+    }
+  }, [selectedTime, isFormValid, nameTouched, phoneTouched, clientName, clientPhone]);
 
   // Bug 8 fix: scroll fade indicators
   useEffect(() => {
@@ -518,6 +625,30 @@ const Appointment = () => {
   );
 
   const formatDate = (date: Date, pattern: string) => format(date, pattern, { locale: dateLocale });
+  const journeyDateLabel = selectedDate ? formatDate(selectedDate, "EEE d MMM") : "";
+  const journeySummaryLabel = selectedDate
+    ? selectedTime
+      ? `${journeyDateLabel} · ${selectedTime}`
+      : journeyDateLabel
+    : "";
+
+  const journeyState: "start" | "time" | "confirm-details" | "details" =
+    !selectedDate
+      ? "start"
+      : !selectedTime
+      ? "time"
+      : detailsJourneyActive || isFormValid
+      ? "details"
+      : "confirm-details";
+
+  const journeyCardToneClass =
+    journeyState === "start"
+      ? "bg-[linear-gradient(112deg,hsl(218_22%_14%/0.82),hsl(208_28%_11%/0.8))]"
+      : journeyState === "time" || journeyState === "confirm-details"
+      ? "bg-[linear-gradient(112deg,hsl(216_24%_15%/0.82),hsl(205_30%_12%/0.8))]"
+      : "bg-[linear-gradient(112deg,hsl(213_26%_16%/0.82),hsl(201_32%_13%/0.8))]";
+
+  const shouldShowPulseDot = journeyState === "start" && !prefersReducedMotion;
 
   useEffect(() => {
     if (selectedTime && !availableTimeSlots.some((slot) => slot.time === selectedTime)) {
@@ -1147,6 +1278,7 @@ const Appointment = () => {
                         type="text"
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
+                        onFocus={() => setDetailsJourneyActive(true)}
                         onBlur={() => setNameTouched(true)}
                         aria-invalid={nameTouched && !isNameValid}
                         placeholder={t.namePlaceholder}
@@ -1214,6 +1346,7 @@ const Appointment = () => {
                         onChange={(e) => {
                           setClientPhone(normalizeMoroccanPhone(e.target.value));
                         }}
+                        onFocus={() => setDetailsJourneyActive(true)}
                         onBlur={() => setPhoneTouched(true)}
                         placeholder={t.phonePlaceholder}
                         maxLength={14}
@@ -1317,7 +1450,7 @@ const Appointment = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── Mobile bottom rail: progress -> CTA swap ── */}
+      {/* ── Mobile bottom journey card ── */}
       <motion.div
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -1325,110 +1458,189 @@ const Appointment = () => {
         className="sm:hidden fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
       >
         <div className="max-w-sm mx-auto">
-          <div className="relative rounded-3xl border border-white/35 dark:border-white/20 bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.12)_52%,hsl(var(--accent)/0.10))] backdrop-blur-3xl backdrop-saturate-150 shadow-[0_24px_56px_hsl(var(--foreground)/0.22),0_10px_24px_hsl(var(--foreground)/0.14)] overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/35 via-white/10 to-transparent dark:from-white/16 dark:via-white/6" />
-            <div className="absolute left-3 right-3 top-[2px] h-[1px] pointer-events-none bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/45" />
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(120%_90%_at_20%_0%,rgba(255,255,255,0.45),rgba(255,255,255,0)_55%)] dark:bg-[radial-gradient(120%_90%_at_20%_0%,rgba(255,255,255,0.22),rgba(255,255,255,0)_55%)]" />
-            <div className="absolute inset-0 pointer-events-none rounded-3xl ring-1 ring-white/38 dark:ring-white/16" />
-            <AnimatePresence mode="wait" initial={false}>
-              {canConfirm ? (
-                <motion.div
-                  key="mobile-confirm"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="relative p-2.5"
-              >
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  animate={{
-                    boxShadow: [
-                        "0 0 20px hsl(var(--primary)/0.3)",
-                        "0 0 40px hsl(var(--primary)/0.5)",
-                        "0 0 20px hsl(var(--primary)/0.3)",
-                      ],
-                    }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                    onClick={handleConfirm}
-                    disabled={isConfirming}
-                    className="relative w-full group overflow-hidden disabled:opacity-80 disabled:cursor-not-allowed"
-                  >
-                    <div className="absolute -inset-[2px] bg-gradient-to-r from-primary via-accent to-primary rounded-2xl opacity-70 transition-opacity duration-300 blur-[2px] bg-[length:200%_auto] animate-gradient" />
-                    <div className="relative flex min-h-[56px] items-center justify-center gap-3 w-full font-semibold text-base rounded-2xl overflow-hidden transition-colors bg-foreground text-background">
-                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                      <UiIcon icon="solar:star-shine-bold-duotone" size={20} className="relative z-10 text-background" />
-                      <span className="relative z-10">{t.confirm}</span>
+          <div className={`relative overflow-hidden rounded-[22px] border border-white/[0.1] backdrop-blur-[20px] backdrop-saturate-150 shadow-[0_18px_36px_-20px_hsl(var(--foreground)/0.56)] ${journeyCardToneClass}`}>
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent" />
+            <div className="absolute left-4 right-4 top-0 h-px pointer-events-none bg-white/[0.05]" />
+            <div className="absolute inset-0 pointer-events-none shadow-[inset_0_1px_16px_rgba(255,255,255,0.03)]" />
+            <div className="relative min-h-[68px] px-5 py-2.5">
+              <div className={`grid min-h-[62px] grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] items-center gap-4 ${isRTL ? "text-right" : "text-left"}`}>
+                <div className="min-w-0">
+                  <AnimatePresence mode="wait" initial={false}>
+                    {journeyState === "start" && (
                       <motion.div
-                        className="relative z-10"
-                        animate={{ x: isRTL ? [0, -4, 0] : [0, 4, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        key="journey-left-start"
+                        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className={`flex min-h-[44px] items-center gap-2.5 ${isRTL ? "flex-row-reverse justify-end" : ""}`}
                       >
-                        <UiIcon
-                          icon="solar:arrow-right-linear"
-                          size={16}
-                          className={isRTL ? "rotate-180 text-background" : "text-background"}
-                        />
+                        <motion.span
+                          aria-hidden="true"
+                          className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-teal-300"
+                          animate={shouldShowPulseDot ? { scale: [1, 1.08, 1], opacity: [0.88, 1, 0.88] } : { scale: 1, opacity: 1 }}
+                          transition={shouldShowPulseDot ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" } : { duration: 0 }}
+                        >
+                          <span className="h-2 w-2 rounded-full bg-teal-300" />
+                        </motion.span>
+                        <span className="min-w-0 truncate text-[13px] font-medium leading-5 text-white/[0.6]">
+                          {t.journeyPromptStart}
+                        </span>
                       </motion.div>
-                    </div>
-                  </motion.button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="mobile-progress"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="relative p-2.5"
-                >
-                  <div className="mx-auto flex w-fit items-center justify-center gap-1.5">
-                    {progressItems.map((step, index) => {
-                      const iconName = step.icon;
-                      const isCompleted = currentStep > step.id;
-                      const isActive = progressStep === step.id;
-                      const canJump = canNavigateToStep(step.id);
-                      const connectorState =
-                        index < progressItems.length - 1 ? getConnectorState(progressItems[index + 1].id) : null;
-                      return (
-                        <div key={`mobile-${step.id}`} className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => handleProgressStepClick(step.id)}
-                            disabled={!canJump}
-                            aria-label={step.label}
-                            className={`w-12 h-12 min-h-[48px] rounded-full border flex items-center justify-center transition-colors ${
-                              isCompleted
-                                ? "bg-primary border-primary text-primary-foreground shadow-[0_0_16px_hsl(var(--primary)/0.32)]"
-                                : isActive
-                                ? "bg-primary/12 border-primary/90 text-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.14)]"
-                                : "bg-white/40 dark:bg-white/5 border-white/50 dark:border-white/20 text-foreground/75 dark:text-foreground/70"
-                            } ${canJump ? "hover:border-primary/50" : "cursor-default"} ${
-                              !canJump && !isActive ? "opacity-85" : ""
-                            }`}
-                          >
-                            <UiIcon
-                              icon={isCompleted ? "solar:check-circle-bold" : iconName}
-                              size={20}
-                              tone="current"
-                              state={isCompleted ? "completed" : isActive ? "active" : "default"}
-                            />
-                          </button>
-                          {connectorState && (
-                            <StepConnector
-                              state={connectorState}
-                              isRTL={isRTL}
-                              reducedMotion={Boolean(prefersReducedMotion)}
-                              className="mx-1.5 w-10 shrink-0"
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    )}
+
+                    {journeyState === "time" && (
+                      <motion.button
+                        key="journey-left-time"
+                        type="button"
+                        aria-label={t.journeyEditDateAria}
+                        onClick={() => handleProgressStepClick(1)}
+                        initial={prefersReducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 25 }}
+                        className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-[11px] px-1.5 py-1 text-white/[0.96] transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${
+                          isRTL ? "flex-row-reverse justify-end text-right" : "text-left"
+                        }`}
+                      >
+                        <span aria-hidden="true" className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-teal-300">
+                          <svg viewBox="0 0 12 12" fill="none" className="h-2.5 w-2.5">
+                            <path d="M2.2 6.1L4.7 8.5L9.7 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                        <span className="min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
+                      </motion.button>
+                    )}
+
+                    {journeyState === "confirm-details" && (
+                      <motion.button
+                        key="journey-left-confirm-details"
+                        type="button"
+                        aria-label={t.journeyEditDateAria}
+                        onClick={() => handleProgressStepClick(1)}
+                        initial={prefersReducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 25 }}
+                        className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-[11px] px-1.5 py-1 text-white/[0.96] transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${
+                          isRTL ? "flex-row-reverse justify-end text-right" : "text-left"
+                        }`}
+                      >
+                        <span aria-hidden="true" className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-teal-300">
+                          <svg viewBox="0 0 12 12" fill="none" className="h-2.5 w-2.5">
+                            <path d="M2.2 6.1L4.7 8.5L9.7 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                        <span className="min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
+                      </motion.button>
+                    )}
+
+                    {journeyState === "details" && (
+                      <motion.div
+                        key="journey-left-details"
+                        initial={prefersReducedMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.94 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                        transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 25 }}
+                        className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-[11px] px-1.5 py-1 ${
+                          isRTL ? "flex-row-reverse justify-end text-right" : "text-left"
+                        }`}
+                      >
+                        <span aria-hidden="true" className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-teal-300">
+                          <svg viewBox="0 0 12 12" fill="none" className="h-2.5 w-2.5">
+                            <path d="M2.2 6.1L4.7 8.5L9.7 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                        <span className="min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div aria-hidden="true" className="h-10 w-px justify-self-center rounded-full bg-white/[0.08]" />
+
+                <div className={`min-w-0 flex items-center ${isRTL ? "justify-start" : "justify-end"}`}>
+                  <AnimatePresence mode="wait" initial={false}>
+                    {journeyState === "start" && (
+                      <motion.span
+                        key="journey-right-empty"
+                        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.16, ease: "easeOut" }}
+                        className="h-11 w-full"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    {journeyState === "time" && (
+                      <motion.button
+                        key="journey-right-time"
+                        type="button"
+                        onClick={jumpToTimeSection}
+                        initial={prefersReducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: isRTL ? -8 : 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isRTL ? 6 : -6 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-[11px] bg-[hsl(177,58%,46%)] px-4 text-[12px] font-semibold text-white/[0.88] shadow-[0_10px_18px_hsl(176_52%_28%/0.36)]"
+                      >
+                        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[11px] bg-white/[0.1]" />
+                        <span className="min-w-0 max-w-[30vw] truncate">{t.journeyNextTime}</span>
+                        <ThinArrow className={`h-3.5 w-3.5 shrink-0 ${isRTL ? "rotate-180" : ""}`} />
+                      </motion.button>
+                    )}
+
+                    {journeyState === "confirm-details" && (
+                      <motion.button
+                        key="journey-right-confirm-details"
+                        type="button"
+                        onClick={jumpToDetailsSection}
+                        initial={prefersReducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: isRTL ? -8 : 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isRTL ? 6 : -6 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-[11px] bg-[hsl(177,58%,46%)] px-4 text-[12px] font-semibold text-white/[0.88] shadow-[0_10px_18px_hsl(176_52%_28%/0.36)]"
+                      >
+                        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[11px] bg-white/[0.1]" />
+                        <span className="min-w-0 max-w-[30vw] truncate">{t.journeyConfirmDetails}</span>
+                        <ThinArrow className={`h-3.5 w-3.5 shrink-0 ${isRTL ? "rotate-180" : ""}`} />
+                      </motion.button>
+                    )}
+
+                    {journeyState === "details" && (
+                      <motion.button
+                        key={`journey-right-book-${canConfirm ? "ready" : "pending"}`}
+                        type="button"
+                        onClick={handleConfirm}
+                        disabled={!canConfirm || isConfirming}
+                        initial={prefersReducedMotion ? { opacity: 1, x: 0 } : { opacity: 0, x: isRTL ? -8 : 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isRTL ? 6 : -6 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className={`relative inline-flex h-11 max-w-full items-center gap-1.5 rounded-[12px] px-5 text-[13px] font-semibold transition-all ${
+                          canConfirm
+                            ? "bg-[hsl(177,74%,50%)] text-white/[0.9] shadow-[0_12px_22px_hsl(176_64%_34%/0.48)]"
+                            : "bg-white/[0.12] text-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                        } disabled:cursor-not-allowed`}
+                      >
+                        <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[12px] bg-white/[0.1]" />
+                        {canConfirm && !prefersReducedMotion && (
+                          <motion.span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 rounded-[12px] bg-[linear-gradient(115deg,transparent_22%,rgba(255,255,255,0.05)_50%,transparent_78%)]"
+                            initial={{ x: isRTL ? "130%" : "-130%" }}
+                            animate={{ x: isRTL ? "-130%" : "130%" }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                          />
+                        )}
+                        <span className="relative z-10 min-w-0 max-w-[31vw] truncate">{t.journeyBookNow}</span>
+                        <ThinArrow className={`relative z-10 h-3.5 w-3.5 shrink-0 ${isRTL ? "rotate-180" : ""}`} />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>

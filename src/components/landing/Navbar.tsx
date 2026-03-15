@@ -1,8 +1,10 @@
-import { useState, useEffect, forwardRef } from "react";
+import { useState, useEffect, useRef, useMemo, forwardRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles, Phone, Clock } from "lucide-react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { Menu, X, Sparkles, Phone, Clock, MapPin, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getClinicAvailability } from "@/lib/clinicAvailability";
 
 const WhatsAppIcon = forwardRef<SVGSVGElement, { className?: string }>(
   ({ className, ...props }, ref) => (
@@ -13,19 +15,351 @@ const WhatsAppIcon = forwardRef<SVGSVGElement, { className?: string }>(
 );
 WhatsAppIcon.displayName = "WhatsAppIcon";
 
-const contactItems = [
-  { type: "phone" as const, label: "Téléphone", value: "0528 333 836", href: "tel:0528333836", icon: Phone },
-  { type: "phone" as const, label: "Téléphone", value: "0528 333 837", href: "tel:0528333837", icon: Phone },
-  { type: "whatsapp" as const, label: "WhatsApp", value: "0660 077 768", href: "https://wa.me/212660077768", icon: null },
-];
+type MenuLanguage = "en" | "fr" | "ar" | "zgh";
+
+interface MenuCopy {
+  lineMain: string;
+  lineSupport: string;
+  heroCall: string;
+  heroWhatsapp: string;
+  greetingOpen: string;
+  greetingClosed: string;
+  statusOpenShort: string;
+  statusClosedShort: string;
+  openNowNote: string;
+  afterHoursNote: string;
+  nextOpenAt: string;
+  secondaryActionsLabel: string;
+  directionsLabel: string;
+  hoursLabel: string;
+  hoursValue: string;
+  getStarted: string;
+  openMenuAria: string;
+  closeMenuAria: string;
+}
+
+const formatNextOpenLabelForMenu = (label: string, language: MenuLanguage) => {
+  const match = label.match(/^([A-Za-z]{3})\s+(\d{2}:\d{2})$/);
+  if (!match) {
+    return { day: null as string | null, time: label, localized: false };
+  }
+
+  const [, dayToken, timeValue] = match;
+  const weekdayIndexByToken: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  const weekdayIndex = weekdayIndexByToken[dayToken];
+  if (weekdayIndex === undefined) {
+    return { day: null as string | null, time: timeValue, localized: false };
+  }
+
+  const localeByLanguage: Record<MenuLanguage, string> = {
+    en: "en-US",
+    fr: "fr-FR",
+    ar: "ar-MA",
+    zgh: "fr-FR",
+  };
+  const locale = localeByLanguage[language] ?? "en-US";
+
+  try {
+    const baseUtc = new Date(Date.UTC(2024, 0, 7));
+    baseUtc.setUTCDate(baseUtc.getUTCDate() + weekdayIndex);
+    const formatter = new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "Africa/Casablanca" });
+    const weekday = formatter.format(baseUtc);
+    return { day: weekday, time: timeValue, localized: true };
+  } catch {
+    return { day: null as string | null, time: timeValue, localized: false };
+  }
+};
+
+const menuTranslations: Record<MenuLanguage, MenuCopy> = {
+  en: {
+    lineMain: "Main line",
+    lineSupport: "Support",
+    heroCall: "Call now",
+    heroWhatsapp: "Message on WhatsApp",
+    greetingOpen: "We're open right now — want to talk?",
+    greetingClosed: "We open in {{hours}} hours. Leave us a message?",
+    statusOpenShort: "Open now",
+    statusClosedShort: "Currently closed",
+    openNowNote: "Live support is available right now.",
+    afterHoursNote: "We'll reply when we open.",
+    nextOpenAt: "Next opening",
+    secondaryActionsLabel: "Other actions",
+    directionsLabel: "Directions",
+    hoursLabel: "Hours",
+    hoursValue: "Mon - Fri: 09:00 - 18:00 • Sat: 09:00 - 12:00",
+    getStarted: "Get Started",
+    openMenuAria: "Open menu",
+    closeMenuAria: "Close menu",
+  },
+  fr: {
+    lineMain: "Ligne principale",
+    lineSupport: "Support",
+    heroCall: "Appeler maintenant",
+    heroWhatsapp: "Message WhatsApp",
+    greetingOpen: "Nous sommes ouverts maintenant — on en parle ?",
+    greetingClosed: "Nous ouvrons dans {{hours}} heures. Laissez-nous un message ?",
+    statusOpenShort: "Ouvert",
+    statusClosedShort: "Ferme maintenant",
+    openNowNote: "Notre equipe est disponible immediatement.",
+    afterHoursNote: "Nous vous repondrons a l'ouverture.",
+    nextOpenAt: "Prochaine ouverture",
+    secondaryActionsLabel: "Actions secondaires",
+    directionsLabel: "Itineraire",
+    hoursLabel: "Horaires",
+    hoursValue: "Lun - Ven: 09:00 - 18:00 • Sam: 09:00 - 12:00",
+    getStarted: "Commencer",
+    openMenuAria: "Ouvrir le menu",
+    closeMenuAria: "Fermer le menu",
+  },
+  ar: {
+    lineMain: "الخط الرئيسي",
+    lineSupport: "الدعم",
+    heroCall: "اتصل الآن",
+    heroWhatsapp: "راسلنا عبر واتساب",
+    greetingOpen: "نحن مفتوحون الآن — هل ترغب بالتحدث؟",
+    greetingClosed: "سنفتح خلال {{hours}} ساعة. اترك لنا رسالة؟",
+    statusOpenShort: "مفتوح الآن",
+    statusClosedShort: "مغلق حالياً",
+    openNowNote: "يمكنك التواصل معنا مباشرة الآن.",
+    afterHoursNote: "سنرد عليك عند فتح العيادة.",
+    nextOpenAt: "الافتتاح القادم",
+    secondaryActionsLabel: "إجراءات أخرى",
+    directionsLabel: "الاتجاهات",
+    hoursLabel: "ساعات العمل",
+    hoursValue: "الإثنين - الجمعة: 09:00 - 18:00 • السبت: 09:00 - 12:00",
+    getStarted: "ابدأ الآن",
+    openMenuAria: "فتح القائمة",
+    closeMenuAria: "إغلاق القائمة",
+  },
+  zgh: {
+    lineMain: "ⵉⵣⵓⵏ ⴰⵎⵇⵇⵔⴰⵏ",
+    lineSupport: "ⴰⵙⵙⵉⵙⵏ",
+    heroCall: "ⵙⵙⵉⵡⵍ ⵖⵉⵍⴰⴷ",
+    heroWhatsapp: "ⴰⵣⵏ ⴰⵙⴰⵡⴰⵍ ⵙ ⵡⴰⵜⵙⴰⴱ",
+    greetingOpen: "ⵏⵍⵍⴰ ⵎⵥⵢⴰⵏ ⵖⵉⵍⴰⴷ — ⵜⵔⵉⴷ ⴰⴷ ⵏⵙⴰⵡⴰⵍ?",
+    greetingClosed: "ⴰⴷ ⵏⵔⵥⵎ ⴷⴰⵖ ⴳ {{hours}} ⵙⵙⴰⵄⴰⵜ. ⴰⵣⵏ ⴰⵢⵉⵏ ⴰⵣⴳⵣⴰⵡ?",
+    statusOpenShort: "ⵉⵔⵥⵎ",
+    statusClosedShort: "ⵉⵎⵖⵍⵉ",
+    openNowNote: "ⴰⵙⵙⵉⵙⵏ ⵉⵍⵍⴰ ⵖⵉⵍⴰⴷ.",
+    afterHoursNote: "ⴰⴷ ⵏⵔⴰⵔ ⴼⵍⴰⴽ ⵎⵉⵏⵣⵉ ⴰⴷ ⵏⵔⵥⵎ.",
+    nextOpenAt: "ⵓⵔⵣⵓ ⵉ ⵉⴹⴼⴼⵔⵏ",
+    secondaryActionsLabel: "ⵜⵉⵙⴽⴽⴰⵔⵉⵏ ⵏⵏⵉⴹⵏ",
+    directionsLabel: "ⵜⴰⵏⴰⵎⵎⴰⵙⵜ",
+    hoursLabel: "ⵉⵙⵔⴰⴳⵏ",
+    hoursValue: "ⴰⵢⵏⴰⵙ - ⴰⵙⵎⵉⵙ: 09:00 - 18:00 • ⴰⵙⵉⴹⵢⴰⵙ: 09:00 - 12:00",
+    getStarted: "ⴱⴷⵓ",
+    openMenuAria: "ⴽⵛⵎ ⵜⴰⴳⴰⵍⵉⵙⵜ",
+    closeMenuAria: "ⵇⵇⵏ ⵜⴰⴳⴰⵍⵉⵙⵜ",
+  },
+};
+
+const PRIMARY_PHONE = "0528 333 836";
+const PRIMARY_PHONE_HREF = "tel:0528333836";
+const SECONDARY_PHONE = "0528 333 837";
+const SECONDARY_PHONE_HREF = "tel:0528333837";
+const WHATSAPP_HREF = "https://wa.me/212660077768";
+const DIRECTIONS_HREF = "https://maps.app.goo.gl/YbKTvN8aSjoe4amUA";
+
+const clearInteractionLocks = () => {
+  if (typeof document === "undefined") return;
+
+  const targets = [document.documentElement, document.body];
+  targets.forEach((target) => {
+    target.style.removeProperty("overflow");
+    target.style.removeProperty("pointer-events");
+    target.style.removeProperty("touch-action");
+    target.style.removeProperty("position");
+    target.style.removeProperty("top");
+    target.style.removeProperty("left");
+    target.style.removeProperty("right");
+    target.style.removeProperty("width");
+    target.style.removeProperty("padding-right");
+    target.style.removeProperty("overscroll-behavior");
+    target.removeAttribute("data-scroll-locked");
+    target.classList.remove("overflow-hidden");
+  });
+};
+
+interface ScrollLockSnapshot {
+  scrollY: number;
+  htmlOverflow: string;
+  htmlPaddingRight: string;
+  htmlOverscrollBehavior: string;
+  bodyOverflow: string;
+  bodyPosition: string;
+  bodyTop: string;
+  bodyLeft: string;
+  bodyRight: string;
+  bodyWidth: string;
+  bodyPaddingRight: string;
+  bodyTouchAction: string;
+  bodyOverscrollBehavior: string;
+}
+
+const getScrollbarWidth = () =>
+  typeof window === "undefined" ? 0 : window.innerWidth - document.documentElement.clientWidth;
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuNow, setMenuNow] = useState(() => new Date());
   const [scrolled, setScrolled] = useState(false);
   const { scrollYProgress } = useScroll();
+  const shouldReduceMotion = useReducedMotion();
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuDialogRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const lockSnapshotRef = useRef<ScrollLockSnapshot | null>(null);
+
+  const currentLanguage: MenuLanguage = (language ?? "fr") as MenuLanguage;
+  const t = menuTranslations[currentLanguage];
+  const isRTL = currentLanguage === "ar";
+  const availability = useMemo(() => getClinicAvailability(menuNow), [menuNow]);
+  const isClinicOpen = availability.isOpen;
+  const heroIsCall = availability.heroChannel === "call";
+  const greetingText = isClinicOpen
+    ? t.greetingOpen
+    : t.greetingClosed.replace("{{hours}}", String(availability.hoursUntilOpen));
+  const nextOpenLabelParts = formatNextOpenLabelForMenu(availability.nextOpenLabel, currentLanguage);
+  const statusDotClass =
+    availability.statusDotColor === "teal"
+      ? "bg-[hsl(170,66%,52%)] shadow-[0_0_0_5px_hsl(170_66%_52%/0.22)]"
+      : "bg-[hsl(28,10%,60%)] shadow-[0_0_0_5px_hsl(28_10%_60%/0.18)]";
+  const widgetSurfaceClass = isClinicOpen
+    ? "bg-[linear-gradient(150deg,hsl(206_20%_15%),hsl(195_24%_11%))]"
+    : "bg-[linear-gradient(150deg,hsl(217_16%_16%),hsl(214_14%_12%))]";
+  const heroButtonClass = heroIsCall
+    ? "bg-[hsl(175,64%,46%)] text-white hover:bg-[hsl(175,64%,52%)] shadow-[0_16px_32px_-16px_hsl(175_64%_45%/0.7)]"
+    : "bg-[hsl(217,17%,42%)] text-white hover:bg-[hsl(217,17%,48%)] shadow-[0_16px_32px_-16px_hsl(217_20%_32%/0.8)]";
+
   const progressWidth = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
+  const heroAction = {
+    label: heroIsCall ? t.heroCall : t.heroWhatsapp,
+    href: heroIsCall ? PRIMARY_PHONE_HREF : WHATSAPP_HREF,
+    external: !heroIsCall,
+    icon: heroIsCall ? <Phone className="w-[19px] h-[19px]" /> : <WhatsAppIcon className="w-[19px] h-[19px]" />,
+  };
+
+  const secondaryActions = [
+    {
+      key: heroIsCall ? "whatsapp" : "call",
+      label: heroIsCall ? t.heroWhatsapp : t.heroCall,
+      href: heroIsCall ? WHATSAPP_HREF : PRIMARY_PHONE_HREF,
+      external: heroIsCall,
+      icon: heroIsCall ? <WhatsAppIcon className="w-[18px] h-[18px]" /> : <Phone className="w-[18px] h-[18px]" />,
+    },
+    {
+      key: "directions",
+      label: t.directionsLabel,
+      href: DIRECTIONS_HREF,
+      external: true,
+      icon: <MapPin className="w-[18px] h-[18px]" />,
+    },
+  ] as const;
+  const secondaryActionsForView = isRTL ? [...secondaryActions].reverse() : secondaryActions;
+
+  const lockPage = () => {
+    if (typeof document === "undefined" || lockSnapshotRef.current) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const scrollbarWidth = getScrollbarWidth();
+
+    lockSnapshotRef.current = {
+      scrollY,
+      htmlOverflow: html.style.overflow,
+      htmlPaddingRight: html.style.paddingRight,
+      htmlOverscrollBehavior: html.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+      bodyPaddingRight: body.style.paddingRight,
+      bodyTouchAction: body.style.touchAction,
+      bodyOverscrollBehavior: body.style.overscrollBehavior,
+    };
+
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "contain";
+    if (scrollbarWidth > 0) {
+      html.style.paddingRight = `${scrollbarWidth}px`;
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.touchAction = "none";
+    body.style.overscrollBehavior = "contain";
+  };
+
+  const unlockPage = (restoreFocus = true) => {
+    if (typeof document === "undefined") return;
+    const html = document.documentElement;
+    const body = document.body;
+    const snapshot = lockSnapshotRef.current;
+
+    if (snapshot) {
+      html.style.overflow = snapshot.htmlOverflow;
+      html.style.paddingRight = snapshot.htmlPaddingRight;
+      html.style.overscrollBehavior = snapshot.htmlOverscrollBehavior;
+      body.style.overflow = snapshot.bodyOverflow;
+      body.style.position = snapshot.bodyPosition;
+      body.style.top = snapshot.bodyTop;
+      body.style.left = snapshot.bodyLeft;
+      body.style.right = snapshot.bodyRight;
+      body.style.width = snapshot.bodyWidth;
+      body.style.paddingRight = snapshot.bodyPaddingRight;
+      body.style.touchAction = snapshot.bodyTouchAction;
+      body.style.overscrollBehavior = snapshot.bodyOverscrollBehavior;
+      window.scrollTo(0, snapshot.scrollY);
+      lockSnapshotRef.current = null;
+    }
+
+    clearInteractionLocks();
+
+    if (restoreFocus) {
+      lastFocusedRef.current?.focus();
+      lastFocusedRef.current = null;
+    }
+  };
+
+  const openMenu = () => {
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      lastFocusedRef.current = document.activeElement;
+    }
+    setIsOpen(true);
+  };
+
+  const closeMenu = (restoreFocus = true) => {
+    setIsOpen(false);
+    if (!restoreFocus) {
+      lastFocusedRef.current = null;
+    }
+  };
+
+  const toggleMenu = () => {
+    if (isOpen) {
+      closeMenu();
+      return;
+    }
+    openMenu();
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -34,21 +368,100 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (!isOpen) return;
+    setMenuNow(new Date());
+    const timer = window.setInterval(() => setMenuNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
   }, [isOpen]);
 
   useEffect(() => {
-    setIsOpen(false);
-    document.body.style.overflow = "";
+    if (isOpen) {
+      lockPage();
+      const frame = window.requestAnimationFrame(() => {
+        closeButtonRef.current?.focus();
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    unlockPage();
+    return undefined;
+  }, [isOpen]);
+
+  useEffect(() => {
+    closeMenu(false);
+    unlockPage(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const handlePageShow = () => {
+      closeMenu(false);
+      unlockPage(false);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMenu();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const container = menuDialogRef.current;
+      if (!container) return;
+
+      const focusable = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((node) => !node.hasAttribute("disabled"));
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        closeButtonRef.current?.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey) {
+        if (active === first || !container.contains(active)) {
+          event.preventDefault();
+          last.focus();
+        }
+        return;
+      }
+
+      if (active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => unlockPage(false);
+  }, []);
 
   return (
     <>
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
+        transition={{
+          duration: shouldReduceMotion ? 0.2 : 0.6,
+          ease: [0.2, 0.65, 0.3, 0.9],
+        }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
             ? "top-4 left-4 right-4 md:left-8 md:right-8 lg:left-auto lg:right-auto lg:max-w-4xl lg:mx-auto lg:inset-x-0"
@@ -66,12 +479,15 @@ const Navbar = () => {
             </div>
           )}
 
-          <div className={`relative ${scrolled ? "px-4 md:px-6" : "container mx-auto px-6"}`}>
-            <div className={`flex items-center justify-between transition-all duration-300 ${
+            <div className={`relative ${scrolled ? "px-4 md:px-6" : "container mx-auto px-6"}`}>
+            <div className={`flex items-center justify-between transition-all duration-300 md:flex-row ${
+              isRTL ? "flex-row-reverse" : "flex-row"
+            } ${
               scrolled ? "h-14 md:h-16" : "h-16 md:h-20"
             }`}>
-              <motion.a
-                href="#"
+              <motion.button
+                type="button"
+                onClick={() => navigate("/")}
                 className="flex items-center gap-2.5 group"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -83,7 +499,7 @@ const Navbar = () => {
                   alt="Logo"
                   className="w-9 h-9 md:w-10 md:h-10 rounded-xl object-contain"
                 />
-              </motion.a>
+              </motion.button>
 
               {/* Desktop CTA */}
               <motion.div
@@ -99,7 +515,7 @@ const Navbar = () => {
                     className="relative bg-foreground text-background hover:bg-foreground/90 text-sm font-medium px-5 h-10 gap-2 shadow-soft group-hover:shadow-prominent transition-all duration-300"
                   >
                     <Sparkles className="w-4 h-4" />
-                    Get Started
+                    {t.getStarted}
                   </Button>
                 </motion.div>
               </motion.div>
@@ -110,8 +526,10 @@ const Navbar = () => {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="md:hidden relative w-12 h-12 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                onClick={() => setIsOpen(!isOpen)}
-                aria-label="Toggle menu"
+                onClick={toggleMenu}
+                aria-label={isOpen ? t.closeMenuAria : t.openMenuAria}
+                aria-expanded={isOpen}
+                aria-controls="mobile-menu-dialog"
               >
                 <AnimatePresence mode="wait">
                   {isOpen ? (
@@ -142,101 +560,260 @@ const Navbar = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[60] md:hidden flex flex-col h-[100dvh] bg-background"
+            transition={{ duration: shouldReduceMotion ? 0.15 : 0.28 }}
+            className="fixed inset-0 z-[60] md:hidden flex flex-col min-h-[100svh] h-[100dvh] bg-background/96 backdrop-blur-xl"
+            id="mobile-menu-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-menu-title"
+            ref={menuDialogRef}
+            dir={isRTL ? "rtl" : "ltr"}
           >
             {/* Menu Header */}
-            <div className="flex items-center justify-between px-6 h-20 shrink-0 border-b border-border/40">
-              <a href="#" className="flex items-center gap-2.5" onClick={() => setIsOpen(false)}>
-                <img
-                  src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/cropped-sounnyfav.webp"
-                  alt="Logo"
-                  className="w-9 h-9 rounded-xl object-contain"
-                />
-              </a>
-              <motion.button
-                className="w-12 h-12 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                onClick={() => setIsOpen(false)}
-                aria-label="Close menu"
-                whileTap={{ scale: 0.9 }}
-              >
-                <X size={22} />
-              </motion.button>
+            <div className="safe-top shrink-0 border-b border-border/40 px-4 sm:px-6 pt-2">
+              <div className="flex min-h-16 items-center justify-between gap-3">
+                <button
+                  type="button"
+                  className={`flex items-center gap-2.5 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
+                  onClick={() => {
+                    closeMenu(false);
+                    navigate("/");
+                  }}
+                >
+                  <img
+                    src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/cropped-sounnyfav.webp"
+                    alt="Logo"
+                    className="w-9 h-9 rounded-xl object-contain"
+                  />
+                  <div className={`min-w-0 ${isRTL ? "items-end" : "items-start"} flex flex-col`}>
+                    <span id="mobile-menu-title" className="text-sm font-semibold text-foreground">
+                      Sounny
+                    </span>
+                    <span className="text-[11px] leading-tight text-muted-foreground">
+                      {isClinicOpen ? t.statusOpenShort : t.statusClosedShort}
+                    </span>
+                  </div>
+                </button>
+                <motion.button
+                  ref={closeButtonRef}
+                  className="w-12 h-12 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                  onClick={() => closeMenu()}
+                  aria-label={t.closeMenuAria}
+                  whileTap={{ scale: shouldReduceMotion ? 1 : 0.95 }}
+                  type="button"
+                >
+                  <X size={22} />
+                </motion.button>
+              </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-3">
-              {contactItems.map((item, i) => {
-                const isWhatsApp = item.type === "whatsapp";
-                return (
-                  <motion.a
-                    key={item.value}
-                    href={item.href}
-                    target={isWhatsApp ? "_blank" : undefined}
-                    rel={isWhatsApp ? "noopener noreferrer" : undefined}
-                    onClick={() => setIsOpen(false)}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 16 }}
-                    transition={{ duration: 0.25, delay: 0.05 + i * 0.06 }}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 active:scale-[0.98] min-h-[72px] ${
-                      isWhatsApp
-                        ? "bg-[hsl(142,70%,96%)] border-[hsl(142,50%,80%)] hover:border-[hsl(142,60%,60%)] hover:shadow-md"
-                        : "bg-card border-border/60 hover:border-primary/40 hover:shadow-md"
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                      isWhatsApp
-                        ? "bg-[hsl(142,70%,40%)] text-white shadow-sm"
-                        : "bg-primary/10 text-primary"
-                    }`}>
-                      {isWhatsApp ? <WhatsAppIcon className="w-5 h-5" /> : <item.icon className="w-5 h-5" />}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{item.label}</span>
-                      <span className="text-base font-semibold text-foreground">{item.value}</span>
-                    </div>
-                  </motion.a>
-                );
-              })}
-
-              {/* Working Hours */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] sm:px-6 sm:py-5">
+              <motion.section
+                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 16 }}
-                transition={{ duration: 0.25, delay: 0.25 }}
-                className="flex items-center gap-4 p-4 rounded-2xl border border-border/60 bg-card min-h-[72px]"
+                exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
+                transition={{ duration: shouldReduceMotion ? 0.14 : 0.24 }}
+                className={`relative overflow-hidden rounded-[28px] p-4 text-white shadow-[0_30px_64px_-36px_hsl(220_30%_5%/0.9)] sm:p-5 ${widgetSurfaceClass}`}
               >
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-accent/50 text-accent-foreground">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Horaires</span>
-                  <span className="text-base font-semibold text-foreground">Lun – Ven : 9h – 18h</span>
-                </div>
-              </motion.div>
-            </div>
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/12 via-white/6 to-transparent"
+                />
+                <span
+                  aria-hidden="true"
+                  style={{ insetInlineStart: "-3.5rem" }}
+                  className={`pointer-events-none absolute -top-14 h-32 w-32 rounded-full blur-3xl ${
+                    isClinicOpen ? "bg-[hsl(175_64%_45%/0.24)]" : "bg-[hsl(217_18%_46%/0.18)]"
+                  }`}
+                />
 
-            {/* Bottom CTA */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, delay: 0.3 }}
-              className="shrink-0 px-6 pb-8 pt-4 border-t border-border/40 safe-bottom"
-            >
-              <Button
-                asChild
-                className="w-full h-14 bg-foreground text-background hover:bg-foreground/90 font-semibold text-base gap-3 rounded-2xl shadow-prominent"
-                onClick={() => setIsOpen(false)}
-              >
-                <a href="tel:0528333836">
-                  <Phone className="w-5 h-5" />
-                  Appeler maintenant
-                </a>
-              </Button>
-            </motion.div>
+                <div className="relative">
+                  <motion.div
+                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0.12 : 0.2, delay: shouldReduceMotion ? 0 : 0.05 }}
+                    className={`flex items-start gap-2.5 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
+                  >
+                    <motion.span
+                      aria-hidden="true"
+                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass}`}
+                      animate={shouldReduceMotion ? undefined : { scale: [1, 1.3, 1], opacity: [0.86, 1, 0.9] }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    />
+                    <div className={`min-w-0 flex-1 ${isRTL ? "text-right" : "text-left"}`}>
+                      <p className={`text-[17px] font-semibold leading-[1.32] text-white ${isRTL ? "w-full text-right" : ""}`}>
+                        {greetingText}
+                      </p>
+                      <p className={`mt-1 text-[12px] leading-relaxed text-white/70 ${isRTL ? "w-full text-right" : ""}`}>
+                        {isClinicOpen ? t.openNowNote : t.afterHoursNote}
+                      </p>
+                      {!isClinicOpen && (
+                        <p className={`mt-0.5 text-[12px] leading-relaxed text-white/56 ${isRTL ? "w-full text-right" : ""}`}>
+                          {isRTL ? (
+                            <span className="flex w-full justify-end">
+                              <span className="flex max-w-full flex-wrap items-baseline justify-end gap-x-1 gap-y-0.5 text-right">
+                                <span>{t.nextOpenAt}: </span>
+                                {nextOpenLabelParts.localized && nextOpenLabelParts.day ? (
+                                  <>
+                                    <span>{nextOpenLabelParts.day}</span>
+                                    <span
+                                      dir="ltr"
+                                      style={{ unicodeBidi: "isolate" }}
+                                      className="tabular-nums whitespace-nowrap"
+                                    >
+                                      {nextOpenLabelParts.time}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span
+                                    dir="ltr"
+                                    style={{ unicodeBidi: "isolate" }}
+                                    className="tabular-nums break-words"
+                                  >
+                                    {availability.nextOpenLabel}
+                                  </span>
+                                )}
+                              </span>
+                            </span>
+                          ) : (
+                            <>
+                              <span>{t.nextOpenAt}: </span>
+                              {nextOpenLabelParts.localized && nextOpenLabelParts.day ? (
+                                <>
+                                  <span>{nextOpenLabelParts.day} </span>
+                                  <span
+                                    dir="ltr"
+                                    style={{ unicodeBidi: "isolate" }}
+                                    className="tabular-nums whitespace-nowrap"
+                                  >
+                                    {nextOpenLabelParts.time}
+                                  </span>
+                                </>
+                              ) : (
+                                <span
+                                  dir="ltr"
+                                  style={{ unicodeBidi: "isolate" }}
+                                  className="tabular-nums break-words"
+                                >
+                                  {availability.nextOpenLabel}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+
+                  <motion.a
+                    href={heroAction.href}
+                    target={heroAction.external ? "_blank" : undefined}
+                    rel={heroAction.external ? "noopener noreferrer" : undefined}
+                    onClick={() => closeMenu(false)}
+                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0.12 : 0.2, delay: shouldReduceMotion ? 0 : 0.1 }}
+                    className={`mt-4 flex min-h-[54px] w-full items-center justify-center gap-2.5 rounded-2xl px-4 py-3 font-semibold transition-all duration-200 active:scale-[0.98] ${
+                      isRTL ? "text-right" : "text-left"
+                    } ${heroButtonClass}`}
+                  >
+                    {heroAction.icon}
+                    <span>{heroAction.label}</span>
+                  </motion.a>
+
+                  <motion.div
+                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0.12 : 0.2, delay: shouldReduceMotion ? 0 : 0.15 }}
+                    className="mt-4"
+                  >
+                    <p className={`text-[11px] font-medium text-white/52 ${isRTL ? "text-right tracking-normal" : "text-left tracking-[0.08em] uppercase"}`}>
+                      {t.secondaryActionsLabel}
+                    </p>
+                    <div className={`mt-2 flex items-center gap-2.5 ${isRTL ? "flex-row-reverse" : "flex-row"}`}>
+                      {secondaryActionsForView.map((action) => (
+                        <a
+                          key={action.key}
+                          href={action.href}
+                          target={action.external ? "_blank" : undefined}
+                          rel={action.external ? "noopener noreferrer" : undefined}
+                          aria-label={action.label}
+                          onClick={() => closeMenu(false)}
+                          className={`flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-[13px] font-medium text-white/90 transition-all duration-200 active:scale-[0.98] ${
+                            isRTL ? "text-right" : "text-left"
+                          }`}
+                        >
+                          {action.icon}
+                          <span className="truncate">{action.label}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0.12 : 0.2, delay: shouldReduceMotion ? 0 : 0.2 }}
+                    className="mt-4 space-y-2.5"
+                  >
+                    <a
+                      href={PRIMARY_PHONE_HREF}
+                      onClick={() => closeMenu(false)}
+                      className={`flex w-full min-h-[54px] items-center justify-between gap-3 rounded-2xl bg-white/9 px-3.5 py-2.5 transition-all duration-200 active:scale-[0.99] ${
+                        isRTL ? "text-right" : "text-left"
+                      }`}
+                    >
+                      <span className={`flex min-w-0 flex-1 flex-col ${isRTL ? "items-end" : "items-start"}`}>
+                        <span className="text-[11px] font-medium text-white/62">{t.lineMain}</span>
+                        <span dir="ltr" className="text-[15px] font-semibold leading-tight text-white/94 tabular-nums">
+                          {PRIMARY_PHONE}
+                        </span>
+                      </span>
+                      <ChevronRight className={`h-4 w-4 text-white/55 ${isRTL ? "rotate-180" : ""}`} />
+                    </a>
+
+                    <a
+                      href={SECONDARY_PHONE_HREF}
+                      onClick={() => closeMenu(false)}
+                      className={`flex w-full min-h-[54px] items-center justify-between gap-3 rounded-2xl bg-white/7 px-3.5 py-2.5 transition-all duration-200 active:scale-[0.99] ${
+                        isRTL ? "text-right" : "text-left"
+                      }`}
+                    >
+                      <span className={`flex min-w-0 flex-1 flex-col ${isRTL ? "items-end" : "items-start"}`}>
+                        <span className="text-[11px] font-medium text-white/58">{t.lineSupport}</span>
+                        <span dir="ltr" className="text-[15px] font-semibold leading-tight text-white/92 tabular-nums">
+                          {SECONDARY_PHONE}
+                        </span>
+                      </span>
+                      <ChevronRight className={`h-4 w-4 text-white/50 ${isRTL ? "rotate-180" : ""}`} />
+                    </a>
+
+                    <div className={`flex min-h-[52px] items-center gap-3 rounded-2xl bg-white/7 px-3.5 py-2 ${
+                      isRTL ? "text-right" : "text-left"
+                    }`}>
+                      <Clock className="h-4 w-4 shrink-0 text-white/62" />
+                      <span className={`flex min-w-0 flex-col ${isRTL ? "items-end" : "items-start"}`}>
+                        <span className="text-[11px] font-medium text-white/58">{t.hoursLabel}</span>
+                        <span className="text-[12px] font-medium leading-5 text-white/82">
+                          {currentLanguage === "ar" ? (
+                            <>
+                              <span>الإثنين - الجمعة: </span>
+                              <span dir="ltr" style={{ unicodeBidi: "isolate" }} className="tabular-nums whitespace-nowrap">09:00 - 18:00</span>
+                              <span> • السبت: </span>
+                              <span dir="ltr" style={{ unicodeBidi: "isolate" }} className="tabular-nums whitespace-nowrap">09:00 - 12:00</span>
+                            </>
+                          ) : (
+                            t.hoursValue
+                          )}
+                        </span>
+                      </span>
+                    </div>
+                  </motion.div>
+
+                </div>
+              </motion.section>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
