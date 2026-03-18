@@ -444,13 +444,14 @@ const AppointmentConfirmation = () => {
       </div>
 
       {/* Floating Action Bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.6, duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
-        className="fixed bottom-6 left-4 right-4 z-50 max-w-sm mx-auto"
-      >
-        <div className="relative rounded-3xl border border-white/35 dark:border-white/20 bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.12)_52%,hsl(var(--accent)/0.10))] backdrop-blur-3xl backdrop-saturate-150 shadow-[0_24px_56px_hsl(var(--foreground)/0.22),0_10px_24px_hsl(var(--foreground)/0.14)] overflow-hidden py-2.5 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-6 inset-x-0 z-50 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.6, duration: 0.6, ease: [0.2, 0.65, 0.3, 0.9] }}
+          className="mx-auto w-full max-w-sm"
+        >
+          <div className="relative rounded-3xl border border-white/35 dark:border-white/20 bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.12)_52%,hsl(var(--accent)/0.10))] backdrop-blur-3xl backdrop-saturate-150 shadow-[0_24px_56px_hsl(var(--foreground)/0.22),0_10px_24px_hsl(var(--foreground)/0.14)] overflow-hidden py-2.5 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/35 via-white/10 to-transparent dark:from-white/16 dark:via-white/6" />
           <div className="absolute left-3 right-3 top-[2px] h-[1px] pointer-events-none bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/45" />
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(120%_90%_at_20%_0%,rgba(255,255,255,0.45),rgba(255,255,255,0)_55%)] dark:bg-[radial-gradient(120%_90%_at_20%_0%,rgba(255,255,255,0.22),rgba(255,255,255,0)_55%)]" />
@@ -494,8 +495,9 @@ const AppointmentConfirmation = () => {
               );
             })}
           </div>
-        </div>
-      </motion.div>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 };

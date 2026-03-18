@@ -11,6 +11,8 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import AppointmentConfirmation from "./pages/AppointmentConfirmation";
+import AdminLogin from "./pages/AdminLogin";
+import AdminReservations from "./pages/AdminReservations";
 import { CTAModalProvider } from "@/contexts/CTAModalContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import CTAModal from "@/components/landing/CTAModal";
@@ -34,6 +36,8 @@ const App = () => (
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/refund" element={<RefundPolicy />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/reservations" element={<AdminReservations />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

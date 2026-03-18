@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.notify-appointment-telegram]
 verify_jwt = false
+
+[functions.dispatch-appointment-reminders]
+verify_jwt = false
+
+[functions.fetch-reservations]
+verify_jwt = false
+
+[functions.update-reservation-status]
+verify_jwt = false

@@ -71,11 +71,11 @@ const Footer = () => {
             
             {/* Contact info */}
             <div className="space-y-3">
-              <a href="mailto:Contact@JuniorAI.agency" className="flex items-center gap-3 text-sm text-background/70 hover:text-background transition-colors">
+              <a href="mailto:Contact@JuniorAI.agency" className="flex items-center gap-3 text-sm text-background/70 hover:text-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 rounded-sm">
                 <Mail className="w-4 h-4" />
                 Contact@JuniorAI.agency
               </a>
-              <a href="tel:+13239673954" className="flex items-center gap-3 text-sm text-background/70 hover:text-background transition-colors">
+              <a href="tel:+13239673954" className="flex items-center gap-3 text-sm text-background/70 hover:text-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 rounded-sm">
                 <Phone className="w-4 h-4" />
                 (323) 967-3954
               </a>

@@ -265,7 +265,7 @@ const Testimonial = () => {
                   <button
                     key={index}
                     onClick={() => setActive(index)}
-                    className="group relative p-1.5 sm:p-1 min-h-[44px] min-w-[28px] sm:min-w-0 flex items-center justify-center"
+                    className="group relative p-1.5 min-h-[44px] min-w-[28px] sm:min-w-0 flex items-center justify-center"
                   >
                     <div
                       className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${

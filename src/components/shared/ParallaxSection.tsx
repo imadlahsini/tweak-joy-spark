@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useReducedMotion } from "framer-motion";
 import { useRef, ReactNode } from "react";
 
 interface ParallaxSectionProps {
@@ -17,6 +17,7 @@ const ParallaxSection = ({
   scale = false,
 }: ParallaxSectionProps) => {
   const ref = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -32,6 +33,10 @@ const ParallaxSection = ({
   const y = useTransform(smoothProgress, [0, 1], [100 * speed, -100 * speed]);
   const opacityValue = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0.6, 1, 1, 0.6]);
   const scaleValue = useTransform(scrollYProgress, [0, 0.5, 1], [0.95, 1, 0.95]);
+
+  if (prefersReducedMotion) {
+    return <div ref={ref} className={className}>{children}</div>;
+  }
 
   return (
     <motion.div

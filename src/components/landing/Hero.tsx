@@ -31,8 +31,23 @@ const Hero = () => {
     }
   };
 
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect && e.touches[0]) {
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      mouseX.set(e.touches[0].clientX - centerX);
+      mouseY.set(e.touches[0].clientY - centerY);
+    }
+  };
+
   const scrollToNext = () => {
-    window.scrollBy({ top: window.innerHeight * 0.8, behavior: "smooth" });
+    const next = containerRef.current?.nextElementSibling;
+    if (next) {
+      next.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      window.scrollBy({ top: window.innerHeight * 0.8, behavior: "smooth" });
+    }
   };
 
   const stats = [
@@ -42,9 +57,10 @@ const Hero = () => {
   ];
 
   return (
-    <section 
+    <section
       ref={containerRef}
       onMouseMove={handleMouseMove}
+      onTouchMove={handleTouchMove}
       className="relative md:min-h-[100dvh] flex flex-col items-center pt-16 sm:pt-20 md:pt-24 pb-4 sm:pb-10 md:pb-12"
     >
       {/* Animated gradient mesh background */}

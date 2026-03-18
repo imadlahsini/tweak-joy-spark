@@ -53,13 +53,11 @@ const StaggerContainer = ({
         opacity: 0,
         x,
         y,
-        filter: "blur(10px)",
       },
       visible: {
         opacity: 1,
         x: 0,
         y: 0,
-        filter: "blur(0px)",
         transition: {
           duration: 0.6,
           ease: [0.2, 0.65, 0.3, 0.9],

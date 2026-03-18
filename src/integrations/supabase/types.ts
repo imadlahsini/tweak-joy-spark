@@ -14,6 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_reminders: {
+        Row: {
+          appointment_id: string
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          reminder_type: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          reminder_type: string
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          reminder_type?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_reminders_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          appointment_at: string
+          appointment_date: string
+          appointment_time: string
+          client_name: string
+          client_phone: string
+          confirmation_whatsapp_attempts: number
+          confirmation_whatsapp_error: string | null
+          confirmation_whatsapp_sent_at: string | null
+          confirmation_whatsapp_status: string
+          created_at: string
+          id: string
+          language: string
+          normalized_client_phone: string
+          status: string
+          updated_at: string
+          whatsapp_chat_id: string
+        }
+        Insert: {
+          appointment_at: string
+          appointment_date: string
+          appointment_time: string
+          client_name: string
+          client_phone: string
+          confirmation_whatsapp_attempts?: number
+          confirmation_whatsapp_error?: string | null
+          confirmation_whatsapp_sent_at?: string | null
+          confirmation_whatsapp_status?: string
+          created_at?: string
+          id?: string
+          language: string
+          normalized_client_phone: string
+          status?: string
+          updated_at?: string
+          whatsapp_chat_id: string
+        }
+        Update: {
+          appointment_at?: string
+          appointment_date?: string
+          appointment_time?: string
+          client_name?: string
+          client_phone?: string
+          confirmation_whatsapp_attempts?: number
+          confirmation_whatsapp_error?: string | null
+          confirmation_whatsapp_sent_at?: string | null
+          confirmation_whatsapp_status?: string
+          created_at?: string
+          id?: string
+          language?: string
+          normalized_client_phone?: string
+          status?: string
+          updated_at?: string
+          whatsapp_chat_id?: string
+        }
+        Relationships: []
+      }
       dashboard_cache: {
         Row: {
           data: Json

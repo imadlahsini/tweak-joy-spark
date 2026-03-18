@@ -337,6 +337,17 @@ const getNormalizedScrollLeft = (element: HTMLElement, isRTL: boolean) => {
 };
 
 const APPOINTMENT_RESET_ON_RETURN_KEY = "appointment:reset-on-return";
+const SELECTION_FEEDBACK_HOLD_MS = 380;
+const SECTION_GLIDE_DURATION_MS = 760;
+const SECTION_GLIDE_KICKOFF_DELAY_MS = 140;
+const SECTION_GLIDE_TOP_OFFSET = 96;
+const DETAILS_FOCUS_DELAY_MS = 220;
+
+const smootherstepEase = (progress: number) => {
+  if (progress <= 0) return 0;
+  if (progress >= 1) return 1;
+  return progress * progress * progress * (progress * (progress * 6 - 15) + 10);
+};
 
 const markAppointmentResetOnReturn = () => {
   if (typeof window !== "undefined") {
@@ -396,8 +407,23 @@ const Appointment = () => {
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(true);
   const [hasScrolled, setHasScrolled] = useState(false);
+  const [isDateToTimeTransitioning, setIsDateToTimeTransitioning] = useState(false);
+  const [isTimeToDetailsTransitioning, setIsTimeToDetailsTransitioning] = useState(false);
+  const [isDateSelectionFeedbackActive, setIsDateSelectionFeedbackActive] = useState(false);
+  const [isTimeSelectionFeedbackActive, setIsTimeSelectionFeedbackActive] = useState(false);
+  const [activeDateFeedbackKey, setActiveDateFeedbackKey] = useState<string | null>(null);
+  const [activeTimeFeedbackKey, setActiveTimeFeedbackKey] = useState<string | null>(null);
+  const [dateFeedbackPulseId, setDateFeedbackPulseId] = useState(0);
+  const [timeFeedbackPulseId, setTimeFeedbackPulseId] = useState(0);
   const initialScrollLeftRef = useRef<number | null>(null);
   const confirmLockRef = useRef(false);
+  const scrollAnimationFrameRef = useRef<number | null>(null);
+  const scrollAnimationTokenRef = useRef(0);
+  const dateToTimeAutoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeToDetailsAutoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detailsFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dateSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeSelectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const prefersReducedMotion = useReducedMotion();
@@ -410,8 +436,151 @@ const Appointment = () => {
   const t = translations[(language as "en" | "fr" | "ar" | "zgh") || "en"];
   const isRTL = language === "ar";
   const dateLocale = language === "fr" || language === "zgh" ? fr : language === "ar" ? arSA : undefined;
+  const sectionSwapInitial = prefersReducedMotion
+    ? { opacity: 1, y: 0, scale: 1 }
+    : { opacity: 0, y: 8, scale: 0.992 };
+  const sectionSwapExit = prefersReducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, y: -8, scale: 0.985 };
+  const sectionSwapTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
+  const sectionLayoutTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
+
+  const clearAutoAdvanceTimers = useCallback(() => {
+    if (dateToTimeAutoAdvanceTimerRef.current) {
+      clearTimeout(dateToTimeAutoAdvanceTimerRef.current);
+      dateToTimeAutoAdvanceTimerRef.current = null;
+    }
+    if (timeToDetailsAutoAdvanceTimerRef.current) {
+      clearTimeout(timeToDetailsAutoAdvanceTimerRef.current);
+      timeToDetailsAutoAdvanceTimerRef.current = null;
+    }
+  }, []);
+
+  const clearDetailsFocusTimer = useCallback(() => {
+    if (detailsFocusTimerRef.current) {
+      clearTimeout(detailsFocusTimerRef.current);
+      detailsFocusTimerRef.current = null;
+    }
+  }, []);
+
+  const cancelSectionGlide = useCallback(() => {
+    if (scrollAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(scrollAnimationFrameRef.current);
+      scrollAnimationFrameRef.current = null;
+    }
+    scrollAnimationTokenRef.current += 1;
+  }, []);
+
+  const getScrollTargetTop = useCallback((element: HTMLElement, block: "center" | "start" = "center") => {
+    if (typeof window === "undefined" || typeof document === "undefined") return 0;
+
+    const viewportHeight = window.innerHeight;
+    const rect = element.getBoundingClientRect();
+    const absoluteTop = window.scrollY + rect.top;
+    const centeredTop = absoluteTop - Math.max(0, (viewportHeight - rect.height) / 2);
+    const startTop = absoluteTop - SECTION_GLIDE_TOP_OFFSET;
+    const desiredTop = block === "center" ? centeredTop : startTop;
+    const maxScrollTop = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+
+    return Math.min(maxScrollTop, Math.max(0, desiredTop));
+  }, []);
+
+  const animateScrollToSection = useCallback((
+    element: HTMLElement | null,
+    options?: {
+      block?: "center" | "start";
+      duration?: number;
+      onComplete?: () => void;
+    }
+  ) => {
+    const onComplete = options?.onComplete;
+    const block = options?.block ?? "center";
+    const duration = options?.duration ?? SECTION_GLIDE_DURATION_MS;
+
+    if (!element || typeof window === "undefined") {
+      onComplete?.();
+      return;
+    }
+
+    const targetTop = getScrollTargetTop(element, block);
+
+    if (prefersReducedMotion) {
+      cancelSectionGlide();
+      window.scrollTo({ top: targetTop, behavior: "auto" });
+      onComplete?.();
+      return;
+    }
+
+    cancelSectionGlide();
+    const animationToken = scrollAnimationTokenRef.current;
+    const startTop = window.scrollY;
+    const distance = targetTop - startTop;
+
+    if (Math.abs(distance) < 1) {
+      onComplete?.();
+      return;
+    }
+
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      if (animationToken !== scrollAnimationTokenRef.current) return;
+
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const easedProgress = smootherstepEase(progress);
+
+      window.scrollTo({ top: startTop + distance * easedProgress, behavior: "auto" });
+
+      if (progress < 1) {
+        scrollAnimationFrameRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      scrollAnimationFrameRef.current = null;
+      onComplete?.();
+    };
+
+    scrollAnimationFrameRef.current = requestAnimationFrame(tick);
+  }, [cancelSectionGlide, getScrollTargetTop, prefersReducedMotion]);
+
+  const clearDateSelectionTimer = useCallback(() => {
+    if (dateSelectionTimerRef.current) {
+      clearTimeout(dateSelectionTimerRef.current);
+      dateSelectionTimerRef.current = null;
+    }
+  }, []);
+
+  const clearTimeSelectionTimer = useCallback(() => {
+    if (timeSelectionTimerRef.current) {
+      clearTimeout(timeSelectionTimerRef.current);
+      timeSelectionTimerRef.current = null;
+    }
+  }, []);
+
+  const clearSelectionFeedbackState = useCallback(() => {
+    clearDateSelectionTimer();
+    clearTimeSelectionTimer();
+    setIsDateSelectionFeedbackActive(false);
+    setIsTimeSelectionFeedbackActive(false);
+    setActiveDateFeedbackKey(null);
+    setActiveTimeFeedbackKey(null);
+  }, [clearDateSelectionTimer, clearTimeSelectionTimer]);
+
+  const clearSectionTransitionState = useCallback(() => {
+    clearAutoAdvanceTimers();
+    clearDetailsFocusTimer();
+    cancelSectionGlide();
+    setIsDateToTimeTransitioning(false);
+    setIsTimeToDetailsTransitioning(false);
+  }, [cancelSectionGlide, clearAutoAdvanceTimers, clearDetailsFocusTimer]);
 
   const resetAppointmentState = useCallback(() => {
+    clearSectionTransitionState();
+    clearSelectionFeedbackState();
     setSelectedDate(undefined);
     setSelectedTime(null);
     setClientName("");
@@ -425,7 +594,7 @@ const Appointment = () => {
     setShowLeftFade(false);
     setShowRightFade(true);
     initialScrollLeftRef.current = null;
-  }, []);
+  }, [clearSectionTransitionState, clearSelectionFeedbackState]);
 
   useEffect(() => {
     const shouldResetFromMarker = consumeAppointmentResetOnReturn();
@@ -464,10 +633,22 @@ const Appointment = () => {
   const isPhoneValid = /^0[67]\d{8}$/.test(clientPhone);
   const isFormValid = isNameValid && isPhoneValid;
   const formattedPhoneValue = formatMoroccanPhone(clientPhone);
-  const currentStep = !selectedDate ? 1 : !selectedTime ? 2 : !isFormValid ? 3 : 4;
+  const hasDateProgressed = Boolean(selectedDate) && !isDateSelectionFeedbackActive && !isDateToTimeTransitioning;
+  const hasTimeProgressed = Boolean(selectedTime) && !isTimeSelectionFeedbackActive && !isTimeToDetailsTransitioning;
+  const currentStep = !selectedDate
+    ? 1
+    : !hasDateProgressed
+    ? 1
+    : !selectedTime
+    ? 2
+    : !hasTimeProgressed
+    ? 2
+    : !isFormValid
+    ? 3
+    : 4;
   const progressStep = Math.min(currentStep, 3);
-  const isDateCollapsed = Boolean(selectedDate) && currentStep > 1;
-  const isTimeCollapsed = Boolean(selectedDate && selectedTime) && currentStep > 2;
+  const isDateCollapsed = Boolean(selectedDate) && currentStep > 1 && !isDateSelectionFeedbackActive;
+  const isTimeCollapsed = Boolean(selectedDate && selectedTime) && currentStep > 2 && !isTimeSelectionFeedbackActive;
   const canConfirm = Boolean(selectedDate && selectedTime && isFormValid);
   const ctaHint = !selectedDate ? t.ctaHintDate : !selectedTime ? t.ctaHintTime : t.ctaHintDetails;
   const progressItems = [
@@ -483,49 +664,133 @@ const Appointment = () => {
   const canNavigateToStep = (stepId: number) => {
     if (stepId === 1) return currentStep > 1;
     if (stepId === 2) return Boolean(selectedDate) && currentStep > 2;
-    if (stepId === 3) return Boolean(selectedDate && selectedTime);
+    if (stepId === 3) return Boolean(selectedDate && selectedTime && hasTimeProgressed);
     return false;
   };
 
   const jumpToTimeSection = () => {
-    timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    animateScrollToSection(timeSectionRef.current, { block: "center" });
   };
 
   const jumpToDetailsSection = () => {
     setDetailsJourneyActive(true);
-    detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    animateScrollToSection(detailsSectionRef.current, { block: "center" });
   };
+
+  const handleDateSelect = useCallback((day: Date) => {
+    if (isSundayDate(day)) return;
+    const dateKey = day.toDateString();
+    clearSectionTransitionState();
+    clearDateSelectionTimer();
+    clearTimeSelectionTimer();
+    setActiveDateFeedbackKey(dateKey);
+    setDateFeedbackPulseId((value) => value + 1);
+    setActiveTimeFeedbackKey(null);
+    setIsDateSelectionFeedbackActive(true);
+    setIsTimeSelectionFeedbackActive(false);
+    setDetailsJourneyActive(false);
+    setSelectedDate(day);
+    setSelectedTime(null);
+    dateSelectionTimerRef.current = setTimeout(() => {
+      setIsDateSelectionFeedbackActive(false);
+      dateSelectionTimerRef.current = null;
+    }, SELECTION_FEEDBACK_HOLD_MS);
+  }, [clearDateSelectionTimer, clearSectionTransitionState, clearTimeSelectionTimer]);
+
+  const handleTimeSelect = useCallback((time: string) => {
+    clearSectionTransitionState();
+    clearTimeSelectionTimer();
+    setActiveTimeFeedbackKey(time);
+    setTimeFeedbackPulseId((value) => value + 1);
+    setIsTimeSelectionFeedbackActive(true);
+    setDetailsJourneyActive(false);
+    setSelectedTime(time);
+    timeSelectionTimerRef.current = setTimeout(() => {
+      setIsTimeSelectionFeedbackActive(false);
+      timeSelectionTimerRef.current = null;
+    }, SELECTION_FEEDBACK_HOLD_MS);
+  }, [clearSectionTransitionState, clearTimeSelectionTimer]);
 
   // Bug 2 fix: compute dates inside component with useMemo
   const next14Days = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)), []);
 
   // Auto-scroll to time section when date selected
   useEffect(() => {
-    if (selectedDate && timeSectionRef.current) {
-      setTimeout(() => {
-        timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
+    if (!selectedDate || isDateSelectionFeedbackActive || !timeSectionRef.current) return;
+    if (dateToTimeAutoAdvanceTimerRef.current) {
+      clearTimeout(dateToTimeAutoAdvanceTimerRef.current);
+      dateToTimeAutoAdvanceTimerRef.current = null;
     }
-  }, [selectedDate]);
+
+    setIsDateToTimeTransitioning(true);
+    dateToTimeAutoAdvanceTimerRef.current = setTimeout(() => {
+      dateToTimeAutoAdvanceTimerRef.current = null;
+      animateScrollToSection(timeSectionRef.current, {
+        block: "center",
+        duration: SECTION_GLIDE_DURATION_MS,
+        onComplete: () => setIsDateToTimeTransitioning(false),
+      });
+    }, SECTION_GLIDE_KICKOFF_DELAY_MS);
+
+    return () => {
+      if (dateToTimeAutoAdvanceTimerRef.current) {
+        clearTimeout(dateToTimeAutoAdvanceTimerRef.current);
+        dateToTimeAutoAdvanceTimerRef.current = null;
+      }
+    };
+  }, [selectedDate, isDateSelectionFeedbackActive, animateScrollToSection]);
 
   // Auto-scroll to details section when time selected
   useEffect(() => {
-    if (selectedDate && selectedTime) {
-      setTimeout(() => {
-        detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(() => nameInputRef.current?.focus(), 300);
-      }, 600);
+    if (!selectedDate || !selectedTime || isTimeSelectionFeedbackActive) return;
+
+    if (timeToDetailsAutoAdvanceTimerRef.current) {
+      clearTimeout(timeToDetailsAutoAdvanceTimerRef.current);
+      timeToDetailsAutoAdvanceTimerRef.current = null;
     }
-  }, [selectedTime]);
+    clearDetailsFocusTimer();
+    setIsTimeToDetailsTransitioning(true);
+
+    timeToDetailsAutoAdvanceTimerRef.current = setTimeout(() => {
+      timeToDetailsAutoAdvanceTimerRef.current = null;
+      animateScrollToSection(detailsSectionRef.current, {
+        block: "center",
+        duration: SECTION_GLIDE_DURATION_MS,
+        onComplete: () => {
+          setIsTimeToDetailsTransitioning(false);
+          clearDetailsFocusTimer();
+          detailsFocusTimerRef.current = setTimeout(
+            () => nameInputRef.current?.focus(),
+            prefersReducedMotion ? 0 : DETAILS_FOCUS_DELAY_MS
+          );
+        },
+      });
+    }, SECTION_GLIDE_KICKOFF_DELAY_MS + 20);
+
+    return () => {
+      if (timeToDetailsAutoAdvanceTimerRef.current) {
+        clearTimeout(timeToDetailsAutoAdvanceTimerRef.current);
+        timeToDetailsAutoAdvanceTimerRef.current = null;
+      }
+      clearDetailsFocusTimer();
+    };
+  }, [
+    selectedDate,
+    selectedTime,
+    isTimeSelectionFeedbackActive,
+    animateScrollToSection,
+    clearDetailsFocusTimer,
+    prefersReducedMotion,
+  ]);
 
   // Auto-scroll to summary when form is valid
   useEffect(() => {
-    if (isFormValid && summarySectionRef.current) {
-      setTimeout(() => {
-        summarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
-    }
-  }, [isFormValid]);
+    if (!isFormValid || !summarySectionRef.current) return;
+    const timer = setTimeout(() => {
+      animateScrollToSection(summarySectionRef.current, { block: "center", duration: 560 });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isFormValid, animateScrollToSection]);
 
   // Sparkle burst when form becomes valid
   useEffect(() => {
@@ -633,9 +898,9 @@ const Appointment = () => {
     : "";
 
   const journeyState: "start" | "time" | "confirm-details" | "details" =
-    !selectedDate
+    !selectedDate || !hasDateProgressed
       ? "start"
-      : !selectedTime
+      : !selectedTime || !hasTimeProgressed
       ? "time"
       : detailsJourneyActive || isFormValid
       ? "details"
@@ -652,9 +917,23 @@ const Appointment = () => {
 
   useEffect(() => {
     if (selectedTime && !availableTimeSlots.some((slot) => slot.time === selectedTime)) {
+      clearSectionTransitionState();
+      clearTimeSelectionTimer();
+      setIsTimeSelectionFeedbackActive(false);
+      setActiveTimeFeedbackKey(null);
       setSelectedTime(null);
     }
-  }, [availableTimeSlots, selectedTime]);
+  }, [availableTimeSlots, selectedTime, clearSectionTransitionState, clearTimeSelectionTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearDateSelectionTimer();
+      clearTimeSelectionTimer();
+      clearAutoAdvanceTimers();
+      clearDetailsFocusTimer();
+      cancelSectionGlide();
+    };
+  }, [cancelSectionGlide, clearAutoAdvanceTimers, clearDateSelectionTimer, clearDetailsFocusTimer, clearTimeSelectionTimer]);
 
   const handleConfirm = () => {
     if (!isNameValid) setNameTouched(true);
@@ -682,13 +961,41 @@ const Appointment = () => {
             submittedAt,
           },
         })
-        .then(({ error }) => {
+        .then(({ data, error }) => {
           if (error) {
-            console.error("Telegram notification failed:", error);
+            console.error("Booking notifications request failed:", error);
+            return;
+          }
+
+          if (!data || typeof data !== "object") {
+            return;
+          }
+
+          const notificationResult = data as {
+            success?: boolean;
+            channels?: {
+              telegram?: { ok?: boolean; error?: string };
+              whatsapp?: { ok?: boolean; error?: string; skipped?: boolean; attempts?: number };
+            };
+          };
+
+          const telegramResult = notificationResult.channels?.telegram;
+          const whatsappResult = notificationResult.channels?.whatsapp;
+
+          if (telegramResult && telegramResult.ok === false) {
+            console.error("Telegram notification failed:", telegramResult.error ?? telegramResult);
+          }
+
+          if (whatsappResult && whatsappResult.ok === false) {
+            console.error("WhatsApp confirmation failed:", whatsappResult.error ?? whatsappResult);
+          }
+
+          if (notificationResult.success === false && !telegramResult?.ok && !whatsappResult?.ok) {
+            console.error("All notification channels failed:", notificationResult.channels);
           }
         })
         .catch((error) => {
-          console.error("Telegram notification request error:", error);
+          console.error("Booking notifications request error:", error);
         });
 
       markAppointmentResetOnReturn();
@@ -700,20 +1007,26 @@ const Appointment = () => {
 
   const handleProgressStepClick = (step: number) => {
     if (step === 1 && currentStep > 1) {
+      clearSectionTransitionState();
+      clearSelectionFeedbackState();
       setSelectedDate(undefined);
       setSelectedTime(null);
-      dateSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      animateScrollToSection(dateSectionRef.current, { block: "center" });
       return;
     }
 
     if (step === 2 && selectedDate && currentStep > 2) {
+      clearSectionTransitionState();
+      clearTimeSelectionTimer();
+      setIsTimeSelectionFeedbackActive(false);
+      setActiveTimeFeedbackKey(null);
       setSelectedTime(null);
-      timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      animateScrollToSection(timeSectionRef.current, { block: "center" });
       return;
     }
 
     if (step === 3 && selectedDate && selectedTime) {
-      detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      animateScrollToSection(detailsSectionRef.current, { block: "center" });
     }
   };
 
@@ -825,7 +1138,7 @@ const Appointment = () => {
       <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 pt-20 sm:pt-24 pb-44 sm:pb-40">
 
         {/* Heading */}
-        <div className="relative text-center mb-3 sm:mb-5">
+        <div className="relative text-center mb-4 sm:mb-6">
           {/* Ambient glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-32 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
 
@@ -928,190 +1241,244 @@ const Appointment = () => {
             <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
             {/* Section label */}
-            <div className="flex items-center gap-2.5 mb-4">
+            <div className="flex items-center gap-2.5 mb-5">
               <UiIcon icon="solar:calendar-date-bold-duotone" size={18} tone="primary" />
               <span className="text-sm font-bold text-foreground">{t.selectDate}</span>
             </div>
 
-            {isDateCollapsed && selectedDate ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedDate(undefined);
-                  setSelectedTime(null);
-                  dateSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }}
-                className="w-full mt-1 rounded-2xl border border-primary/25 bg-primary/10 px-3 py-3 flex items-center justify-between gap-3 text-left"
-              >
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-primary/80">{t.step1}</p>
-                  <p className="text-sm font-semibold text-foreground break-words">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
-                </div>
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary shrink-0">
-                  {t.edit}
-                  <UiIcon
-                    icon={isRTL ? "solar:alt-arrow-left-linear" : "solar:alt-arrow-right-linear"}
-                    size={18}
-                    tone="current"
-                  />
-                </span>
-              </button>
-            ) : (
-              <>
-                {/* Horizontal day slider with scroll indicators */}
-                <div className="relative -mx-8 px-8">
-                  {/* End-side magnetic rail cue */}
-                  {!hasScrolled && (isRTL ? showLeftFade : showRightFade) && (
-                    <div
-                      className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-20 z-20 pointer-events-none overflow-hidden ${
-                        isRTL
-                          ? "bg-gradient-to-r from-primary/28 via-primary/14 to-transparent"
-                          : "bg-gradient-to-l from-primary/28 via-primary/14 to-transparent"
-                      }`}
-                    >
-                      <motion.div
-                        aria-hidden="true"
-                        animate={
-                          prefersReducedMotion
-                            ? undefined
-                            : {
-                                opacity: [0.48, 0.78, 0.48],
-                                scaleY: [0.86, 1, 0.86],
-                              }
-                        }
-                        transition={
-                          prefersReducedMotion
-                            ? undefined
-                            : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
-                        }
-                        className={`absolute ${isRTL ? "left-[7px]" : "right-[7px]"} top-1/2 -translate-y-1/2 w-[2px] h-11 rounded-full bg-gradient-to-b from-primary/90 via-accent/80 to-primary/85 shadow-[0_0_12px_hsl(var(--primary)/0.32)]`}
-                      />
-                      <motion.div
-                        aria-hidden="true"
-                        animate={
-                          prefersReducedMotion
-                            ? undefined
-                            : { x: isRTL ? ["110%", "-115%"] : ["-115%", "110%"] }
-                        }
-                        transition={
-                          prefersReducedMotion
-                            ? undefined
-                            : { duration: 2.8, repeat: Infinity, ease: "linear" }
-                        }
-                        className="absolute inset-y-0 w-6 bg-gradient-to-r from-transparent via-white/28 to-transparent dark:via-white/18"
-                      />
-                    </div>
-                  )}
-                  {showLeftFade && (
-                    <div className={`absolute ${isRTL ? "right-0" : "left-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-transparent to-card/80" : "from-card/80 to-transparent"} z-10 pointer-events-none rounded-l-2xl`} />
-                  )}
-                  {showRightFade && (
-                    <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
-                  )}
-
+            <motion.div layout transition={sectionLayoutTransition}>
+              <AnimatePresence mode="wait" initial={false}>
+                {isDateCollapsed && selectedDate ? (
                   <motion.div
-                    ref={sliderRef}
-                    className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
-                    animate={
-                      !prefersReducedMotion && !hasScrolled && (isRTL ? showLeftFade : showRightFade)
-                        ? { x: isRTL ? [0, -5, 0] : [0, 5, 0] }
-                        : undefined
-                    }
-                    transition={
-                      !prefersReducedMotion && !hasScrolled && (isRTL ? showLeftFade : showRightFade)
-                        ? { duration: 2.1, repeat: Infinity, ease: "easeInOut" }
-                        : undefined
-                    }
-                    style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", overflowY: "visible" }}
+                    key="step1-collapsed"
+                    initial={sectionSwapInitial}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={sectionSwapExit}
+                    transition={sectionSwapTransition}
                   >
-                    {next14Days.map((day, i) => {
-                      const isSunday = isSundayDate(day);
-                      const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
-                      const isSelectedAndOpen = isSelected && !isSunday;
-                      const today = isToday(day);
-                      const dayLabel = formatDate(day, isRTL ? "EEEE" : "EEE");
-                      const dateCardWidthClass = isRTL ? "w-[88px]" : "w-[60px]";
-                      const dayLabelClass = isRTL
-                        ? "text-[11px] font-semibold tracking-normal whitespace-nowrap leading-none"
-                        : "text-xs font-medium uppercase tracking-wider";
-                      return (
-                        <motion.button
-                          key={day.toISOString()}
-                          initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: i * 0.04 }}
-                          whileTap={isSunday ? undefined : { scale: 0.92 }}
-                          disabled={isSunday}
-                          onClick={() => {
-                            if (isSunday) return;
-                            setSelectedDate(day);
-                            setSelectedTime(null);
-                          }}
-                          className={`relative flex-shrink-0 snap-center flex flex-col items-center justify-center ${dateCardWidthClass} h-[76px] rounded-2xl border transition-all duration-300 ${
-                            isSunday
-                              ? "bg-muted/35 border-border/45 text-muted-foreground/70 opacity-75 cursor-not-allowed"
-                              : isSelectedAndOpen
-                              ? "bg-gradient-to-br from-primary to-accent border-primary/60 text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.45)]"
-                              : today
-                              ? "bg-card/80 border-accent/50 text-foreground hover:border-accent/70"
-                              : "bg-card/50 border-border/30 text-foreground hover:border-primary/30 hover:bg-card/70"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearSectionTransitionState();
+                        clearSelectionFeedbackState();
+                        setSelectedDate(undefined);
+                        setSelectedTime(null);
+                        animateScrollToSection(dateSectionRef.current, { block: "center" });
+                      }}
+                      className="w-full mt-2 rounded-2xl border border-primary/25 bg-primary/10 px-3 py-3 flex items-center justify-between gap-3 text-left"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-primary/80">{t.step1}</p>
+                        <p className="text-sm font-semibold text-foreground break-words">{formatDate(selectedDate, "EEEE, MMM d, yyyy")}</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary shrink-0">
+                        {t.edit}
+                        <UiIcon
+                          icon={isRTL ? "solar:alt-arrow-left-linear" : "solar:alt-arrow-right-linear"}
+                          size={18}
+                          tone="current"
+                        />
+                      </span>
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="step1-expanded"
+                    initial={sectionSwapInitial}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={sectionSwapExit}
+                    transition={sectionSwapTransition}
+                  >
+                    {/* Horizontal day slider with scroll indicators */}
+                    <div className="relative -mx-8 px-8 mt-1">
+                      {/* End-side magnetic rail cue */}
+                      {!hasScrolled && (isRTL ? showLeftFade : showRightFade) && (
+                        <div
+                          className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-20 z-20 pointer-events-none overflow-hidden ${
+                            isRTL
+                              ? "bg-gradient-to-r from-primary/28 via-primary/14 to-transparent"
+                              : "bg-gradient-to-l from-primary/28 via-primary/14 to-transparent"
                           }`}
                         >
-                          {today && !isSelected && !isSunday && (
-                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
-                          )}
-                          <span className={`${dayLabelClass} ${isSelectedAndOpen ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                            {dayLabel}
-                          </span>
-                          <span className={`text-xl font-bold leading-tight ${isSelected ? "text-primary-foreground" : ""}`}>
-                            {formatDate(day, "d")}
-                          </span>
-                          {isSunday ? (
-                            <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-destructive/80">
-                              {t.closed}
-                            </span>
-                          ) : (
-                            <span className={`text-[11px] font-medium ${isSelectedAndOpen ? "text-primary-foreground/70" : "text-muted-foreground/70"}`}>
-                              {formatDate(day, "MMM")}
-                            </span>
-                          )}
-                          <AnimatePresence>
-                            {isSelectedAndOpen && (
-                              <motion.div
-                                initial={{ scale: 0, rotate: -90 }}
-                                animate={{ scale: 1, rotate: 0 }}
-                                exit={{ scale: 0, rotate: 90 }}
-                                transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
-                              >
-                                <UiIcon icon="solar:check-circle-bold" size={16} className="text-accent-foreground" />
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </motion.button>
-                      );
-                    })}
-                    <div className="flex-shrink-0 w-14" aria-hidden="true" />
-                  </motion.div>
-                </div>
+                          <motion.div
+                            aria-hidden="true"
+                            animate={
+                              prefersReducedMotion
+                                ? undefined
+                                : {
+                                    opacity: [0.48, 0.78, 0.48],
+                                    scaleY: [0.86, 1, 0.86],
+                                  }
+                            }
+                            transition={
+                              prefersReducedMotion
+                                ? undefined
+                                : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+                            }
+                            className={`absolute ${isRTL ? "left-[7px]" : "right-[7px]"} top-1/2 -translate-y-1/2 w-[2px] h-11 rounded-full bg-gradient-to-b from-primary/90 via-accent/80 to-primary/85 shadow-[0_0_12px_hsl(var(--primary)/0.32)]`}
+                          />
+                          <motion.div
+                            aria-hidden="true"
+                            animate={
+                              prefersReducedMotion
+                                ? undefined
+                                : { x: isRTL ? ["110%", "-115%"] : ["-115%", "110%"] }
+                            }
+                            transition={
+                              prefersReducedMotion
+                                ? undefined
+                                : { duration: 2.8, repeat: Infinity, ease: "linear" }
+                            }
+                            className="absolute inset-y-0 w-6 bg-gradient-to-r from-transparent via-white/28 to-transparent dark:via-white/18"
+                          />
+                        </div>
+                      )}
+                      {showLeftFade && (
+                        <div className={`absolute ${isRTL ? "right-0" : "left-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-transparent to-card/80" : "from-card/80 to-transparent"} z-10 pointer-events-none rounded-l-2xl`} />
+                      )}
+                      {showRightFade && (
+                        <div className={`absolute ${isRTL ? "left-0" : "right-0"} top-0 bottom-0 w-8 bg-gradient-to-r ${isRTL ? "from-card/80 to-transparent" : "from-transparent to-card/80"} z-10 pointer-events-none rounded-r-2xl`} />
+                      )}
 
-                <AnimatePresence>
-                  {selectedDate && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="mt-3 flex justify-center"
-                    >
-                      <span className="inline-flex max-w-full items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary backdrop-blur-sm text-center whitespace-normal break-words leading-snug">
-                        <UiIcon icon="solar:check-circle-bold-duotone" size={16} tone="current" />
-                        {formatDate(selectedDate, "EEEE, MMM d, yyyy")}
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </>
-            )}
+                      <motion.div
+                        ref={sliderRef}
+                        className="flex gap-2.5 overflow-x-auto p-3 snap-x snap-mandatory"
+                        animate={
+                          !prefersReducedMotion && !hasScrolled && (isRTL ? showLeftFade : showRightFade)
+                            ? { x: isRTL ? [0, -5, 0] : [0, 5, 0] }
+                            : undefined
+                        }
+                        transition={
+                          !prefersReducedMotion && !hasScrolled && (isRTL ? showLeftFade : showRightFade)
+                            ? { duration: 2.1, repeat: Infinity, ease: "easeInOut" }
+                            : undefined
+                        }
+                        style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", overflowY: "visible" }}
+                      >
+                        {next14Days.map((day, i) => {
+                          const isSunday = isSundayDate(day);
+                          const isSelected = selectedDate ? isSameDay(selectedDate, day) : false;
+                          const isSelectedAndOpen = isSelected && !isSunday;
+                          const dateKey = day.toDateString();
+                          const isDateFeedbackTarget = isDateSelectionFeedbackActive && activeDateFeedbackKey === dateKey;
+                          const shouldDeEmphasizeDateCard =
+                            isDateSelectionFeedbackActive && activeDateFeedbackKey !== dateKey && !isSunday;
+                          const today = isToday(day);
+                          const dayLabel = formatDate(day, isRTL ? "EEEE" : "EEE");
+                          const dateCardWidthClass = isRTL ? "w-[88px]" : "w-[60px]";
+                          const dayLabelClass = isRTL
+                            ? "text-[11px] font-semibold tracking-normal whitespace-nowrap leading-none"
+                            : "text-xs font-medium uppercase tracking-wider";
+                          return (
+                            <motion.button
+                              key={day.toISOString()}
+                              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                              animate={
+                                isDateFeedbackTarget && !prefersReducedMotion
+                                  ? { opacity: 1, scale: [1, 1.06, 1], y: 0 }
+                                  : { opacity: 1, scale: 1, y: 0 }
+                              }
+                              transition={
+                                isDateFeedbackTarget && !prefersReducedMotion
+                                  ? { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
+                                  : { duration: 0.3, delay: i * 0.04 }
+                              }
+                              whileTap={isSunday || prefersReducedMotion ? undefined : { scale: 0.92 }}
+                              disabled={isSunday}
+                              onClick={() => handleDateSelect(day)}
+                              className={`relative flex-shrink-0 snap-center flex flex-col items-center justify-center ${dateCardWidthClass} h-[76px] rounded-2xl border transform-gpu transition-all duration-300 ${
+                                isSunday
+                                  ? "bg-muted/35 border-border/45 text-muted-foreground/70 opacity-75 cursor-not-allowed"
+                                  : isSelectedAndOpen
+                                  ? "bg-gradient-to-br from-primary to-accent border-primary/60 text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.45)]"
+                                  : today
+                                  ? "bg-card/80 border-accent/50 text-foreground hover:border-accent/70"
+                                  : "bg-card/50 border-border/30 text-foreground hover:border-primary/30 hover:bg-card/70"
+                              } ${shouldDeEmphasizeDateCard ? "opacity-80 scale-[0.98]" : ""}`}
+                            >
+                              <AnimatePresence>
+                                {isSelectedAndOpen && isDateFeedbackTarget && !prefersReducedMotion && (
+                                  <motion.span
+                                    key={`date-glow-${dateKey}-${dateFeedbackPulseId}`}
+                                    aria-hidden="true"
+                                    initial={{ opacity: 0, scale: 0.94 }}
+                                    animate={{ opacity: [0.2, 0.9, 0], scale: [0.94, 1.06, 1.08] }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+                                    className="pointer-events-none absolute inset-0 rounded-2xl border border-primary-foreground/70 shadow-[0_0_0_1px_hsl(var(--primary)/0.55),0_0_20px_hsl(var(--primary)/0.45)]"
+                                  />
+                                )}
+                              </AnimatePresence>
+                              <AnimatePresence>
+                                {isSelectedAndOpen && isDateFeedbackTarget && !prefersReducedMotion && (
+                                  <motion.span
+                                    key={`date-shimmer-${dateKey}-${dateFeedbackPulseId}`}
+                                    aria-hidden="true"
+                                    initial={{ x: isRTL ? "125%" : "-125%", opacity: 0 }}
+                                    animate={{ x: isRTL ? "-125%" : "125%", opacity: [0, 0.5, 0] }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.72, ease: "easeOut" }}
+                                    className="pointer-events-none absolute inset-y-0 w-7 bg-gradient-to-r from-transparent via-white/45 to-transparent"
+                                  />
+                                )}
+                              </AnimatePresence>
+                              {today && !isSelected && !isSunday && (
+                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
+                              )}
+                              <span className={`${dayLabelClass} ${isSelectedAndOpen ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                                {dayLabel}
+                              </span>
+                              <span className={`text-xl font-bold leading-tight ${isSelected ? "text-primary-foreground" : ""}`}>
+                                {formatDate(day, "d")}
+                              </span>
+                              {isSunday ? (
+                                <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-destructive/80">
+                                  {t.closed}
+                                </span>
+                              ) : (
+                                <span className={`text-[11px] font-medium ${isSelectedAndOpen ? "text-primary-foreground/70" : "text-muted-foreground/70"}`}>
+                                  {formatDate(day, "MMM")}
+                                </span>
+                              )}
+                              <AnimatePresence>
+                                {isSelectedAndOpen && (
+                                  <motion.div
+                                    initial={{ scale: 0, rotate: -90 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    exit={{ scale: 0, rotate: 90 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent border-2 border-background flex items-center justify-center z-20"
+                                  >
+                                    <UiIcon icon="solar:check-circle-bold" size={16} className="text-accent-foreground" />
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.button>
+                          );
+                        })}
+                        <div className="flex-shrink-0 w-14" aria-hidden="true" />
+                      </motion.div>
+                    </div>
+
+                    <AnimatePresence>
+                      {selectedDate && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="mt-3 flex justify-center"
+                        >
+                          <span className="inline-flex max-w-full items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary backdrop-blur-sm text-center whitespace-normal break-words leading-snug">
+                            <UiIcon icon="solar:check-circle-bold-duotone" size={16} tone="current" />
+                            {formatDate(selectedDate, "EEEE, MMM d, yyyy")}
+                          </span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -1120,10 +1487,10 @@ const Appointment = () => {
           {selectedDate && (
             <motion.div
               ref={timeSectionRef}
-              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              initial={{ opacity: 0, y: 22, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.5, ease: [0.2, 0.65, 0.3, 0.9] }}
+              exit={{ opacity: 0, y: 10, scale: 0.99 }}
+              transition={{ duration: 0.68, ease: [0.22, 1, 0.36, 1] }}
               className="w-full max-w-sm mx-auto mb-5"
             >
               <div className="relative bg-card/60 backdrop-blur-2xl border border-border/30 rounded-2xl p-4 sm:p-5 overflow-hidden shadow-soft">
@@ -1136,74 +1503,106 @@ const Appointment = () => {
                   <span className="text-sm font-bold text-foreground">{t.selectTime}</span>
                 </div>
 
-                {isTimeCollapsed && selectedTime ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedTime(null);
-                      timeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }}
-                    className="w-full mt-1 rounded-2xl border border-accent/25 bg-accent/10 px-3 py-3 flex items-center justify-between gap-3 text-left"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-accent/80">{t.step2}</p>
-                      <p className="text-sm font-semibold text-foreground break-words">{selectedTime}</p>
-                    </div>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent shrink-0">
-                      {t.edit}
-                      <UiIcon
-                        icon={isRTL ? "solar:alt-arrow-left-linear" : "solar:alt-arrow-right-linear"}
-                        size={18}
-                        tone="current"
-                      />
-                    </span>
-                  </button>
-                ) : (
-                  <>
-                    {morningSlots.length > 0 && (
-                      <TimeGroup
-                        label={t.morning}
-                        icon={<UiIcon icon="solar:sun-2-bold-duotone" size={18} tone="primary" />}
-                        slots={morningSlots}
-                        selectedTime={selectedTime}
-                        onSelect={setSelectedTime}
-                        delayOffset={0}
-                      />
-                    )}
-
-                    {morningSlots.length > 0 && afternoonSlots.length > 0 && (
-                      <div className="flex items-center gap-3 my-3">
-                        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-                        <motion.div
-                          animate={{ rotate: [0, 180, 360] }}
-                          transition={{ duration: 8, ease: "linear" }}
-                          className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center"
+                <motion.div layout transition={sectionLayoutTransition}>
+                  <AnimatePresence mode="wait" initial={false}>
+                    {isTimeCollapsed && selectedTime ? (
+                      <motion.div
+                        key="step2-collapsed"
+                        initial={sectionSwapInitial}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={sectionSwapExit}
+                        transition={sectionSwapTransition}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearSectionTransitionState();
+                            clearTimeSelectionTimer();
+                            setIsTimeSelectionFeedbackActive(false);
+                            setActiveTimeFeedbackKey(null);
+                            setSelectedTime(null);
+                            animateScrollToSection(timeSectionRef.current, { block: "center" });
+                          }}
+                          className="w-full mt-1 rounded-2xl border border-accent/25 bg-accent/10 px-3 py-3 flex items-center justify-between gap-3 text-left"
                         >
-                          <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-accent" />
-                        </motion.div>
-                        <div className="flex-1 h-px bg-gradient-to-r from-border via-transparent to-transparent" />
-                      </div>
-                    )}
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-accent/80">{t.step2}</p>
+                            <p className="text-sm font-semibold text-foreground break-words">{selectedTime}</p>
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent shrink-0">
+                            {t.edit}
+                            <UiIcon
+                              icon={isRTL ? "solar:alt-arrow-left-linear" : "solar:alt-arrow-right-linear"}
+                              size={18}
+                              tone="current"
+                            />
+                          </span>
+                        </button>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="step2-expanded"
+                        initial={sectionSwapInitial}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={sectionSwapExit}
+                        transition={sectionSwapTransition}
+                      >
+                        {morningSlots.length > 0 && (
+                          <TimeGroup
+                            label={t.morning}
+                            icon={<UiIcon icon="solar:sun-2-bold-duotone" size={18} tone="primary" />}
+                            slots={morningSlots}
+                            selectedTime={selectedTime}
+                            onSelect={handleTimeSelect}
+                            activeFeedbackTime={activeTimeFeedbackKey}
+                            isSelectionFeedbackActive={isTimeSelectionFeedbackActive}
+                            feedbackPulseId={timeFeedbackPulseId}
+                            prefersReducedMotion={Boolean(prefersReducedMotion)}
+                            isRTL={isRTL}
+                            delayOffset={0}
+                          />
+                        )}
 
-                    {afternoonSlots.length > 0 && (
-                      <TimeGroup
-                        label={t.afternoon}
-                        icon={<UiIcon icon="solar:cloud-sun-2-bold-duotone" size={18} tone="accent" />}
-                        slots={afternoonSlots}
-                        selectedTime={selectedTime}
-                        onSelect={setSelectedTime}
-                        delayOffset={4}
-                      />
-                    )}
+                        {morningSlots.length > 0 && afternoonSlots.length > 0 && (
+                          <div className="flex items-center gap-3 my-3">
+                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                            <motion.div
+                              animate={{ rotate: [0, 180, 360] }}
+                              transition={{ duration: 8, ease: "linear" }}
+                              className="w-5 h-5 rounded-full border border-border/50 flex items-center justify-center"
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary to-accent" />
+                            </motion.div>
+                            <div className="flex-1 h-px bg-gradient-to-r from-border via-transparent to-transparent" />
+                          </div>
+                        )}
 
-                    {morningSlots.length === 0 && afternoonSlots.length === 0 && (
-                      <div className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-3 text-sm font-semibold text-destructive/90 flex items-center gap-2">
-                        <UiIcon icon="solar:danger-triangle-bold-duotone" size={18} tone="current" />
-                        <span>{t.closed}</span>
-                      </div>
+                        {afternoonSlots.length > 0 && (
+                          <TimeGroup
+                            label={t.afternoon}
+                            icon={<UiIcon icon="solar:cloud-sun-2-bold-duotone" size={18} tone="accent" />}
+                            slots={afternoonSlots}
+                            selectedTime={selectedTime}
+                            onSelect={handleTimeSelect}
+                            activeFeedbackTime={activeTimeFeedbackKey}
+                            isSelectionFeedbackActive={isTimeSelectionFeedbackActive}
+                            feedbackPulseId={timeFeedbackPulseId}
+                            prefersReducedMotion={Boolean(prefersReducedMotion)}
+                            isRTL={isRTL}
+                            delayOffset={4}
+                          />
+                        )}
+
+                        {morningSlots.length === 0 && afternoonSlots.length === 0 && (
+                          <div className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-3 text-sm font-semibold text-destructive/90 flex items-center gap-2">
+                            <UiIcon icon="solar:danger-triangle-bold-duotone" size={18} tone="current" />
+                            <span>{t.closed}</span>
+                          </div>
+                        )}
+                      </motion.div>
                     )}
-                  </>
-                )}
+                  </AnimatePresence>
+                </motion.div>
               </div>
             </motion.div>
           )}
@@ -1214,10 +1613,10 @@ const Appointment = () => {
           {selectedDate && selectedTime && (
             <motion.div
               ref={detailsSectionRef}
-              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              initial={{ opacity: 0, y: 22, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.5, ease: [0.2, 0.65, 0.3, 0.9] }}
+              exit={{ opacity: 0, y: 10, scale: 0.99 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
               className="w-full max-w-sm mx-auto mb-5"
             >
               <div className="relative bg-card/60 backdrop-blur-2xl border border-border/30 rounded-2xl p-4 sm:p-5 overflow-hidden shadow-soft">
@@ -1462,8 +1861,8 @@ const Appointment = () => {
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent" />
             <div className="absolute left-4 right-4 top-0 h-px pointer-events-none bg-white/[0.05]" />
             <div className="absolute inset-0 pointer-events-none shadow-[inset_0_1px_16px_rgba(255,255,255,0.03)]" />
-            <div className="relative min-h-[68px] px-5 py-2.5">
-              <div className={`grid min-h-[62px] grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] items-center gap-4 ${isRTL ? "text-right" : "text-left"}`}>
+            <div className="relative min-h-[62px] px-5 py-[9px] max-[360px]:px-4">
+              <div className={`grid min-h-[58px] grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] items-center gap-4 max-[360px]:gap-3 ${isRTL ? "text-right" : "text-left"}`}>
                 <div className="min-w-0">
                   <AnimatePresence mode="wait" initial={false}>
                     {journeyState === "start" && (
@@ -1473,7 +1872,7 @@ const Appointment = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className={`flex min-h-[44px] items-center gap-2.5 ${isRTL ? "flex-row-reverse justify-end" : ""}`}
+                        className={`flex min-h-[44px] items-center gap-2.5 max-[360px]:gap-2 ${isRTL ? "flex-row-reverse justify-end" : ""}`}
                       >
                         <motion.span
                           aria-hidden="true"
@@ -1483,7 +1882,7 @@ const Appointment = () => {
                         >
                           <span className="h-2 w-2 rounded-full bg-teal-300" />
                         </motion.span>
-                        <span className="min-w-0 truncate text-[13px] font-medium leading-5 text-white/[0.6]">
+                        <span className="flex-1 min-w-0 truncate text-[13px] font-medium leading-5 text-white/[0.6]">
                           {t.journeyPromptStart}
                         </span>
                       </motion.div>
@@ -1499,7 +1898,7 @@ const Appointment = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
                         transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 25 }}
-                        className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-[11px] px-1.5 py-1 text-white/[0.96] transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${
+                        className={`flex min-h-[44px] w-full items-center gap-2.5 max-[360px]:gap-2 rounded-[11px] px-1.5 py-1 text-white/[0.96] transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${
                           isRTL ? "flex-row-reverse justify-end text-right" : "text-left"
                         }`}
                       >
@@ -1508,7 +1907,7 @@ const Appointment = () => {
                             <path d="M2.2 6.1L4.7 8.5L9.7 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </span>
-                        <span className="min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
+                        <span className="flex-1 min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
                       </motion.button>
                     )}
 
@@ -1522,7 +1921,7 @@ const Appointment = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
                         transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 25 }}
-                        className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-[11px] px-1.5 py-1 text-white/[0.96] transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${
+                        className={`flex min-h-[44px] w-full items-center gap-2.5 max-[360px]:gap-2 rounded-[11px] px-1.5 py-1 text-white/[0.96] transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${
                           isRTL ? "flex-row-reverse justify-end text-right" : "text-left"
                         }`}
                       >
@@ -1531,7 +1930,7 @@ const Appointment = () => {
                             <path d="M2.2 6.1L4.7 8.5L9.7 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </span>
-                        <span className="min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
+                        <span className="flex-1 min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
                       </motion.button>
                     )}
 
@@ -1542,7 +1941,7 @@ const Appointment = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
                         transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 25 }}
-                        className={`flex min-h-[44px] w-full items-center gap-2.5 rounded-[11px] px-1.5 py-1 ${
+                        className={`flex min-h-[44px] w-full items-center gap-2.5 max-[360px]:gap-2 rounded-[11px] px-1.5 py-1 ${
                           isRTL ? "flex-row-reverse justify-end text-right" : "text-left"
                         }`}
                       >
@@ -1551,7 +1950,7 @@ const Appointment = () => {
                             <path d="M2.2 6.1L4.7 8.5L9.7 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </span>
-                        <span className="min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
+                        <span className="flex-1 min-w-0 truncate text-[12px] font-medium text-white" dir="ltr">{journeySummaryLabel}</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1559,7 +1958,7 @@ const Appointment = () => {
 
                 <div aria-hidden="true" className="h-10 w-px justify-self-center rounded-full bg-white/[0.08]" />
 
-                <div className={`min-w-0 flex items-center ${isRTL ? "justify-start" : "justify-end"}`}>
+                <div className="min-w-0 flex items-center">
                   <AnimatePresence mode="wait" initial={false}>
                     {journeyState === "start" && (
                       <motion.span
@@ -1582,10 +1981,12 @@ const Appointment = () => {
                         animate={{ opacity: 1, x: 0 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isRTL ? 6 : -6 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-[11px] bg-[hsl(177,58%,46%)] px-4 text-[12px] font-semibold text-white/[0.88] shadow-[0_10px_18px_hsl(176_52%_28%/0.36)]"
+                        className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-[11px] bg-[hsl(177,58%,46%)] px-4 max-[360px]:px-3 text-[12px] font-semibold text-white/[0.88] shadow-[0_10px_18px_hsl(176_52%_28%/0.36)] ${
+                          isRTL ? "mr-auto ml-0 flex-row-reverse" : "ml-auto mr-0"
+                        }`}
                       >
                         <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[11px] bg-white/[0.1]" />
-                        <span className="min-w-0 max-w-[30vw] truncate">{t.journeyNextTime}</span>
+                        <span className="flex-1 min-w-0 truncate">{t.journeyNextTime}</span>
                         <ThinArrow className={`h-3.5 w-3.5 shrink-0 ${isRTL ? "rotate-180" : ""}`} />
                       </motion.button>
                     )}
@@ -1599,10 +2000,12 @@ const Appointment = () => {
                         animate={{ opacity: 1, x: 0 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isRTL ? 6 : -6 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-[11px] bg-[hsl(177,58%,46%)] px-4 text-[12px] font-semibold text-white/[0.88] shadow-[0_10px_18px_hsl(176_52%_28%/0.36)]"
+                        className={`relative inline-flex h-10 max-w-full items-center gap-1.5 rounded-[11px] bg-[hsl(177,58%,46%)] px-4 max-[360px]:px-3 text-[12px] font-semibold text-white/[0.88] shadow-[0_10px_18px_hsl(176_52%_28%/0.36)] ${
+                          isRTL ? "mr-auto ml-0 flex-row-reverse" : "ml-auto mr-0"
+                        }`}
                       >
                         <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[11px] bg-white/[0.1]" />
-                        <span className="min-w-0 max-w-[30vw] truncate">{t.journeyConfirmDetails}</span>
+                        <span className="flex-1 min-w-0 truncate">{t.journeyConfirmDetails}</span>
                         <ThinArrow className={`h-3.5 w-3.5 shrink-0 ${isRTL ? "rotate-180" : ""}`} />
                       </motion.button>
                     )}
@@ -1617,11 +2020,11 @@ const Appointment = () => {
                         animate={{ opacity: 1, x: 0 }}
                         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isRTL ? 6 : -6 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className={`relative inline-flex h-11 max-w-full items-center gap-1.5 rounded-[12px] px-5 text-[13px] font-semibold transition-all ${
+                        className={`relative inline-flex h-11 max-w-full items-center gap-1.5 rounded-[12px] px-5 max-[360px]:px-3 text-[13px] font-semibold transition-all ${
                           canConfirm
                             ? "bg-[hsl(177,74%,50%)] text-white/[0.9] shadow-[0_12px_22px_hsl(176_64%_34%/0.48)]"
                             : "bg-white/[0.12] text-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                        } disabled:cursor-not-allowed`}
+                        } ${isRTL ? "mr-auto ml-0 flex-row-reverse" : "ml-auto mr-0"} disabled:cursor-not-allowed`}
                       >
                         <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-[12px] bg-white/[0.1]" />
                         {canConfirm && !prefersReducedMotion && (
@@ -1633,7 +2036,7 @@ const Appointment = () => {
                             transition={{ duration: 0.6, ease: "easeOut" }}
                           />
                         )}
-                        <span className="relative z-10 min-w-0 max-w-[31vw] truncate">{t.journeyBookNow}</span>
+                        <span className="relative z-10 flex-1 min-w-0 truncate">{t.journeyBookNow}</span>
                         <ThinArrow className={`relative z-10 h-3.5 w-3.5 shrink-0 ${isRTL ? "rotate-180" : ""}`} />
                       </motion.button>
                     )}
@@ -1716,11 +2119,31 @@ interface TimeGroupProps {
   slots: typeof timeSlots;
   selectedTime: string | null;
   onSelect: (time: string) => void;
+  activeFeedbackTime: string | null;
+  isSelectionFeedbackActive: boolean;
+  feedbackPulseId: number;
+  prefersReducedMotion: boolean;
+  isRTL: boolean;
   delayOffset: number;
 }
 
 const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
-  ({ label, icon, slots, selectedTime, onSelect, delayOffset }, ref) => (
+  (
+    {
+      label,
+      icon,
+      slots,
+      selectedTime,
+      onSelect,
+      activeFeedbackTime,
+      isSelectionFeedbackActive,
+      feedbackPulseId,
+      prefersReducedMotion,
+      isRTL,
+      delayOffset,
+    },
+    ref
+  ) => (
     <div ref={ref}>
       <div className="flex items-center gap-2 mb-2.5">
         {icon}
@@ -1729,20 +2152,56 @@ const TimeGroup = forwardRef<HTMLDivElement, TimeGroupProps>(
       <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {slots.map((slot, i) => {
           const isSelected = selectedTime === slot.time;
+          const isFeedbackTarget = isSelectionFeedbackActive && activeFeedbackTime === slot.time;
+          const shouldDeEmphasize = isSelectionFeedbackActive && activeFeedbackTime !== slot.time;
           return (
             <motion.button
               key={slot.time}
               initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: 0.1 + (delayOffset + i) * 0.06 }}
-              whileTap={{ scale: 0.95 }}
+              animate={
+                isFeedbackTarget && !prefersReducedMotion
+                  ? { opacity: 1, scale: [1, 1.05, 1] }
+                  : { opacity: 1, scale: 1 }
+              }
+              transition={
+                isFeedbackTarget && !prefersReducedMotion
+                  ? { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
+                  : { duration: 0.3, delay: 0.1 + (delayOffset + i) * 0.06 }
+              }
+              whileTap={prefersReducedMotion ? undefined : { scale: 0.95 }}
               onClick={() => onSelect(slot.time)}
-              className={`rounded-lg min-h-[44px] py-2 px-1.5 text-center transition-all duration-200 border backdrop-blur-sm ${
+              className={`relative overflow-hidden rounded-lg min-h-[44px] py-2 px-1.5 text-center transition-all duration-200 border backdrop-blur-sm transform-gpu ${
                 isSelected
                   ? "bg-gradient-to-r from-primary to-accent text-primary-foreground border-primary/75 shadow-[0_0_0_1px_hsl(var(--primary)/0.45),0_8px_18px_hsl(var(--primary)/0.28)]"
                   : "bg-card/70 border-border/45 text-foreground/80 hover:border-primary/45 hover:bg-card/85"
-              }`}
+              } ${shouldDeEmphasize ? "opacity-80 scale-[0.98]" : ""}`}
             >
+              <AnimatePresence>
+                {isSelected && isFeedbackTarget && !prefersReducedMotion && (
+                  <motion.span
+                    key={`time-glow-${slot.time}-${feedbackPulseId}`}
+                    aria-hidden="true"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: [0.15, 0.82, 0], scale: [0.95, 1.05, 1.08] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.46, ease: [0.22, 1, 0.36, 1] }}
+                    className="pointer-events-none absolute inset-0 rounded-lg border border-primary-foreground/70 shadow-[0_0_0_1px_hsl(var(--primary)/0.45),0_0_16px_hsl(var(--primary)/0.35)]"
+                  />
+                )}
+              </AnimatePresence>
+              <AnimatePresence>
+                {isSelected && isFeedbackTarget && !prefersReducedMotion && (
+                  <motion.span
+                    key={`time-shimmer-${slot.time}-${feedbackPulseId}`}
+                    aria-hidden="true"
+                    initial={{ x: isRTL ? "120%" : "-120%", opacity: 0 }}
+                    animate={{ x: isRTL ? "-120%" : "120%", opacity: [0, 0.45, 0] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.7, ease: "easeOut" }}
+                    className="pointer-events-none absolute inset-y-0 w-7 bg-gradient-to-r from-transparent via-white/45 to-transparent"
+                  />
+                )}
+              </AnimatePresence>
               <span className={`tabular-nums leading-none ${isSelected ? "text-[13px] font-bold" : "text-[13px] font-semibold"}`}>
                 {slot.time}
               </span>

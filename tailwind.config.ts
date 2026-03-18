@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Space Grotesk', 'sans-serif'],
+        sans: ['Exo 2', 'sans-serif'],
+        display: ['Exo 2', 'sans-serif'],
       },
       fontSize: {
         '8xl': ['6rem', { lineHeight: '1' }],

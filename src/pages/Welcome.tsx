@@ -127,8 +127,8 @@ const Welcome = () => {
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_0%,rgba(58,168,160,0.08),transparent_62%)]" />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[420px] flex-col items-center justify-center px-4 py-8">
-        <header className="flex w-full flex-col items-center">
+      <div className="welcome-shell relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[420px] flex-col items-center justify-center px-4 py-8">
+        <header className="welcome-header flex w-full flex-col items-center">
           <motion.div
             initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -211,7 +211,7 @@ const Welcome = () => {
           </motion.p>
         </header>
 
-        <section className="mt-7 w-full max-w-[380px] space-y-3">
+        <section className="welcome-cards mt-7 w-full max-w-[380px] space-y-3">
           {languages.map((lang, index) => {
             const arrowMotionClass = isRTL
               ? "rotate-180 group-hover:-translate-x-0.5"
@@ -288,7 +288,7 @@ const Welcome = () => {
           initial={shouldReduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={revealTransition(1.6)}
-          className="mt-9 text-center text-[12px] font-normal text-[#b0bec5]"
+          className="welcome-footer mt-9 text-center text-[12px] font-normal text-[#b0bec5]"
         >
           {copy.changeLater}
         </motion.p>

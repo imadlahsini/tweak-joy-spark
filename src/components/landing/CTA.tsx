@@ -8,9 +8,8 @@ import TextReveal from "@/components/shared/TextReveal";
 import FloatingOrb from "@/components/shared/FloatingOrb";
 import { useToast } from "@/hooks/use-toast";
 
-// Telegram Bot Configuration - Replace with your actual values
-const TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN";
-const TELEGRAM_CHAT_ID = "YOUR_CHAT_ID";
+const TELEGRAM_BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN as string | undefined;
+const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID as string | undefined;
 
 const CTA = () => {
   const ref = useRef(null);
@@ -57,6 +56,15 @@ const CTA = () => {
       toast({
         title: "Missing information",
         description: "Please fill in both your email and website URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+      toast({
+        title: "Configuration error",
+        description: "Contact form is not configured. Please reach out via email.",
         variant: "destructive",
       });
       return;

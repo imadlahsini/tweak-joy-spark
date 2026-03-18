@@ -70,7 +70,7 @@ const LogoBar = () => {
                 {[...companies, ...companies].map((company, i) => (
                   <div
                     key={`${company.name}-${i}`}
-                    className="flex-shrink-0 mx-1.5 sm:mx-3 md:mx-4"
+                    className="flex-shrink-0 mx-3 sm:mx-4 md:mx-6"
                   >
                     <div className="group flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-5 md:px-6 py-2.5 sm:py-3.5 md:py-4 bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] rounded-lg sm:rounded-xl transition-all duration-300 hover:bg-white/[0.08] hover:border-blue-400/30 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] cursor-default">
                       <span className="text-blue-300/60 group-hover:text-blue-300 transition-colors text-xs sm:text-base">

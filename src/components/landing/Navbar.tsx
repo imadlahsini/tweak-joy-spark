@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, forwardRef } from "react";
+import { useState, useEffect, useRef, useMemo, forwardRef, type CSSProperties } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Sparkles, Phone, Clock, MapPin, ChevronRight, Globe, Check } from "lucide-react";
@@ -212,6 +212,20 @@ const menuLanguageOptions: Array<{
   { code: "fr", nativeLabel: "Français", englishLabel: "French", flag: "🇫🇷", dir: "ltr", fontClass: "font-greeting-latin" },
 ];
 
+const AmazighMenuFlag = () => (
+  <span
+    className="relative inline-flex h-[12px] w-[18px] overflow-hidden rounded-[2.5px] border border-black/15"
+    aria-hidden="true"
+    dir="ltr"
+  >
+    <span className="h-full w-1/3 bg-[#1f73b7]" />
+    <span className="relative h-full w-1/3 bg-[#2fa04b]">
+      <span className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold leading-none text-[#d7232f]">ⵣ</span>
+    </span>
+    <span className="h-full w-1/3 bg-[#f2c230]" />
+  </span>
+);
+
 const clearInteractionLocks = () => {
   if (typeof document === "undefined") return;
 
@@ -285,14 +299,40 @@ const Navbar = () => {
   const nextOpenLabelParts = formatNextOpenLabelForMenu(availability.nextOpenLabel, currentLanguage);
   const statusDotClass =
     availability.statusDotColor === "teal"
-      ? "bg-[hsl(170,66%,52%)] shadow-[0_0_0_5px_hsl(170_66%_52%/0.22)]"
-      : "bg-[hsl(28,10%,60%)] shadow-[0_0_0_5px_hsl(28_10%_60%/0.18)]";
+      ? "bg-[hsl(170,66%,52%)]"
+      : "bg-[hsl(28,10%,60%)]";
   const widgetSurfaceClass = isClinicOpen
     ? "bg-[linear-gradient(150deg,hsl(206_20%_15%),hsl(195_24%_11%))]"
     : "bg-[linear-gradient(150deg,hsl(217_16%_16%),hsl(214_14%_12%))]";
   const heroButtonClass = heroIsCall
-    ? "bg-[hsl(175,64%,46%)] text-white hover:bg-[hsl(175,64%,52%)] shadow-[0_16px_32px_-16px_hsl(175_64%_45%/0.7)]"
-    : "bg-[hsl(217,17%,42%)] text-white hover:bg-[hsl(217,17%,48%)] shadow-[0_16px_32px_-16px_hsl(217_20%_32%/0.8)]";
+    ? "bg-[hsl(175,64%,46%)] text-white hover:bg-[hsl(175,64%,52%)]"
+    : "bg-[hsl(217,17%,42%)] text-white hover:bg-[hsl(217,17%,48%)]";
+  const orbitRingMaskStyle: CSSProperties = {
+    padding: "3px",
+    WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+    WebkitMaskComposite: "xor",
+    maskComposite: "exclude",
+  };
+  const orbitRingHighlightStyle: CSSProperties = {
+    ...orbitRingMaskStyle,
+    willChange: "transform",
+  };
+  const supportsMaskedOrbit = useMemo(() => {
+    if (typeof window === "undefined" || typeof CSS === "undefined" || typeof CSS.supports !== "function") {
+      return false;
+    }
+    try {
+      const supportsMask =
+        CSS.supports("-webkit-mask:linear-gradient(#000 0 0)") ||
+        CSS.supports("mask:linear-gradient(#000 0 0)");
+      const supportsComposite =
+        CSS.supports("-webkit-mask-composite:xor") ||
+        CSS.supports("mask-composite:exclude");
+      return supportsMask && supportsComposite;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const progressWidth = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
   const heroAction = {
@@ -661,13 +701,13 @@ const Navbar = () => {
 
             {/* Scrollable Content */}
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] sm:px-6 sm:py-5">
-              <div className="space-y-[14px]">
+              <div className="space-y-[24px]">
                 <motion.section
                   initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
                   transition={{ duration: shouldReduceMotion ? 0.14 : 0.24 }}
-                  className={`relative overflow-hidden rounded-[28px] p-4 text-white shadow-[0_30px_64px_-36px_hsl(220_30%_5%/0.9)] sm:p-5 ${widgetSurfaceClass}`}
+                  className={`relative overflow-hidden rounded-[28px] p-4 text-white shadow-none sm:p-5 ${widgetSurfaceClass}`}
                 >
                   <span
                     aria-hidden="true"
@@ -686,15 +726,15 @@ const Navbar = () => {
                     initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: shouldReduceMotion ? 0.12 : 0.2, delay: shouldReduceMotion ? 0 : 0.05 }}
-                    className={isRTL ? "relative w-full pl-5 text-right" : "flex items-start gap-2.5 text-left"}
+                    className={`flex items-start gap-2.5 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                   >
                     <motion.span
                       aria-hidden="true"
-                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${isRTL ? "absolute left-0 top-1" : "mt-1"} ${statusDotClass}`}
+                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass}`}
                       animate={shouldReduceMotion ? undefined : { scale: [1, 1.3, 1], opacity: [0.86, 1, 0.9] }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
                     />
-                    <div className={`min-w-0 ${isRTL ? "w-full text-right" : "flex-1 text-left"}`}>
+                    <div className={`min-w-0 flex-1 ${isRTL ? "w-full text-right" : "text-left"}`}>
                       <p className={`text-[17px] font-semibold leading-[1.32] text-white ${isRTL ? "w-full text-right" : ""}`}>
                         {greetingText}
                       </p>
@@ -910,46 +950,68 @@ const Navbar = () => {
                   initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: shouldReduceMotion ? 0.12 : 0.22, delay: shouldReduceMotion ? 0 : 0.25 }}
-                  className="relative isolate overflow-hidden rounded-[22px] border border-[rgba(255,255,255,0.95)] bg-[linear-gradient(145deg,rgba(255,255,255,0.85),rgba(255,255,255,0.6))] p-5 text-[#1a2a3a] shadow-[0_1px_2px_rgba(0,0,0,0.012),0_6px_16px_rgba(0,0,0,0.022)] backdrop-blur-[20px]"
+                  className={`relative isolate overflow-hidden rounded-[22px] p-[3px] ${
+                    supportsMaskedOrbit
+                      ? ""
+                      : "bg-[linear-gradient(145deg,rgba(58,168,160,0.48),rgba(58,168,160,0.24))]"
+                  }`}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 -z-10 rounded-[22px] bg-[radial-gradient(120%_100%_at_50%_0%,rgba(255,255,255,0.42),rgba(255,255,255,0.08)_64%,rgba(255,255,255,0.02)_100%)]"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-[20%] top-0 h-[1.5px] bg-[linear-gradient(90deg,transparent,rgba(58,168,160,0.3),transparent)]"
-                  />
+                  {supportsMaskedOrbit && (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        style={orbitRingMaskStyle}
+                        className="pointer-events-none absolute inset-0 z-0 rounded-[22px] bg-[conic-gradient(from_0deg,rgba(58,168,160,0.5)_0deg,rgba(255,255,255,0.22)_70deg,rgba(58,168,160,0.24)_140deg,rgba(255,255,255,0.26)_215deg,rgba(58,168,160,0.34)_285deg,rgba(58,168,160,0.5)_360deg)]"
+                      />
+                      <motion.span
+                        aria-hidden="true"
+                        style={orbitRingHighlightStyle}
+                        className="pointer-events-none absolute inset-0 z-0 rounded-[22px] bg-[conic-gradient(from_0deg,rgba(255,255,255,0)_0deg,rgba(255,255,255,0)_262deg,rgba(58,168,160,0.24)_286deg,rgba(58,168,160,0.78)_316deg,rgba(255,255,255,0.9)_336deg,rgba(58,168,160,0.52)_352deg,rgba(255,255,255,0)_360deg)]"
+                        animate={shouldReduceMotion ? undefined : { rotate: 360 }}
+                        transition={shouldReduceMotion ? undefined : { duration: 4.8, ease: "linear", repeat: Infinity }}
+                      />
+                    </>
+                  )}
 
-                  <div className={`mb-4 flex items-center justify-between gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-                    <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}>
-                      <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[linear-gradient(145deg,rgba(58,168,160,0.1),rgba(58,168,160,0.05))]">
-                        <Globe className="h-3.5 w-3.5 text-[hsl(170_52%_42%)]" />
-                      </span>
-                      <span className="text-[13px] font-semibold text-[#4a5568]">{t.languageLabel}</span>
+                  <div className="relative z-10 overflow-hidden rounded-[19px] border border-[rgba(255,255,255,0.78)] bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(255,255,255,0.78))] p-4 text-[#1a2a3a] shadow-none">
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 -z-10 rounded-[19px] bg-[radial-gradient(120%_80%_at_50%_0%,rgba(255,255,255,0.16),rgba(255,255,255,0.02)_36%,rgba(255,255,255,0)_60%)]"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-[20%] top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(58,168,160,0.16),transparent)]"
+                    />
+
+                    <div className={`mb-3 flex items-center justify-between gap-2.5 ${isRTL ? "flex-row-reverse" : ""}`}>
+                      <div className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-[linear-gradient(145deg,rgba(58,168,160,0.1),rgba(58,168,160,0.05))]">
+                          <Globe className="h-3.5 w-3.5 text-[hsl(170_52%_42%)]" />
+                        </span>
+                        <span className="text-[13px] font-semibold text-[#4a5568]">{t.languageLabel}</span>
+                      </div>
+                      <span className={`text-[11px] font-medium text-[#6b7280] ${isRTL ? "text-left" : "text-right"}`}>{t.languageHint}</span>
                     </div>
-                    <span className={`text-[11px] font-medium text-[#b0bec5] ${isRTL ? "text-left" : "text-right"}`}>{t.languageHint}</span>
-                  </div>
 
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-2 gap-2">
                       {menuLanguageOptions.map((option) => {
                         const isActiveLanguage = currentLanguage === option.code;
                         return (
                           <motion.button
-                          key={option.code}
-                          type="button"
-                          onClick={() => setLanguage(option.code)}
-                          aria-pressed={isActiveLanguage}
-                            className={`group relative flex min-h-[94px] flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] px-[14px] py-[14px] transition-all duration-200 ${
+                            key={option.code}
+                            type="button"
+                            onClick={() => setLanguage(option.code)}
+                            aria-pressed={isActiveLanguage}
+                            className={`group relative flex min-h-[82px] flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] px-3 py-2.5 transition-all duration-200 ${
                               isActiveLanguage
-                                ? "border-[rgba(58,168,160,0.3)] bg-white shadow-[0_1px_4px_rgba(58,168,160,0.08),0_4px_12px_rgba(0,0,0,0.028)]"
+                                ? "border-[rgba(58,168,160,0.3)] bg-white shadow-none"
                                 : "border-[rgba(0,0,0,0.04)] bg-[rgba(255,255,255,0.4)] shadow-none"
                             } ${
                               shouldReduceMotion
                                 ? ""
-                                : "hover:-translate-y-px hover:border-[rgba(58,168,160,0.15)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
-                            } ${option.dir === "rtl" ? "text-right" : "text-left"}`}
-                          whileTap={{ scale: shouldReduceMotion ? 1 : 0.985 }}
+                                : "hover:-translate-y-px hover:border-[rgba(58,168,160,0.15)]"
+                            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(58,168,160,0.42)] focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:border-[rgba(58,168,160,0.32)] ${option.dir === "rtl" ? "text-right" : "text-left"}`}
+                            whileTap={{ scale: shouldReduceMotion ? 1 : 0.985 }}
                           >
                             <span
                               aria-hidden="true"
@@ -962,47 +1024,52 @@ const Navbar = () => {
                               className={`pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(58,168,160,0.12),rgba(58,168,160,0.03))] transition-opacity duration-200 ${
                                 shouldReduceMotion ? "opacity-0" : "opacity-0 group-hover:opacity-100"
                               }`}
-                          />
+                            />
 
-                          {isActiveLanguage &&
-                            (shouldReduceMotion ? (
-                              <span
-                                className={`absolute top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[hsl(170_52%_42%)] text-white ${
-                                  isRTL ? "left-2" : "right-2"
-                                }`}
-                              >
-                                <Check className="h-3 w-3 stroke-[3]" />
-                              </span>
-                            ) : (
-                              <motion.span
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                                className={`absolute top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[hsl(170_52%_42%)] text-white ${
-                                  isRTL ? "left-2" : "right-2"
-                                }`}
-                              >
-                                <Check className="h-3 w-3 stroke-[3]" />
-                              </motion.span>
-                            ))}
+                            {isActiveLanguage &&
+                              (shouldReduceMotion ? (
+                                <span
+                                  className={`absolute top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(170_52%_42%)] text-white ${
+                                    isRTL ? "left-2" : "right-2"
+                                  }`}
+                                >
+                                  <Check className="h-2.5 w-2.5 stroke-[3]" />
+                                </span>
+                              ) : (
+                                <motion.span
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                  className={`absolute top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(170_52%_42%)] text-white ${
+                                    isRTL ? "left-2" : "right-2"
+                                  }`}
+                                >
+                                  <Check className="h-2.5 w-2.5 stroke-[3]" />
+                                </motion.span>
+                              ))}
 
-                          <span
-                            dir={option.dir}
-                            className={`relative z-10 text-[20px] font-bold leading-[1.1] ${option.fontClass} ${
-                              isActiveLanguage ? "text-[#1a2a3a]" : "text-[#4a5568]"
-                            }`}
-                          >
-                            {option.nativeLabel}
-                          </span>
-                          <span className="relative z-10 flex items-center gap-1.5 text-[11px] font-medium text-[#9ca8b8]">
-                            <span className="text-[14px] leading-none" role="img" aria-hidden="true">
-                              {option.flag}
+                            <span
+                              dir={option.dir}
+                              className={`relative z-10 text-[18px] font-bold leading-[1.1] ${option.fontClass} ${
+                                isActiveLanguage ? "text-[#1a2a3a]" : "text-[#4a5568]"
+                              }`}
+                            >
+                              {option.nativeLabel}
                             </span>
-                            <span>{option.englishLabel}</span>
-                          </span>
-                        </motion.button>
-                      );
-                    })}
+                            <span className="relative z-10 flex items-center gap-1 text-[11px] font-medium text-[#6b7280]">
+                              {option.code === "zgh" ? (
+                                <AmazighMenuFlag />
+                              ) : (
+                                <span className="text-[13px] leading-none" role="img" aria-hidden="true">
+                                  {option.flag}
+                                </span>
+                              )}
+                              <span>{option.englishLabel}</span>
+                            </span>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </motion.div>
               </div>
