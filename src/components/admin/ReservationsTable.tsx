@@ -18,12 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import ReservationStatusBadge from "@/components/admin/ReservationStatusBadge";
 import {
   deliveryBadgeClass,
   deliveryLabel,
   formatDateTime,
-  formatRelativeTime,
   reminderBadgeClass,
   reminderTypeLabel,
   reservationStatuses,
@@ -44,15 +42,12 @@ interface ReservationsTableProps {
 const ReminderChip = ({
   label,
   status,
-  attempts,
 }: {
   label: string;
   status: ReminderStatus;
-  attempts: number;
 }) => (
   <div className={cn("admin-chip border", reminderBadgeClass[status])}>
     <span className="font-semibold">{label}</span> {status}
-    {attempts > 0 ? ` · ${attempts}x` : ""}
   </div>
 );
 
@@ -73,7 +68,14 @@ const ReservationsTable = ({
   onRowClick,
 }: ReservationsTableProps) => (
   <div className="admin-glass-panel-soft overflow-hidden rounded-2xl">
-    <Table>
+    <Table className="min-w-[980px] table-fixed">
+      <colgroup>
+        <col className="w-[24%]" />
+        <col className="w-[24%]" />
+        <col className="w-[22%]" />
+        <col className="w-[16%]" />
+        <col className="w-[14%]" />
+      </colgroup>
       <TableHeader>
         <TableRow className="border-border/70 bg-white/55 hover:bg-white/55">
           <TableHead className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -90,9 +92,6 @@ const ReservationsTable = ({
           </TableHead>
           <TableHead className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
             Reminders
-          </TableHead>
-          <TableHead className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Updated
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -163,9 +162,6 @@ const ReservationsTable = ({
                     )}
                   </Button>
                 </div>
-                <div className="mt-2">
-                  <ReservationStatusBadge status={reservation.status} size="sm" />
-                </div>
               </TableCell>
 
               <TableCell className="px-4 py-4 align-top">
@@ -177,14 +173,6 @@ const ReservationsTable = ({
                 >
                   {deliveryLabel[reservation.confirmation.status]}
                 </Badge>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Attempts: {reservation.confirmation.attempts}
-                </p>
-                {reservation.confirmation.error && (
-                  <p className="mt-1 line-clamp-2 text-xs text-rose-700">
-                    {reservation.confirmation.error}
-                  </p>
-                )}
               </TableCell>
 
               <TableCell className="px-4 py-4 align-top">
@@ -192,23 +180,16 @@ const ReservationsTable = ({
                   <ReminderChip
                     label={reminderTypeLabel.r24h}
                     status={reservation.reminders.r24h.status}
-                    attempts={reservation.reminders.r24h.attempts}
                   />
                   <ReminderChip
                     label={reminderTypeLabel.r3h}
                     status={reservation.reminders.r3h.status}
-                    attempts={reservation.reminders.r3h.attempts}
                   />
                   <ReminderChip
                     label={reminderTypeLabel.r30m}
                     status={reservation.reminders.r30m.status}
-                    attempts={reservation.reminders.r30m.attempts}
                   />
                 </div>
-              </TableCell>
-
-              <TableCell className="px-4 py-4 align-top text-xs text-muted-foreground">
-                {formatRelativeTime(reservation.updatedAt)}
               </TableCell>
             </motion.tr>
           );

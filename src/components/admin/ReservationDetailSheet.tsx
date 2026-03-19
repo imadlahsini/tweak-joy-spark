@@ -26,7 +26,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import ReservationStatusBadge from "@/components/admin/ReservationStatusBadge";
 import {
   deliveryBadgeClass,
   deliveryLabel,
@@ -204,9 +203,6 @@ const ReservationDetailSheet = ({
                 <SaveButton />
               )}
             </div>
-            <div className="mt-3">
-              <ReservationStatusBadge status={reservation.status} />
-            </div>
           </div>
 
           {/* Confirmation section */}
@@ -223,9 +219,6 @@ const ReservationDetailSheet = ({
               >
                 {deliveryLabel[reservation.confirmation.status]}
               </Badge>
-              <span className="font-mono text-sm text-muted-foreground">
-                {reservation.confirmation.attempts} attempt(s)
-              </span>
             </div>
             {reservation.confirmation.sentAt && (
               <p className="mt-2 text-xs text-emerald-700">

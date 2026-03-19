@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import ReservationStatusBadge from "@/components/admin/ReservationStatusBadge";
 import {
   deliveryBadgeClass,
   deliveryLabel,
@@ -49,15 +48,12 @@ const stripeClass: Record<ReservationStatus, string> = {
 const ReminderChip = ({
   label,
   status,
-  attempts,
 }: {
   label: string;
   status: ReminderStatus;
-  attempts: number;
 }) => (
   <div className={cn("admin-chip border", reminderBadgeClass[status])}>
     <span className="font-semibold">{label}</span> {status}
-    {attempts > 0 ? ` · ${attempts}x` : ""}
   </div>
 );
 
@@ -85,14 +81,11 @@ const ReservationCard = ({
 
       <div className="p-4">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-[15px] font-semibold text-foreground">
-              {reservation.clientName}
-            </p>
-            <p className="mt-0.5 font-mono text-xs text-muted-foreground">{reservation.clientPhone}</p>
-          </div>
-          <ReservationStatusBadge status={reservation.status} />
+        <div className="min-w-0">
+          <p className="truncate text-[15px] font-semibold text-foreground">
+            {reservation.clientName}
+          </p>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">{reservation.clientPhone}</p>
         </div>
 
         {/* Appointment time */}
@@ -166,17 +159,14 @@ const ReservationCard = ({
                   <ReminderChip
                     label={reminderTypeLabel.r24h}
                     status={reservation.reminders.r24h.status}
-                    attempts={reservation.reminders.r24h.attempts}
                   />
                   <ReminderChip
                     label={reminderTypeLabel.r3h}
                     status={reservation.reminders.r3h.status}
-                    attempts={reservation.reminders.r3h.attempts}
                   />
                   <ReminderChip
                     label={reminderTypeLabel.r30m}
                     status={reservation.reminders.r30m.status}
-                    attempts={reservation.reminders.r30m.attempts}
                   />
                 </div>
               </div>

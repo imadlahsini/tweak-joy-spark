@@ -1,6 +1,6 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type FocusEvent, type ReactNode, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Compass, Loader2, LogOut, Search, Sparkles } from "lucide-react";
+import { Compass, Loader2, LogOut, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -17,6 +17,8 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { APP_LOGO_SRC, APP_NAME } from "@/lib/branding";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_ITEMS, type AdminNavItemId } from "@/components/admin/admin-nav";
 
@@ -25,6 +27,7 @@ interface AdminShellProps {
   isSigningOut?: boolean;
   onLogout: () => void | Promise<void>;
   onCommandOpen?: () => void;
+  topBarBeforeSearch?: ReactNode;
   headerExtra?: ReactNode;
   children: ReactNode;
 }
@@ -39,43 +42,71 @@ const AdminShell = ({
   isSigningOut = false,
   onLogout,
   onCommandOpen,
+  topBarBeforeSearch,
   headerExtra,
   children,
 }: AdminShellProps) => {
   const location = useLocation();
+  const isMobile = useIsMobile();
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [isSidebarFocusWithin, setIsSidebarFocusWithin] = useState(false);
+  const isDesktopSidebarExpanded = !isMobile && (isSidebarHovered || isSidebarFocusWithin);
+
+  const handleSidebarBlurCapture = (event: FocusEvent<HTMLDivElement>) => {
+    if (isMobile) return;
+
+    const nextTarget = event.relatedTarget as Node | null;
+    if (nextTarget && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+
+    setIsSidebarFocusWithin(false);
+  };
 
   return (
-    <SidebarProvider defaultOpen style={sidebarVars}>
-      <div className="admin-theme admin-shell-bg admin-shell-atmosphere relative min-h-screen overflow-hidden text-foreground">
+    <SidebarProvider defaultOpen={false} open={isMobile ? undefined : isDesktopSidebarExpanded} style={sidebarVars}>
+      <div
+        dir="ltr"
+        className="admin-theme admin-shell-bg admin-shell-atmosphere relative min-h-screen overflow-hidden text-foreground"
+      >
         <div className="pointer-events-none absolute inset-0 dot-grid opacity-[0.02]" />
 
         <div className="relative z-10 flex min-h-screen">
           {/* Sidebar */}
-          <Sidebar variant="floating" collapsible="icon" className="border-0 bg-transparent p-3 md:p-4">
+          <Sidebar
+            variant="floating"
+            collapsible="icon"
+            disableFloatingChrome
+            className="border-0 bg-transparent p-3 md:p-4"
+            onMouseEnter={isMobile ? undefined : () => setIsSidebarHovered(true)}
+            onMouseLeave={isMobile ? undefined : () => setIsSidebarHovered(false)}
+            onFocusCapture={isMobile ? undefined : () => setIsSidebarFocusWithin(true)}
+            onBlurCapture={isMobile ? undefined : handleSidebarBlurCapture}
+          >
             <div className="admin-glass-panel relative flex h-full flex-col rounded-2xl">
               <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
-              <SidebarHeader className="px-3 pb-2 pt-3 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-2">
-                <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
+              <SidebarHeader className="px-3 pb-2 pt-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-2.5">
+                <div className="flex items-center gap-3 group-data-[collapsible=icon]:hidden">
                   <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                    <img src={APP_LOGO_SRC} alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
                   </div>
 
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                       Operations
                     </p>
-                    <p className="truncate text-sm font-semibold text-foreground">Clinic Admin</p>
+                    <p className="truncate text-sm font-semibold text-foreground">{APP_NAME} Admin</p>
                   </div>
-
-                  <SidebarTrigger className="ml-auto h-10 w-10 rounded-xl border border-border/60 bg-background/55 text-foreground hover:bg-background/75" />
                 </div>
-                <div className="hidden items-center justify-center group-data-[collapsible=icon]:flex">
-                  <SidebarTrigger className="h-10 w-10 rounded-xl border border-border/60 bg-background/55 text-foreground hover:bg-background/75" />
+                <div className="hidden w-full items-center justify-center group-data-[collapsible=icon]:flex">
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                    <img src={APP_LOGO_SRC} alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
+                  </div>
                 </div>
               </SidebarHeader>
 
-              <SidebarContent className="px-2 pb-2 pt-1 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-1.5">
+              <SidebarContent className="px-2 pb-2 pt-1 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-1.5">
                 <SidebarGroup className="p-1 group-data-[collapsible=icon]:p-0">
                   <SidebarGroupLabel className="px-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80 group-data-[collapsible=icon]:sr-only">
                     Navigation
@@ -128,7 +159,7 @@ const AdminShell = ({
                 </SidebarGroup>
               </SidebarContent>
 
-              <SidebarFooter className="px-3 pb-3 pt-2 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-1.5">
+              <SidebarFooter className="px-3 pb-3 pt-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-1.5">
                 <Button
                   type="button"
                   variant="ghost"
@@ -168,19 +199,24 @@ const AdminShell = ({
                     {ADMIN_NAV_ITEMS.find((item) => item.id === activeNav)?.label ?? "Admin"}
                   </p>
 
-                  {/* Command palette trigger (desktop) */}
-                  {onCommandOpen && (
-                    <button
-                      type="button"
-                      onClick={onCommandOpen}
-                      className="hidden md:flex items-center gap-2 admin-glass-panel-soft rounded-xl px-3 py-2 w-64 cursor-pointer hover:border-primary/30 transition-colors ml-auto mr-auto"
-                    >
-                      <Search className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Search...</span>
-                      <kbd className="ml-auto inline-flex items-center rounded border border-border/60 bg-background/55 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                        ⌘K
-                      </kbd>
-                    </button>
+                  {/* Desktop center controls */}
+                  {(topBarBeforeSearch || onCommandOpen) && (
+                    <div className="ml-auto mr-auto hidden items-center gap-2 md:flex">
+                      {topBarBeforeSearch}
+                      {onCommandOpen && (
+                        <button
+                          type="button"
+                          onClick={onCommandOpen}
+                          className="flex items-center gap-2 admin-glass-panel-soft rounded-xl px-3 py-2 w-64 cursor-pointer hover:border-primary/30 transition-colors"
+                        >
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Search...</span>
+                          <kbd className="ml-auto inline-flex items-center rounded border border-border/60 bg-background/55 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                            ⌘K
+                          </kbd>
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {/* Right side */}

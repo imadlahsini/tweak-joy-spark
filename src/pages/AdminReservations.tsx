@@ -1,14 +1,17 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  CalendarRange,
   CalendarClock,
   CircleAlert,
   Loader2,
   RefreshCcw,
   ShieldAlert,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import AdminShell from "@/components/admin/AdminShell";
 import ReservationsFilters from "@/components/admin/ReservationsFilters";
 import ReservationsTable from "@/components/admin/ReservationsTable";
@@ -17,6 +20,12 @@ import ReservationDetailSheet from "@/components/admin/ReservationDetailSheet";
 import CommandPalette from "@/components/admin/CommandPalette";
 import EmptyState from "@/components/admin/EmptyState";
 import ReservationsLoadingSkeleton from "@/components/admin/ReservationsLoadingSkeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useReservations } from "@/hooks/use-reservations";
 import { formatRelativeTime } from "@/lib/admin-constants";
 import type { ReservationRow } from "@/types/reservations";
@@ -42,6 +51,48 @@ const AdminReservations = () => {
     r.setDateFrom(today);
     r.setDateTo(today);
   }, [r]);
+
+  const handleQuickDate = useCallback(
+    (preset: "today" | "week" | "month" | "last7" | "last30") => {
+      const today = new Date();
+      const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+      switch (preset) {
+        case "today":
+          r.setDateFrom(fmt(today));
+          r.setDateTo(fmt(today));
+          break;
+        case "week": {
+          const start = new Date(today);
+          start.setDate(today.getDate() - today.getDay() + 1);
+          r.setDateFrom(fmt(start));
+          r.setDateTo(fmt(today));
+          break;
+        }
+        case "month": {
+          const start = new Date(today.getFullYear(), today.getMonth(), 1);
+          r.setDateFrom(fmt(start));
+          r.setDateTo(fmt(today));
+          break;
+        }
+        case "last7": {
+          const start = new Date(today);
+          start.setDate(today.getDate() - 7);
+          r.setDateFrom(fmt(start));
+          r.setDateTo(fmt(today));
+          break;
+        }
+        case "last30": {
+          const start = new Date(today);
+          start.setDate(today.getDate() - 30);
+          r.setDateFrom(fmt(start));
+          r.setDateTo(fmt(today));
+          break;
+        }
+      }
+    },
+    [r],
+  );
 
   // Session loading
   if (!r.isSessionReady) {
@@ -72,11 +123,61 @@ const AdminReservations = () => {
     </Button>
   );
 
+  const topBarDateControls = (
+    <div className="flex items-center gap-2">
+      <Input
+        type="date"
+        value={r.dateFrom}
+        onChange={(event) => r.setDateFrom(event.target.value)}
+        className="admin-control h-9 rounded-xl w-[138px]"
+        aria-label="Filter from date"
+      />
+      <Input
+        type="date"
+        value={r.dateTo}
+        onChange={(event) => r.setDateTo(event.target.value)}
+        className="admin-control h-9 rounded-xl w-[138px]"
+        aria-label="Filter to date"
+      />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className="admin-control h-9 gap-1.5 rounded-xl px-3 text-foreground hover:bg-white/72"
+          >
+            <CalendarRange className="h-4 w-4" />
+            Quick
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="admin-glass-panel-soft border-border/70 text-foreground">
+          <DropdownMenuItem onClick={() => handleQuickDate("today")}>Today</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleQuickDate("week")}>This Week</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleQuickDate("month")}>This Month</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleQuickDate("last7")}>Last 7 Days</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleQuickDate("last30")}>Last 30 Days</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {r.hasActiveFilters && (
+        <Button
+          variant="outline"
+          onClick={r.clearFilters}
+          className="admin-chip h-9 gap-1.5 rounded-xl border border-rose-300/50 bg-rose-50/85 px-3 text-rose-700 hover:border-rose-300/75 hover:bg-rose-100/90 hover:text-rose-800"
+        >
+          <X className="h-3.5 w-3.5" />
+          Clear
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <AdminShell
       activeNav="reservations"
       isSigningOut={isSigningOut}
       onLogout={handleSignOut}
+      topBarBeforeSearch={topBarDateControls}
       onCommandOpen={() => setCommandOpen(true)}
       headerExtra={refreshButton}
     >
@@ -133,8 +234,6 @@ const AdminReservations = () => {
             {/* Filters */}
             <div className="admin-glass-panel-soft rounded-2xl p-3.5 sm:p-4">
               <ReservationsFilters
-                search={r.search}
-                onSearchChange={r.setSearch}
                 statusFilter={r.statusFilter}
                 onStatusFilterChange={r.setStatusFilter}
                 dateFrom={r.dateFrom}

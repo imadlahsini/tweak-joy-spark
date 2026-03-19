@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Language, useLanguage } from "@/contexts/LanguageContext";
 import LanguageFlag from "@/components/shared/LanguageFlag";
+import { APP_LOGO_SRC } from "@/lib/branding";
 
 type SelectorLanguage = Exclude<Language, null>;
 type GreetingScript = "ar" | "zgh" | "latin";
@@ -23,8 +24,6 @@ type GreetingCycleItem = {
   value: string;
   script: GreetingScript;
 };
-
-const LOGO_SRC = "https://ophtalmologueagadir.com/wp-content/uploads/2025/10/cropped-sounnyfav.webp";
 
 const languages: LanguageOption[] = [
   { code: "ar", label: "العربية", subtitle: "Arabic", greetingLabel: "مرحباً" },
@@ -144,7 +143,7 @@ const Welcome = () => {
               />
             )}
             <img
-              src={LOGO_SRC}
+              src={APP_LOGO_SRC}
               alt="Sounny"
               className="h-14 w-14 rounded-[14px] object-cover shadow-[0_8px_20px_rgba(26,42,58,0.18)]"
             />

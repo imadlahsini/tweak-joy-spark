@@ -5,6 +5,7 @@ import { Menu, X, Sparkles, Phone, Clock, MapPin, ChevronRight, Globe, Check } f
 import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getClinicAvailability } from "@/lib/clinicAvailability";
+import { APP_LOGO_SRC } from "@/lib/branding";
 
 const WhatsAppIcon = forwardRef<SVGSVGElement, { className?: string }>(
   ({ className, ...props }, ref) => (
@@ -587,7 +588,7 @@ const Navbar = () => {
                 whileHover={{ scale: 1.02 }}
               >
                 <img
-                  src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/cropped-sounnyfav.webp"
+                  src={APP_LOGO_SRC}
                   alt="Logo"
                   className="w-9 h-9 md:w-10 md:h-10 rounded-xl object-contain"
                 />
@@ -673,7 +674,7 @@ const Navbar = () => {
                   }}
                 >
                   <img
-                    src="https://ophtalmologueagadir.com/wp-content/uploads/2025/10/cropped-sounnyfav.webp"
+                    src={APP_LOGO_SRC}
                     alt="Logo"
                     className="w-9 h-9 rounded-xl object-contain"
                   />
