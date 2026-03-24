@@ -1,4 +1,5 @@
 import { Check, ClipboardCopy, Loader2, Phone } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +50,7 @@ interface ReservationDetailSheetProps {
   onDraftStatusChange: (status: ReservationStatus) => void;
   onStatusSave: () => void;
   isSaving: boolean;
+  profileHref?: string | null;
 }
 
 const timelineDotClass = {
@@ -69,6 +71,7 @@ const ReservationDetailSheet = ({
   onDraftStatusChange,
   onStatusSave,
   isSaving,
+  profileHref,
 }: ReservationDetailSheetProps) => {
   const { toast } = useToast();
   const [copiedId, setCopiedId] = useState(false);
@@ -78,12 +81,24 @@ const ReservationDetailSheet = ({
   const currentDraft = draftStatus ?? reservation.status;
   const statusChanged = currentDraft !== reservation.status;
   const isDestructive = currentDraft === "cancelled" || currentDraft === "no_show";
+  const saveLabel = isSaving ? "Saving" : statusChanged ? "Save" : "Saved";
 
   const copyId = async () => {
-    await navigator.clipboard.writeText(reservation.id);
-    setCopiedId(true);
-    toast({ title: "Copied", description: "Reservation ID copied to clipboard." });
-    setTimeout(() => setCopiedId(false), 2000);
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API unavailable");
+      }
+      await navigator.clipboard.writeText(reservation.id);
+      setCopiedId(true);
+      toast({ title: "Copied", description: "Reservation ID copied to clipboard." });
+      setTimeout(() => setCopiedId(false), 2000);
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Clipboard access is blocked in this browser. Please copy it manually.",
+        variant: "destructive",
+      });
+    }
   };
 
   const SaveButton = () => (
@@ -91,9 +106,10 @@ const ReservationDetailSheet = ({
       size="sm"
       onClick={onStatusSave}
       disabled={!statusChanged || isSaving}
-      className="h-12 w-12 shrink-0 rounded-xl bg-cyan-500/90 text-white hover:bg-cyan-500 disabled:opacity-35"
+      className="h-12 min-w-[108px] shrink-0 rounded-xl bg-cyan-500/90 px-3.5 text-white hover:bg-cyan-500 disabled:opacity-35"
     >
-      {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+      {isSaving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
+      <span className="text-xs font-semibold tracking-[0.02em]">{saveLabel}</span>
     </Button>
   );
 
@@ -101,7 +117,7 @@ const ReservationDetailSheet = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full overflow-y-auto border-l border-border/65 bg-[linear-gradient(162deg,rgba(255,255,255,0.95),rgba(241,248,252,0.92))] p-0 text-foreground backdrop-blur-2xl sm:max-w-[500px]"
+        className="reservations-drawer w-full overflow-y-auto border-l border-border/65 p-0 text-foreground backdrop-blur-2xl sm:max-w-[560px]"
       >
         <div className="p-6">
           {/* Header */}
@@ -116,8 +132,13 @@ const ReservationDetailSheet = ({
               <Phone className="h-3.5 w-3.5" />
               {reservation.clientPhone}
             </a>
+            {profileHref && (
+              <Button asChild variant="ghost" className="reservation-detail-profile-link mt-3 h-9 rounded-lg px-3 text-cyan-700 hover:bg-cyan-500/10 hover:text-cyan-800">
+                <Link to={profileHref}>Open Profile</Link>
+              </Button>
+            )}
 
-            <div className="admin-glass-panel-soft rounded-xl px-3 py-2.5 mt-3 flex items-baseline gap-3">
+            <div className="admin-glass-panel-soft mt-3 flex items-baseline gap-3 rounded-xl px-3 py-2.5">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Date</p>
                 <p className="text-lg font-semibold leading-tight text-foreground">
@@ -131,15 +152,15 @@ const ReservationDetailSheet = ({
                   {formatTimeOnly(reservation.appointmentAt)}
                 </p>
               </div>
-              <span className="ml-auto rounded border border-border/70 bg-white/70 px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+              <span className="ml-auto rounded border border-border/70 bg-white/70 px-1.5 py-0.5 text-xs uppercase text-muted-foreground">
                 {reservation.language}
               </span>
             </div>
           </SheetHeader>
 
           {/* Status section */}
-          <div className="border-b border-border/65 py-5">
-            <p className="mb-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Status</p>
+          <div className="reservations-drawer-section border-b border-border/65 py-5">
+            <p className="mb-3 text-xs uppercase tracking-[0.16em] text-muted-foreground">Status</p>
             <div className="flex items-center gap-2">
               <Select
                 value={currentDraft}
@@ -166,16 +187,20 @@ const ReservationDetailSheet = ({
                     <Button
                       size="sm"
                       disabled={isSaving}
-                      className="h-12 w-12 shrink-0 rounded-xl bg-rose-500/85 text-white hover:bg-rose-500 disabled:opacity-35"
+                      className="h-12 min-w-[108px] shrink-0 rounded-xl bg-rose-500/85 px-3.5 text-white hover:bg-rose-500 disabled:opacity-35"
                     >
                       {isSaving ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                       ) : (
-                        <Check className="h-5 w-5" />
+                        <Check className="mr-1.5 h-4 w-4" />
                       )}
+                      <span className="text-xs font-semibold tracking-[0.02em]">{saveLabel}</span>
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="admin-glass-panel border-border/70 text-foreground">
+                  <AlertDialogContent
+                    style={{ position: "fixed" }}
+                    className="admin-glass-panel border-border/70 text-foreground"
+                  >
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-foreground">Are you sure?</AlertDialogTitle>
                       <AlertDialogDescription className="text-muted-foreground">
@@ -206,8 +231,8 @@ const ReservationDetailSheet = ({
           </div>
 
           {/* Confirmation section */}
-          <div className="border-b border-border/65 py-5">
-            <p className="mb-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+          <div className="reservations-drawer-section border-b border-border/65 py-5">
+            <p className="mb-3 text-xs uppercase tracking-[0.16em] text-muted-foreground">
               Confirmation
             </p>
             <div className="flex items-center gap-3">
@@ -233,8 +258,8 @@ const ReservationDetailSheet = ({
           </div>
 
           {/* Reminders timeline */}
-          <div className="py-5">
-            <p className="mb-4 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+          <div className="reservations-drawer-section py-5">
+            <p className="mb-4 text-xs uppercase tracking-[0.16em] text-muted-foreground">
               Reminders
             </p>
             <div className="relative pl-8">
@@ -261,7 +286,7 @@ const ReservationDetailSheet = ({
                         </span>
                         <Badge
                           className={cn(
-                            "admin-chip border text-[10px] py-0 px-1.5",
+                            "admin-chip border px-1.5 py-0 text-xs",
                             timelineDotClass[reminder.status].includes("emerald")
                               ? "border-emerald-300/45 bg-emerald-200/55 text-emerald-700"
                               : timelineDotClass[reminder.status].includes("rose")
@@ -310,7 +335,7 @@ const ReservationDetailSheet = ({
             <button
               type="button"
               onClick={copyId}
-              className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               {copiedId ? "Copied!" : reservation.id.slice(0, 8)}
               <ClipboardCopy className="h-3 w-3" />

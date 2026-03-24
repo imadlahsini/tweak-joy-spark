@@ -13,6 +13,12 @@ import RefundPolicy from "./pages/RefundPolicy";
 import AppointmentConfirmation from "./pages/AppointmentConfirmation";
 import AdminLogin from "./pages/AdminLogin";
 import AdminReservations from "./pages/AdminReservations";
+import AdminQueue from "./pages/AdminQueue";
+import AdminSettings from "./pages/AdminSettings";
+import AdminProfiles from "./pages/AdminProfiles";
+import AdminPatientProfile from "./pages/AdminPatientProfile";
+import AdminEntryRedirect from "./pages/AdminEntryRedirect";
+import QueueDisplay from "./pages/QueueDisplay";
 import { CTAModalProvider } from "@/contexts/CTAModalContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import CTAModal from "@/components/landing/CTAModal";
@@ -36,8 +42,14 @@ const App = () => (
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/refund" element={<RefundPolicy />} />
+              <Route path="/admin" element={<AdminEntryRedirect />} />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/profiles" element={<AdminProfiles />} />
+              <Route path="/admin/profiles/:profileId" element={<AdminPatientProfile />} />
               <Route path="/admin/reservations" element={<AdminReservations />} />
+              <Route path="/admin/queue" element={<AdminQueue />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/queue-display" element={<QueueDisplay />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

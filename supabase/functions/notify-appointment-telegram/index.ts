@@ -42,6 +42,12 @@ interface ReminderQueueResult {
   appointmentId?: string;
 }
 
+interface BookingPersistenceMeta {
+  bookingPersisted: boolean;
+  appointmentId: string | null;
+  bookingError?: string;
+}
+
 interface TimeParts {
   hour: number;
   minute: number;
@@ -558,6 +564,73 @@ const persistAppointmentAndReminders = async (
 
     result.appointmentId = appointmentRow.id;
 
+    let patientProfileId: string | null = null;
+
+    if (payload.normalizedClientPhone) {
+      const { data: profileRow, error: profileError } = await serviceClient
+        .from("patient_profiles")
+        .upsert(
+          {
+            name: payload.clientName,
+            phone: payload.clientPhone,
+            normalized_phone: payload.normalizedClientPhone,
+          },
+          {
+            onConflict: "normalized_phone",
+          },
+        )
+        .select("id")
+        .single();
+
+      if (profileError) {
+        result.errors.push(`patient_profile_upsert_failed:${profileError.message}`);
+      } else {
+        patientProfileId = profileRow.id;
+      }
+    }
+
+    // Auto-populate queue after appointment creation so appointment_id can link
+    // rows and deduplicate queue creation across retries.
+    const { data: maxPosRow, error: maxPosError } = await serviceClient
+      .from("queue_patients")
+      .select("position")
+      .eq("queue_date", appointmentDateTime.appointmentDate)
+      .eq("queue_type", "rdv")
+      .eq("status", "waiting")
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (maxPosError) {
+      result.errors.push(`queue_position_lookup_failed:${maxPosError.message}`);
+    } else {
+      const nextPosition = (maxPosRow?.position ?? -1) + 1;
+
+      const { error: queueError } = await serviceClient
+        .from("queue_patients")
+        .upsert(
+          {
+            queue_date: appointmentDateTime.appointmentDate,
+            queue_type: "rdv",
+            status: "waiting",
+            client_name: payload.clientName,
+            client_phone: payload.clientPhone || null,
+            patient_profile_id: patientProfileId,
+            notes: `Rendez-vous à ${appointmentDateTime.appointmentTime}`,
+            position: nextPosition,
+            appointment_id: appointmentRow.id,
+          },
+          {
+            onConflict: "appointment_id",
+            ignoreDuplicates: true,
+          },
+        );
+
+      if (queueError) {
+        result.errors.push(`queue_insert_failed:${queueError.message}`);
+      }
+    }
+
     if (plannedReminders.queued.length === 0) {
       return result;
     }
@@ -587,6 +660,33 @@ const persistAppointmentAndReminders = async (
     );
     return result;
   }
+};
+
+const buildBookingPersistenceMeta = (
+  reminderQueueResult: ReminderQueueResult,
+): BookingPersistenceMeta => {
+  const appointmentId = reminderQueueResult.appointmentId ?? null;
+  const bookingPersisted = Boolean(appointmentId);
+
+  if (bookingPersisted) {
+    return {
+      bookingPersisted,
+      appointmentId,
+    };
+  }
+
+  const preferredError =
+    reminderQueueResult.errors.find((entry) => entry.startsWith("appointment_insert_failed:")) ??
+    reminderQueueResult.errors.find((entry) => entry.startsWith("reminder_queue_unexpected:")) ??
+    reminderQueueResult.errors.find((entry) => entry === "invalid_appointment_datetime") ??
+    reminderQueueResult.errors.find((entry) => entry === "missing_supabase_service_role_secrets") ??
+    reminderQueueResult.errors[0];
+
+  return {
+    bookingPersisted,
+    appointmentId,
+    bookingError: preferredError ?? "booking_not_persisted",
+  };
 };
 
 const mapConfirmationStatus = (whatsappResult: ChannelResult): ConfirmationDeliveryStatus => {
@@ -774,7 +874,13 @@ serve(async (req) => {
 
   if (req.method !== "POST") {
     return new Response(
-      JSON.stringify({ success: false, error: "method_not_allowed" }),
+      JSON.stringify({
+        success: false,
+        error: "method_not_allowed",
+        bookingPersisted: false,
+        appointmentId: null,
+        bookingError: "method_not_allowed",
+      }),
       {
         status: 405,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -784,7 +890,13 @@ serve(async (req) => {
 
   if (!isOriginAllowed(origin, allowedOrigins)) {
     return new Response(
-      JSON.stringify({ success: false, error: "blocked_origin" }),
+      JSON.stringify({
+        success: false,
+        error: "blocked_origin",
+        bookingPersisted: false,
+        appointmentId: null,
+        bookingError: "blocked_origin",
+      }),
       {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -796,7 +908,13 @@ serve(async (req) => {
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return new Response(
-        JSON.stringify({ success: false, error: "invalid_payload" }),
+        JSON.stringify({
+          success: false,
+          error: "invalid_payload",
+          bookingPersisted: false,
+          appointmentId: null,
+          bookingError: "invalid_payload",
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -807,7 +925,13 @@ serve(async (req) => {
     const payload = validatePayload(body as Record<string, unknown>);
     if (!payload) {
       return new Response(
-        JSON.stringify({ success: false, error: "invalid_payload_fields" }),
+        JSON.stringify({
+          success: false,
+          error: "invalid_payload_fields",
+          bookingPersisted: false,
+          appointmentId: null,
+          bookingError: "invalid_payload_fields",
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -824,6 +948,9 @@ serve(async (req) => {
           success: false,
           error: "cooldown_active",
           retryAfterMs: BOOKING_REQUEST_COOLDOWN_MS,
+          bookingPersisted: false,
+          appointmentId: null,
+          bookingError: "cooldown_active",
         }),
         {
           status: 429,
@@ -863,10 +990,14 @@ serve(async (req) => {
     }
 
     const success = telegramResult.ok || whatsappResult.ok;
+    const bookingMeta = buildBookingPersistenceMeta(reminderQueueResult);
 
     return new Response(
       JSON.stringify({
         success,
+        bookingPersisted: bookingMeta.bookingPersisted,
+        appointmentId: bookingMeta.appointmentId,
+        bookingError: bookingMeta.bookingError,
         channels: {
           telegram: telegramResult,
           whatsapp: whatsappResult,
@@ -884,6 +1015,9 @@ serve(async (req) => {
         success: false,
         error: "internal_error",
         details: error instanceof Error ? error.message : "Unknown error",
+        bookingPersisted: false,
+        appointmentId: null,
+        bookingError: "internal_error",
       }),
       {
         status: 500,

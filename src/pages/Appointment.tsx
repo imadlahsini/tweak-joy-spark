@@ -6,6 +6,12 @@ import FloatingOrb from "@/components/shared/FloatingOrb";
 import Navbar from "@/components/landing/Navbar";
 import UiIcon from "@/components/shared/UiIcon";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  formatMoroccanPhone,
+  formatMoroccanPhoneDisplay,
+  isValidMoroccanPhone,
+  normalizeMoroccanPhone,
+} from "@/lib/moroccan-phone";
 import { addDays, format, isToday, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale/fr";
 import { arSA } from "date-fns/locale/ar-SA";
@@ -60,6 +66,9 @@ const translations = {
     ctaHintDate: "Choose a date to continue",
     ctaHintTime: "Pick a time to continue",
     ctaHintDetails: "Enter your details to confirm",
+    bookingSaveFailed: "We couldn't save your appointment. Please try again.",
+    bookingRetrySoon: "Please wait a few seconds and try again.",
+    bookingBlockedOrigin: "Booking is unavailable from this origin right now.",
     ctaTrust: "1h • In-person • Instant confirmation",
     journeyPromptStart: "Pick a day to get started",
     journeyPromptSlot: "Choose your slot",
@@ -103,6 +112,9 @@ const translations = {
     ctaHintDate: "Choisissez une date pour continuer",
     ctaHintTime: "Choisissez une heure pour continuer",
     ctaHintDetails: "Entrez vos informations pour confirmer",
+    bookingSaveFailed: "Nous n'avons pas pu enregistrer votre rendez-vous. Veuillez réessayer.",
+    bookingRetrySoon: "Veuillez patienter quelques secondes puis réessayer.",
+    bookingBlockedOrigin: "La réservation n'est pas disponible depuis cette origine pour le moment.",
     ctaTrust: "1h • En personne • Confirmation immédiate",
     journeyPromptStart: "Choisissez un jour pour commencer",
     journeyPromptSlot: "Choisissez votre créneau",
@@ -146,6 +158,9 @@ const translations = {
     ctaHintDate: "اختر التاريخ للمتابعة",
     ctaHintTime: "اختر الوقت للمتابعة",
     ctaHintDetails: "أدخل بياناتك للتأكيد",
+    bookingSaveFailed: "تعذر حفظ موعدك. يرجى المحاولة مرة أخرى.",
+    bookingRetrySoon: "يرجى الانتظار بضع ثوانٍ ثم المحاولة مرة أخرى.",
+    bookingBlockedOrigin: "الحجز غير متاح من هذا المصدر حالياً.",
     ctaTrust: "ساعة • حضوري • تأكيد فوري",
     journeyPromptStart: "اختر يوماً للبدء",
     journeyPromptSlot: "اختر الوقت المناسب",
@@ -189,6 +204,9 @@ const translations = {
     ctaHintDate: "ⴼⵔⵏ ⴰⵣⵎⵣ ⵉ ⵜⵙⵎⴷ",
     ctaHintTime: "ⴼⵔⵏ ⴰⴽⵓⴷ ⵉ ⵜⵙⵎⴷ",
     ctaHintDetails: "ⵙⴽⵛⵎ ⵉⵙⴼⴽⴰⵏⵏⴽ ⵉ ⵜⵙⵙⵏⵜⵎ",
+    bookingSaveFailed: "We couldn't save your appointment. Please try again.",
+    bookingRetrySoon: "Please wait a few seconds and try again.",
+    bookingBlockedOrigin: "Booking is unavailable from this origin right now.",
     ctaTrust: "1ⵙⴰⵄⴰ • ⵙ ⵓⴷⴷⵓⵔ • ⴰⵙⵙⵏⵜⵎ ⴰⵎⵉⵔⴰⵏ",
     journeyPromptStart: "ⴼⵔⵏ ⴰⵣⵎⵣ ⵉ ⵜⴱⴷⵓ",
     journeyPromptSlot: "ⴼⵔⵏ ⴰⴽⵓⴷⵏⵏⴽ",
@@ -257,37 +275,16 @@ const ThinArrow = ({ className = "" }: { className?: string }) => (
   </svg>
 );
 
-const normalizeMoroccanPhone = (value: string) => {
-  const digitsOnly = value.replace(/\D/g, "");
-  if (!digitsOnly) return "";
+const getFunctionInvokeStatusCode = (error: unknown): number | null => {
+  if (!error || typeof error !== "object") return null;
 
-  let normalized = digitsOnly;
-
-  if (normalized.startsWith("00212")) {
-    normalized = normalized.slice(5);
-  } else if (normalized.startsWith("212")) {
-    normalized = normalized.slice(3);
+  const candidate = error as { status?: number; context?: { status?: number } };
+  if (typeof candidate.status === "number") return candidate.status;
+  if (candidate.context && typeof candidate.context.status === "number") {
+    return candidate.context.status;
   }
 
-  if ((normalized.startsWith("6") || normalized.startsWith("7")) && normalized.length <= 9) {
-    normalized = `0${normalized}`;
-  }
-
-  if (normalized.startsWith("00") && (normalized[2] === "6" || normalized[2] === "7")) {
-    normalized = normalized.slice(1);
-  }
-
-  return normalized.slice(0, 10);
-};
-
-const formatMoroccanPhone = (value: string) => {
-  const digits = value.replace(/\D/g, "").slice(0, 10);
-  return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
-};
-
-const formatMoroccanPhoneDisplay = (value: string) => {
-  const normalized = normalizeMoroccanPhone(value);
-  return formatMoroccanPhone(normalized);
+  return null;
 };
 
 let cachedRtlScrollType: RtlScrollType | null = null;
@@ -394,6 +391,7 @@ const Appointment = () => {
   const [clientPhone, setClientPhone] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
+  const [bookingSubmitError, setBookingSubmitError] = useState<string | null>(null);
   const [showSparkles, setShowSparkles] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [detailsJourneyActive, setDetailsJourneyActive] = useState(false);
@@ -587,6 +585,7 @@ const Appointment = () => {
     setClientPhone("");
     setNameTouched(false);
     setPhoneTouched(false);
+    setBookingSubmitError(null);
     setShowSparkles(false);
     setIsConfirming(false);
     confirmLockRef.current = false;
@@ -630,7 +629,7 @@ const Appointment = () => {
   }, [location.key, navigationType, resetAppointmentState]);
 
   const isNameValid = clientName.trim().length >= 2;
-  const isPhoneValid = /^0[67]\d{8}$/.test(clientPhone);
+  const isPhoneValid = isValidMoroccanPhone(clientPhone);
   const isFormValid = isNameValid && isPhoneValid;
   const formattedPhoneValue = formatMoroccanPhone(clientPhone);
   const hasDateProgressed = Boolean(selectedDate) && !isDateSelectionFeedbackActive && !isDateToTimeTransitioning;
@@ -689,6 +688,7 @@ const Appointment = () => {
     setIsDateSelectionFeedbackActive(true);
     setIsTimeSelectionFeedbackActive(false);
     setDetailsJourneyActive(false);
+    setBookingSubmitError(null);
     setSelectedDate(day);
     setSelectedTime(null);
     dateSelectionTimerRef.current = setTimeout(() => {
@@ -704,6 +704,7 @@ const Appointment = () => {
     setTimeFeedbackPulseId((value) => value + 1);
     setIsTimeSelectionFeedbackActive(true);
     setDetailsJourneyActive(false);
+    setBookingSubmitError(null);
     setSelectedTime(time);
     timeSelectionTimerRef.current = setTimeout(() => {
       setIsTimeSelectionFeedbackActive(false);
@@ -935,15 +936,17 @@ const Appointment = () => {
     };
   }, [cancelSectionGlide, clearAutoAdvanceTimers, clearDateSelectionTimer, clearDetailsFocusTimer, clearTimeSelectionTimer]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!isNameValid) setNameTouched(true);
     if (!isPhoneValid) setPhoneTouched(true);
 
     if (confirmLockRef.current || isConfirming) return;
 
     if (selectedDate && selectedTime && isFormValid) {
+      setBookingSubmitError(null);
       confirmLockRef.current = true;
       setIsConfirming(true);
+      let didNavigate = false;
       const submittedAt = new Date().toISOString();
       const bookingLanguage = (language as "en" | "fr" | "ar" | "zgh") || "en";
       const confirmationState = {
@@ -953,55 +956,91 @@ const Appointment = () => {
         selectedTime,
       };
 
-      void supabase.functions
-        .invoke("notify-appointment-telegram", {
+      try {
+        const { data, error } = await supabase.functions.invoke("notify-appointment-telegram", {
           body: {
             ...confirmationState,
             language: bookingLanguage,
             submittedAt,
           },
-        })
-        .then(({ data, error }) => {
-          if (error) {
-            console.error("Booking notifications request failed:", error);
-            return;
-          }
-
-          if (!data || typeof data !== "object") {
-            return;
-          }
-
-          const notificationResult = data as {
-            success?: boolean;
-            channels?: {
-              telegram?: { ok?: boolean; error?: string };
-              whatsapp?: { ok?: boolean; error?: string; skipped?: boolean; attempts?: number };
-            };
-          };
-
-          const telegramResult = notificationResult.channels?.telegram;
-          const whatsappResult = notificationResult.channels?.whatsapp;
-
-          if (telegramResult && telegramResult.ok === false) {
-            console.error("Telegram notification failed:", telegramResult.error ?? telegramResult);
-          }
-
-          if (whatsappResult && whatsappResult.ok === false) {
-            console.error("WhatsApp confirmation failed:", whatsappResult.error ?? whatsappResult);
-          }
-
-          if (notificationResult.success === false && !telegramResult?.ok && !whatsappResult?.ok) {
-            console.error("All notification channels failed:", notificationResult.channels);
-          }
-        })
-        .catch((error) => {
-          console.error("Booking notifications request error:", error);
         });
 
-      markAppointmentResetOnReturn();
-      navigate("/appointment/confirmation", {
-        state: confirmationState,
-      });
+        if (error) {
+          console.error("Booking notifications request error:", error);
+          const statusCode = getFunctionInvokeStatusCode(error);
+          if (statusCode === 429) {
+            setBookingSubmitError(t.bookingRetrySoon);
+          } else if (statusCode === 403) {
+            setBookingSubmitError(t.bookingBlockedOrigin);
+          } else {
+            setBookingSubmitError(t.bookingSaveFailed);
+          }
+          return;
+        }
+
+        if (!data || typeof data !== "object") {
+          setBookingSubmitError(t.bookingSaveFailed);
+          return;
+        }
+
+        const notificationResult = data as {
+          success?: boolean;
+          bookingPersisted?: boolean;
+          appointmentId?: string | null;
+          bookingError?: string;
+          channels?: {
+            telegram?: { ok?: boolean; error?: string };
+            whatsapp?: { ok?: boolean; error?: string; skipped?: boolean; attempts?: number };
+          };
+          reminders?: { errors?: string[] };
+        };
+
+        const telegramResult = notificationResult.channels?.telegram;
+        const whatsappResult = notificationResult.channels?.whatsapp;
+
+        if (telegramResult && telegramResult.ok === false) {
+          console.error("Telegram notification failed:", telegramResult.error ?? telegramResult);
+        }
+
+        if (whatsappResult && whatsappResult.ok === false) {
+          console.error("WhatsApp confirmation failed:", whatsappResult.error ?? whatsappResult);
+        }
+
+        if (notificationResult.success === false && !telegramResult?.ok && !whatsappResult?.ok) {
+          console.error("All notification channels failed:", notificationResult.channels);
+        }
+
+        if (notificationResult.reminders?.errors?.length) {
+          console.error("Reminder/queue errors:", notificationResult.reminders.errors);
+        }
+
+        const bookingPersisted =
+          notificationResult.bookingPersisted === true ||
+          Boolean(notificationResult.appointmentId);
+        if (!bookingPersisted) {
+          console.error("Booking persistence failed:", notificationResult.bookingError);
+          if (notificationResult.bookingError?.includes("cooldown_active")) {
+            setBookingSubmitError(t.bookingRetrySoon);
+          } else {
+            setBookingSubmitError(t.bookingSaveFailed);
+          }
+          return;
+        }
+
+        markAppointmentResetOnReturn();
+        didNavigate = true;
+        navigate("/appointment/confirmation", {
+          state: confirmationState,
+        });
+      } catch (error) {
+        console.error("Booking notifications unexpected error:", error);
+        setBookingSubmitError(t.bookingSaveFailed);
+      } finally {
+        if (!didNavigate) {
+          confirmLockRef.current = false;
+          setIsConfirming(false);
+        }
+      }
     }
   };
 
@@ -1676,7 +1715,10 @@ const Appointment = () => {
                         ref={nameInputRef}
                         type="text"
                         value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
+                        onChange={(e) => {
+                          setClientName(e.target.value);
+                          setBookingSubmitError(null);
+                        }}
                         onFocus={() => setDetailsJourneyActive(true)}
                         onBlur={() => setNameTouched(true)}
                         aria-invalid={nameTouched && !isNameValid}
@@ -1744,6 +1786,7 @@ const Appointment = () => {
                         value={formattedPhoneValue}
                         onChange={(e) => {
                           setClientPhone(normalizeMoroccanPhone(e.target.value));
+                          setBookingSubmitError(null);
                         }}
                         onFocus={() => setDetailsJourneyActive(true)}
                         onBlur={() => setPhoneTouched(true)}
@@ -1857,6 +1900,11 @@ const Appointment = () => {
         className="sm:hidden fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
       >
         <div className="max-w-sm mx-auto">
+          {bookingSubmitError && (
+            <div className="mb-2 rounded-xl border border-rose-300/60 bg-rose-100/90 px-3 py-2 text-[11px] font-medium text-rose-700">
+              {bookingSubmitError}
+            </div>
+          )}
           <div className={`relative overflow-hidden rounded-[22px] border border-white/[0.1] backdrop-blur-[20px] backdrop-saturate-150 shadow-[0_18px_36px_-20px_hsl(var(--foreground)/0.56)] ${journeyCardToneClass}`}>
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent" />
             <div className="absolute left-4 right-4 top-0 h-px pointer-events-none bg-white/[0.05]" />
@@ -2056,6 +2104,11 @@ const Appointment = () => {
         className="hidden sm:block fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-background via-background/95 to-transparent backdrop-blur-xl"
       >
         <div className="max-w-sm mx-auto">
+          {bookingSubmitError && (
+            <div className="mb-2 rounded-xl border border-rose-300/60 bg-rose-100/90 px-3 py-2 text-xs font-medium text-rose-700">
+              {bookingSubmitError}
+            </div>
+          )}
           {!canConfirm && (
             <p className="text-[11px] text-center mb-2 font-medium text-muted-foreground">
               {ctaHint}

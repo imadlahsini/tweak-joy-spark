@@ -1,242 +1,246 @@
-import { type CSSProperties, type FocusEvent, type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Compass, Loader2, LogOut, Search } from "lucide-react";
+import { Loader2, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { APP_LOGO_SRC, APP_NAME } from "@/lib/branding";
+import { APP_LOGO_SRC } from "@/lib/branding";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV_ITEMS, type AdminNavItemId } from "@/components/admin/admin-nav";
+import { ADMIN_NAV_ITEMS } from "@/components/admin/admin-nav";
 
 interface AdminShellProps {
-  activeNav: AdminNavItemId;
   isSigningOut?: boolean;
   onLogout: () => void | Promise<void>;
   onCommandOpen?: () => void;
-  topBarBeforeSearch?: ReactNode;
-  headerExtra?: ReactNode;
+  topBarContent?: ReactNode;
+  topBarContentInline?: boolean;
+  sidebarStats?: { todayCount: number; newCount: number };
   children: ReactNode;
 }
 
-const sidebarVars = {
-  "--sidebar-width": "17rem",
-  "--sidebar-width-icon": "5.5rem",
-} as CSSProperties;
+const SIDEBAR_W = 64;
+
+const isRouteMatch = (pathname: string, href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
 
 const AdminShell = ({
-  activeNav,
   isSigningOut = false,
   onLogout,
-  onCommandOpen,
-  topBarBeforeSearch,
-  headerExtra,
+  topBarContent,
+  topBarContentInline = false,
   children,
 }: AdminShellProps) => {
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-  const [isSidebarFocusWithin, setIsSidebarFocusWithin] = useState(false);
-  const isDesktopSidebarExpanded = !isMobile && (isSidebarHovered || isSidebarFocusWithin);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleSidebarBlurCapture = (event: FocusEvent<HTMLDivElement>) => {
-    if (isMobile) return;
+  const activeNavItem = useMemo(
+    () =>
+      ADMIN_NAV_ITEMS.find((item) => isRouteMatch(location.pathname, item.href)) ??
+      ADMIN_NAV_ITEMS[0],
+    [location.pathname],
+  );
 
-    const nextTarget = event.relatedTarget as Node | null;
-    if (nextTarget && event.currentTarget.contains(nextTarget)) {
-      return;
-    }
+  const renderTopBarContentInline = topBarContentInline && Boolean(topBarContent);
+  const isQueueRoute = activeNavItem.id === "queue";
 
-    setIsSidebarFocusWithin(false);
-  };
+  const desktopRail = (
+    <aside
+      className="fixed inset-y-0 left-0 z-40 flex w-16 flex-col items-center border-r border-white/10 bg-white/[0.025] py-3"
+      style={{ width: SIDEBAR_W }}
+    >
+      <div className="mb-5 mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-gradient-to-br from-[#6DB5FF] to-[#FF5DE7] shadow-[0_4px_16px_rgba(109,181,255,0.25),0_4px_16px_rgba(255,93,231,0.15)]">
+        <img src={APP_LOGO_SRC} alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
+      </div>
+
+      <nav className="flex flex-1 flex-col items-center gap-1.5 pt-1">
+        {ADMIN_NAV_ITEMS.map((item) => {
+          const isActive = item.id === activeNavItem.id;
+
+          return (
+            <NavLink
+              key={item.id}
+              to={item.href}
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
+              data-tooltip={item.label}
+              className={cn(
+                "admin-v2-rail-btn group relative inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-transparent text-white/30 transition-all duration-200",
+                "hover:border-white/10 hover:bg-white/[0.04] hover:text-white/55",
+                isActive &&
+                  "border-white/15 bg-white/[0.07] text-[#6DB5FF] shadow-[0_0_16px_rgba(109,181,255,0.18)]",
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute left-[-7px] h-0 w-[3px] rounded-r-md bg-[#6DB5FF] shadow-[0_0_12px_rgba(109,181,255,0.2)] transition-[height] duration-200",
+                  isActive && "h-4",
+                )}
+                aria-hidden="true"
+              />
+              <item.icon className="h-[18px] w-[18px]" />
+              <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 -translate-x-1 whitespace-nowrap rounded-md border border-white/12 bg-[#1A1A1E] px-2 py-1 text-[11px] font-medium text-white/80 opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
+                {item.label}
+              </span>
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => void onLogout()}
+        aria-label={isSigningOut ? "Signing out..." : "Logout"}
+        title={isSigningOut ? "Signing out..." : "Logout"}
+        className="group relative mt-3 inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.03] px-0 text-white/40 transition-all duration-200 hover:bg-white/[0.06] hover:text-white/70"
+      >
+        {isSigningOut ? (
+          <Loader2 className="h-[18px] w-[18px] animate-spin" />
+        ) : (
+          <LogOut className="h-[18px] w-[18px]" />
+        )}
+        <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 -translate-x-1 whitespace-nowrap rounded-md border border-white/12 bg-[#1A1A1E] px-2 py-1 text-[11px] font-medium text-white/80 opacity-0 shadow-[0_8px_30px_rgba(0,0,0,0.4)] transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100">
+          {isSigningOut ? "Signing out..." : "Logout"}
+        </span>
+      </Button>
+    </aside>
+  );
+
+  const mobileDrawer = (
+    <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+      <SheetContent
+        side="left"
+        className="w-[248px] border-r border-white/12 bg-[#0C0C0F]/95 p-0 text-white backdrop-blur-xl"
+      >
+        <SheetHeader className="sr-only">
+          <SheetTitle>Admin navigation</SheetTitle>
+        </SheetHeader>
+
+        <div className="flex h-full flex-col px-3 py-3">
+          <div className="mb-5 mt-1 flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-gradient-to-br from-[#6DB5FF] to-[#FF5DE7] shadow-[0_4px_16px_rgba(109,181,255,0.25),0_4px_16px_rgba(255,93,231,0.15)]">
+            <img src={APP_LOGO_SRC} alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
+          </div>
+
+          <nav className="flex flex-1 flex-col gap-1.5">
+            {ADMIN_NAV_ITEMS.map((item) => {
+              const isActive = item.id === activeNavItem.id;
+              return (
+                <NavLink
+                  key={item.id}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "relative flex h-11 items-center gap-3 rounded-xl border border-transparent px-3 text-sm text-white/70 transition-all",
+                    "hover:border-white/12 hover:bg-white/[0.05] hover:text-white",
+                    isActive &&
+                      "border-white/15 bg-white/[0.07] text-white shadow-[0_0_0_1px_rgba(109,181,255,0.28)]",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute left-0 top-1/2 h-0 w-[3px] -translate-y-1/2 rounded-r-md bg-[#6DB5FF] transition-[height] duration-200",
+                      isActive && "h-5",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <item.icon className="h-[18px] w-[18px]" />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setMobileOpen(false);
+              void onLogout();
+            }}
+            className="mt-auto h-11 justify-start gap-2.5 rounded-xl border border-white/12 bg-white/[0.04] px-3 text-white/75 hover:bg-white/[0.08] hover:text-white"
+          >
+            {isSigningOut ? (
+              <Loader2 className="h-[18px] w-[18px] animate-spin" />
+            ) : (
+              <LogOut className="h-[18px] w-[18px]" />
+            )}
+            <span>{isSigningOut ? "Signing out..." : "Logout"}</span>
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 
   return (
-    <SidebarProvider defaultOpen={false} open={isMobile ? undefined : isDesktopSidebarExpanded} style={sidebarVars}>
-      <div
-        dir="ltr"
-        className="admin-theme admin-shell-bg admin-shell-atmosphere relative min-h-screen overflow-hidden text-foreground"
-      >
-        <div className="pointer-events-none absolute inset-0 dot-grid opacity-[0.02]" />
+    <div
+      dir="ltr"
+      className={cn(
+        "admin-theme admin-v2-shell admin-v2-canvas relative min-h-screen overflow-hidden text-white",
+        isQueueRoute && "admin-v2-canvas--queue",
+      )}
+    >
+      <div className="admin-v2-noise-layer" aria-hidden="true" />
+      {!isMobile && desktopRail}
+      {isMobile && mobileDrawer}
 
-        <div className="relative z-10 flex min-h-screen">
-          {/* Sidebar */}
-          <Sidebar
-            variant="floating"
-            collapsible="icon"
-            disableFloatingChrome
-            className="border-0 bg-transparent p-3 md:p-4"
-            onMouseEnter={isMobile ? undefined : () => setIsSidebarHovered(true)}
-            onMouseLeave={isMobile ? undefined : () => setIsSidebarHovered(false)}
-            onFocusCapture={isMobile ? undefined : () => setIsSidebarFocusWithin(true)}
-            onBlurCapture={isMobile ? undefined : handleSidebarBlurCapture}
+      <main className={cn("relative z-10 min-h-screen", !isMobile && "pl-16")}>
+        <header className="admin-v2-topbar sticky top-0 z-30 border-b border-white/10 bg-white/[0.02] px-3 sm:px-5 lg:px-7">
+          <div
+            className={cn(
+              "flex items-center gap-2.5",
+              renderTopBarContentInline
+                ? isMobile
+                  ? "min-h-[58px] py-2"
+                  : "h-[58px] flex-nowrap overflow-hidden"
+                : "min-h-[58px]",
+            )}
           >
-            <div className="admin-glass-panel relative flex h-full flex-col rounded-2xl">
-              <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setMobileOpen(true)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6DB5FF]/55"
+                aria-label="Open sidebar"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+            )}
 
-              <SidebarHeader className="px-3 pb-2 pt-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-2.5">
-                <div className="flex items-center gap-3 group-data-[collapsible=icon]:hidden">
-                  <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-                    <img src={APP_LOGO_SRC} alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                      Operations
-                    </p>
-                    <p className="truncate text-sm font-semibold text-foreground">{APP_NAME} Admin</p>
-                  </div>
-                </div>
-                <div className="hidden w-full items-center justify-center group-data-[collapsible=icon]:flex">
-                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-                    <img src={APP_LOGO_SRC} alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
-                  </div>
-                </div>
-              </SidebarHeader>
-
-              <SidebarContent className="px-2 pb-2 pt-1 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-1.5">
-                <SidebarGroup className="p-1 group-data-[collapsible=icon]:p-0">
-                  <SidebarGroupLabel className="px-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80 group-data-[collapsible=icon]:sr-only">
-                    Navigation
-                  </SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu className="gap-1.5 group-data-[collapsible=icon]:items-center">
-                      {ADMIN_NAV_ITEMS.map((item) => {
-                        const isActive =
-                          item.id === activeNav ||
-                          location.pathname === item.href ||
-                          (item.href !== "/" && location.pathname.startsWith(`${item.href}/`));
-
-                        return (
-                          <SidebarMenuItem key={item.id} className="group-data-[collapsible=icon]:w-auto">
-                            <SidebarMenuButton
-                              asChild
-                              isActive={isActive}
-                              tooltip={item.label}
-                              className={cn(
-                                "h-12 rounded-xl border border-transparent px-3 text-foreground/80 transition-all [transition-duration:220ms]",
-                                "hover:border-primary/30 hover:bg-primary/10 hover:text-foreground",
-                                "data-[active=true]:border-primary/45 data-[active=true]:bg-gradient-to-r data-[active=true]:from-primary/24 data-[active=true]:via-primary/14 data-[active=true]:to-accent/14 data-[active=true]:text-foreground data-[active=true]:shadow-[0_0_0_1px_hsl(var(--primary)/0.22)]",
-                                "group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:!h-10 group-data-[collapsible=icon]:!w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-xl",
-                              )}
-                            >
-                              <NavLink
-                                to={item.href}
-                                end
-                                aria-label={item.label}
-                                title={item.label}
-                                className="flex w-full items-center gap-2 group-data-[collapsible=icon]:h-full group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
-                              >
-                                <item.icon className="h-[18px] w-[18px] shrink-0" />
-                                <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-                                  <span className="block truncate text-sm font-medium">
-                                    {item.label}
-                                  </span>
-                                  <span className="block truncate text-[11px] text-muted-foreground">
-                                    {item.description}
-                                  </span>
-                                </span>
-                                <Compass className="ml-auto h-3.5 w-3.5 text-muted-foreground/80 group-data-[collapsible=icon]:hidden" />
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        );
-                      })}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </SidebarContent>
-
-              <SidebarFooter className="px-3 pb-3 pt-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-1.5 group-data-[collapsible=icon]:pt-1.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => void onLogout()}
-                  aria-label={isSigningOut ? "Signing out..." : "Logout"}
-                  title={isSigningOut ? "Signing out..." : "Logout"}
-                  className="h-11 w-full justify-start rounded-xl border border-border/60 bg-background/55 px-3 text-foreground hover:bg-background/75 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-                >
-                  {isSigningOut ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <LogOut className="h-4 w-4" />
-                  )}
-                  <span className="group-data-[collapsible=icon]:hidden">
-                    {isSigningOut ? "Signing out..." : "Logout"}
-                  </span>
-                </Button>
-              </SidebarFooter>
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="truncate text-[1.35rem] font-bold leading-none tracking-[-0.03em] text-white">
+                {activeNavItem.label}
+              </h1>
+              <span className="admin-v2-live-dot mt-[2px]" aria-hidden="true" />
             </div>
-          </Sidebar>
 
-          <SidebarInset className="bg-transparent">
-            <div className="mx-auto w-full max-w-[1460px] px-3 pb-6 pt-3 sm:px-5 lg:px-8">
-              {/* Sticky header bar */}
-              <div className="relative mb-4 admin-glass-panel rounded-2xl px-4 py-2.5 sticky top-3 z-30">
-                <div className="absolute top-0 left-4 right-4 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent rounded-full" />
-
-                <div className="flex items-center gap-3">
-                  {/* Mobile sidebar trigger */}
-                  <SidebarTrigger className="h-9 w-9 rounded-xl border border-border/60 bg-background/60 text-foreground hover:bg-background/80 md:hidden" />
-
-                  {/* Page name */}
-                  <p className="text-sm font-medium text-foreground hidden md:block">
-                    {ADMIN_NAV_ITEMS.find((item) => item.id === activeNav)?.label ?? "Admin"}
-                  </p>
-                  <p className="text-sm font-medium text-foreground md:hidden">
-                    {ADMIN_NAV_ITEMS.find((item) => item.id === activeNav)?.label ?? "Admin"}
-                  </p>
-
-                  {/* Desktop center controls */}
-                  {(topBarBeforeSearch || onCommandOpen) && (
-                    <div className="ml-auto mr-auto hidden items-center gap-2 md:flex">
-                      {topBarBeforeSearch}
-                      {onCommandOpen && (
-                        <button
-                          type="button"
-                          onClick={onCommandOpen}
-                          className="flex items-center gap-2 admin-glass-panel-soft rounded-xl px-3 py-2 w-64 cursor-pointer hover:border-primary/30 transition-colors"
-                        >
-                          <Search className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">Search...</span>
-                          <kbd className="ml-auto inline-flex items-center rounded border border-border/60 bg-background/55 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                            ⌘K
-                          </kbd>
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Right side */}
-                  <div className="flex items-center gap-2 ml-auto md:ml-0">
-                    {headerExtra}
-
-                    {/* Avatar */}
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/18 to-accent/16 border border-primary/25 flex items-center justify-center text-xs font-semibold text-primary">
-                      A
-                    </div>
-                  </div>
-                </div>
+            {renderTopBarContentInline ? (
+              <div className={cn("ml-auto min-w-0 flex-1", !isMobile && "overflow-hidden")}>
+                {topBarContent}
               </div>
+            ) : (
+              <div className="ml-auto" />
+            )}
 
-              {children}
+            <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full border-2 border-white/10 bg-gradient-to-br from-[#FEFA3D] to-[#FF5DE7] text-[0.78rem] font-bold text-[#0A0A0C] shadow-[0_2px_10px_rgba(255,93,231,0.2)]">
+              A
             </div>
-          </SidebarInset>
-        </div>
-      </div>
-    </SidebarProvider>
+          </div>
+
+          {topBarContent && !renderTopBarContentInline && (
+            <div className="border-t border-white/10 pb-2.5 pt-2">{topBarContent}</div>
+          )}
+        </header>
+
+        <div className="px-3 pb-3 pt-3 sm:px-5 lg:px-7">{children}</div>
+      </main>
+    </div>
   );
 };
 

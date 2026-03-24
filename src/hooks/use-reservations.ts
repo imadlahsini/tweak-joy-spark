@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSessionGuard } from "@/hooks/use-admin-session-guard";
 import {
   getErrorMessage,
   getErrorStatusCode,
-  statusLabel,
   type FetchReservationsResponse,
   type ReservationStats,
   type UpdateReservationStatusResponse,
@@ -27,15 +26,10 @@ export interface UseReservationsReturn {
   page: number;
   setPage: (page: number) => void;
 
-  search: string;
-  setSearch: (s: string) => void;
-  statusFilter: "all" | ReservationStatus;
-  setStatusFilter: (s: "all" | ReservationStatus) => void;
   dateFrom: string;
   setDateFrom: (d: string) => void;
   dateTo: string;
   setDateTo: (d: string) => void;
-  activeFiltersSummary: string;
   hasActiveFilters: boolean;
   clearFilters: () => void;
 
@@ -64,9 +58,6 @@ export function useReservations(): UseReservationsReturn {
   const [pageCount, setPageCount] = useState(1);
 
   // Filters
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | ReservationStatus>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -76,39 +67,34 @@ export function useReservations(): UseReservationsReturn {
   const [accessDenied, setAccessDenied] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
-
-  // Debounce search
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(0);
-    }, 320);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const fetchRequestSeq = useRef(0);
+  const activeFetchRequestSeq = useRef(0);
 
   // Reset page on filter change
   useEffect(() => {
     setPage(0);
-  }, [statusFilter, dateFrom, dateTo]);
+  }, [dateFrom, dateTo]);
+
+  // Keep date range valid even if values are set externally.
+  useEffect(() => {
+    if (!dateFrom || !dateTo) return;
+    if (dateFrom > dateTo) {
+      setDateTo(dateFrom);
+    }
+  }, [dateFrom, dateTo]);
 
   const hasActiveFilters = useMemo(
-    () => debouncedSearch !== "" || statusFilter !== "all" || dateFrom !== "" || dateTo !== "",
-    [debouncedSearch, statusFilter, dateFrom, dateTo],
+    () => dateFrom !== "" || dateTo !== "",
+    [dateFrom, dateTo],
   );
-
-  const activeFiltersSummary = useMemo(() => {
-    const parts: string[] = [];
-    if (debouncedSearch) parts.push(`Search: ${debouncedSearch}`);
-    if (statusFilter !== "all") parts.push(`Status: ${statusLabel[statusFilter]}`);
-    if (dateFrom) parts.push(`From: ${dateFrom}`);
-    if (dateTo) parts.push(`To: ${dateTo}`);
-    return parts.length > 0 ? parts.join(" · ") : "All reservations";
-  }, [debouncedSearch, statusFilter, dateFrom, dateTo]);
 
   // Fetch
   const fetchReservations = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (!isSessionReady) return;
+      const requestSeq = fetchRequestSeq.current + 1;
+      fetchRequestSeq.current = requestSeq;
+      activeFetchRequestSeq.current = requestSeq;
 
       if (mode === "refresh") {
         setIsRefreshing(true);
@@ -120,12 +106,14 @@ export function useReservations(): UseReservationsReturn {
         body: {
           page,
           pageSize,
-          search: debouncedSearch,
-          status: statusFilter,
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
         },
       });
+
+      if (requestSeq !== activeFetchRequestSeq.current) {
+        return;
+      }
 
       if (mode === "refresh") {
         setIsRefreshing(false);
@@ -164,7 +152,7 @@ export function useReservations(): UseReservationsReturn {
         return next;
       });
     },
-    [isSessionReady, page, pageSize, debouncedSearch, statusFilter, dateFrom, dateTo],
+    [isSessionReady, page, pageSize, dateFrom, dateTo],
   );
 
   // Initial fetch
@@ -235,9 +223,6 @@ export function useReservations(): UseReservationsReturn {
   );
 
   const clearFilters = useCallback(() => {
-    setSearch("");
-    setDebouncedSearch("");
-    setStatusFilter("all");
     setDateFrom("");
     setDateTo("");
     setPage(0);
@@ -283,15 +268,10 @@ export function useReservations(): UseReservationsReturn {
     fatalError,
     page,
     setPage,
-    search,
-    setSearch,
-    statusFilter,
-    setStatusFilter,
     dateFrom,
     setDateFrom,
     dateTo,
     setDateTo,
-    activeFiltersSummary,
     hasActiveFilters,
     clearFilters,
     draftStatusById,

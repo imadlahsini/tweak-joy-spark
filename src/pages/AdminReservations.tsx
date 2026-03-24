@@ -1,33 +1,23 @@
-import { useCallback, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  CalendarRange,
   CalendarClock,
   CircleAlert,
   Loader2,
-  RefreshCcw,
   ShieldAlert,
-  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import AdminShell from "@/components/admin/AdminShell";
 import ReservationsFilters from "@/components/admin/ReservationsFilters";
 import ReservationsTable from "@/components/admin/ReservationsTable";
 import ReservationCard from "@/components/admin/ReservationCard";
 import ReservationDetailSheet from "@/components/admin/ReservationDetailSheet";
-import CommandPalette from "@/components/admin/CommandPalette";
 import EmptyState from "@/components/admin/EmptyState";
 import ReservationsLoadingSkeleton from "@/components/admin/ReservationsLoadingSkeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useReservations } from "@/hooks/use-reservations";
-import { formatRelativeTime } from "@/lib/admin-constants";
+import { formatRelativeFromNow } from "@/lib/admin-constants";
+import { findPatientProfileByPhone } from "@/lib/patient-profiles";
 import type { ReservationRow } from "@/types/reservations";
 
 const AdminReservations = () => {
@@ -36,7 +26,8 @@ const AdminReservations = () => {
 
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<ReservationRow | null>(null);
-  const [commandOpen, setCommandOpen] = useState(false);
+  const [selectedReservationProfileId, setSelectedReservationProfileId] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
@@ -46,53 +37,39 @@ const AdminReservations = () => {
     navigate("/admin/login", { replace: true });
   };
 
-  const handleShowToday = useCallback(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    r.setDateFrom(today);
-    r.setDateTo(today);
-  }, [r]);
-
-  const handleQuickDate = useCallback(
-    (preset: "today" | "week" | "month" | "last7" | "last30") => {
-      const today = new Date();
-      const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-      switch (preset) {
-        case "today":
-          r.setDateFrom(fmt(today));
-          r.setDateTo(fmt(today));
-          break;
-        case "week": {
-          const start = new Date(today);
-          start.setDate(today.getDate() - today.getDay() + 1);
-          r.setDateFrom(fmt(start));
-          r.setDateTo(fmt(today));
-          break;
-        }
-        case "month": {
-          const start = new Date(today.getFullYear(), today.getMonth(), 1);
-          r.setDateFrom(fmt(start));
-          r.setDateTo(fmt(today));
-          break;
-        }
-        case "last7": {
-          const start = new Date(today);
-          start.setDate(today.getDate() - 7);
-          r.setDateFrom(fmt(start));
-          r.setDateTo(fmt(today));
-          break;
-        }
-        case "last30": {
-          const start = new Date(today);
-          start.setDate(today.getDate() - 30);
-          r.setDateFrom(fmt(start));
-          r.setDateTo(fmt(today));
-          break;
-        }
-      }
-    },
-    [r],
+  const lastUpdatedLabel = useMemo(
+    () => formatRelativeFromNow(r.lastRefreshedAt, nowMs),
+    [nowMs, r.lastRefreshedAt],
   );
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedReservation) {
+      setSelectedReservationProfileId(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedReservationProfileId(null);
+
+    findPatientProfileByPhone(selectedReservation.clientPhone)
+      .then((profile) => {
+        if (cancelled) return;
+        setSelectedReservationProfileId(profile?.id ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSelectedReservationProfileId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedReservation]);
 
   // Session loading
   if (!r.isSessionReady) {
@@ -108,78 +85,25 @@ const AdminReservations = () => {
     );
   }
 
-  const refreshButton = (
-    <Button
-      variant="outline"
-      onClick={r.refresh}
-      className="admin-control h-9 rounded-xl px-3 text-foreground hover:bg-background/70"
-    >
-      {r.isRefreshing ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <RefreshCcw className="h-4 w-4" />
-      )}
-      <span className="hidden sm:inline">Refresh</span>
-    </Button>
-  );
-
-  const topBarDateControls = (
-    <div className="flex items-center gap-2">
-      <Input
-        type="date"
-        value={r.dateFrom}
-        onChange={(event) => r.setDateFrom(event.target.value)}
-        className="admin-control h-9 rounded-xl w-[138px]"
-        aria-label="Filter from date"
-      />
-      <Input
-        type="date"
-        value={r.dateTo}
-        onChange={(event) => r.setDateTo(event.target.value)}
-        className="admin-control h-9 rounded-xl w-[138px]"
-        aria-label="Filter to date"
-      />
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            className="admin-control h-9 gap-1.5 rounded-xl px-3 text-foreground hover:bg-white/72"
-          >
-            <CalendarRange className="h-4 w-4" />
-            Quick
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="admin-glass-panel-soft border-border/70 text-foreground">
-          <DropdownMenuItem onClick={() => handleQuickDate("today")}>Today</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleQuickDate("week")}>This Week</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleQuickDate("month")}>This Month</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleQuickDate("last7")}>Last 7 Days</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleQuickDate("last30")}>Last 30 Days</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {r.hasActiveFilters && (
-        <Button
-          variant="outline"
-          onClick={r.clearFilters}
-          className="admin-chip h-9 gap-1.5 rounded-xl border border-rose-300/50 bg-rose-50/85 px-3 text-rose-700 hover:border-rose-300/75 hover:bg-rose-100/90 hover:text-rose-800"
-        >
-          <X className="h-3.5 w-3.5" />
-          Clear
-        </Button>
-      )}
-    </div>
-  );
-
   return (
     <AdminShell
-      activeNav="reservations"
       isSigningOut={isSigningOut}
       onLogout={handleSignOut}
-      topBarBeforeSearch={topBarDateControls}
-      onCommandOpen={() => setCommandOpen(true)}
-      headerExtra={refreshButton}
+      topBarContent={
+        <ReservationsFilters
+          dateFrom={r.dateFrom}
+          onDateFromChange={r.setDateFrom}
+          dateTo={r.dateTo}
+          onDateToChange={r.setDateTo}
+          hasActiveFilters={r.hasActiveFilters}
+          onClearFilters={r.clearFilters}
+          variant="topbar"
+        />
+      }
+      sidebarStats={{
+        todayCount: r.stats.todayCount,
+        newCount: r.stats.byStatus.new,
+      }}
     >
       {r.accessDenied ? (
         <section className="admin-glass-panel mx-auto max-w-3xl rounded-[28px] p-8 text-center">
@@ -207,135 +131,113 @@ const AdminReservations = () => {
           </Button>
         </section>
       ) : (
-        <div className="space-y-4">
-          {/* Main content panel */}
-          <section className="admin-glass-panel rounded-[28px] p-4 sm:p-5">
-            <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Reservations
-                </p>
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                  Booking Operations
-                </h1>
-              </div>
-              <div className="admin-glass-panel-soft rounded-xl px-3 py-2 text-right">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                  Last Refresh
-                </p>
-                <p className="text-xs text-foreground">
-                  {r.lastRefreshedAt
-                    ? formatRelativeTime(r.lastRefreshedAt.toISOString())
-                    : "Not refreshed yet"}
-                </p>
-              </div>
-            </header>
+        <>
+          <div className="reservations-shell">
+            <section className="reservations-layout reservations-layout-single">
+              <section className="reservations-main admin-glass-panel rounded-[24px] p-4 sm:p-5">
+                <header className="reservations-header mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="reservations-eyebrow">Reservations Desk</p>
+                    <h1 className="reservations-title">Booking Operations</h1>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Triage appointments, update status, and monitor reminder delivery.
+                    </p>
+                  </div>
+                  <div className="reservations-last-updated">
+                    <p className="reservations-eyebrow">Last Updated</p>
+                    <p className="reservations-last-updated-value">
+                      {r.isRefreshing ? "Refreshing now..." : lastUpdatedLabel}
+                    </p>
+                  </div>
+                </header>
 
-            {/* Filters */}
-            <div className="admin-glass-panel-soft rounded-2xl p-3.5 sm:p-4">
-              <ReservationsFilters
-                statusFilter={r.statusFilter}
-                onStatusFilterChange={r.setStatusFilter}
-                dateFrom={r.dateFrom}
-                onDateFromChange={r.setDateFrom}
-                dateTo={r.dateTo}
-                onDateToChange={r.setDateTo}
-                hasActiveFilters={r.hasActiveFilters}
-                onClearFilters={r.clearFilters}
-              />
-            </div>
+                <div className="mb-4 flex items-center justify-between border-y border-border/65 py-2 text-xs text-muted-foreground">
+                  <p>{r.total} reservation(s)</p>
+                  <p>{r.hasActiveFilters ? "Filtered range" : "All reservations in range"}</p>
+                </div>
 
-            {/* Info bar */}
-            <div className="my-4 flex items-center justify-between border-y border-border/65 py-2 text-xs text-muted-foreground">
-              <p>{r.total} reservation(s)</p>
-              <p>{r.hasActiveFilters ? "Filters active" : "All reservations"}</p>
-            </div>
+                {r.fatalError && (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-300/55 bg-rose-100/85 p-3 text-sm text-rose-700">
+                    <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>{r.fatalError}</p>
+                  </div>
+                )}
 
-            {/* Error */}
-            {r.fatalError && (
-              <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-300/55 bg-rose-100/85 p-3 text-sm text-rose-700">
-                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>{r.fatalError}</p>
-              </div>
-            )}
+                {r.isLoading ? (
+                  <ReservationsLoadingSkeleton />
+                ) : r.reservations.length === 0 ? (
+                  <EmptyState
+                    icon={CalendarClock}
+                    title="No reservations match filters"
+                    description="Try clearing a filter or changing the date range."
+                    action={
+                      r.hasActiveFilters ? (
+                        <Button
+                          variant="outline"
+                          onClick={r.clearFilters}
+                          className="admin-control rounded-xl px-4 text-foreground hover:bg-background/70"
+                        >
+                          Clear Filters
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                ) : (
+                  <>
+                    <div className="hidden md:block">
+                      <ReservationsTable
+                        reservations={r.reservations}
+                        draftStatusById={r.draftStatusById}
+                        savingById={r.savingById}
+                        onDraftStatusChange={r.setDraftStatus}
+                        onStatusSave={(reservation) => void r.handleStatusSave(reservation)}
+                        onRowClick={setSelectedReservation}
+                      />
+                    </div>
 
-            {/* Content */}
-            {r.isLoading ? (
-              <ReservationsLoadingSkeleton />
-            ) : r.reservations.length === 0 ? (
-              <EmptyState
-                icon={CalendarClock}
-                title="No reservations match filters"
-                description="Try clearing a filter or changing the date range."
-                action={
-                  r.hasActiveFilters ? (
+                    <div className="reservations-mobile-list space-y-2 md:hidden">
+                      {r.reservations.map((reservation, index) => (
+                        <ReservationCard
+                          key={reservation.id}
+                          reservation={reservation}
+                          draftStatus={r.draftStatusById[reservation.id] ?? reservation.status}
+                          isSaving={Boolean(r.savingById[reservation.id])}
+                          onDraftStatusChange={(status) => r.setDraftStatus(reservation.id, status)}
+                          onStatusSave={() => void r.handleStatusSave(reservation)}
+                          onCardClick={() => setSelectedReservation(reservation)}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/65 pt-4">
+                  <p className="text-xs text-muted-foreground">
+                    Page {r.page + 1} of {Math.max(r.pageCount, 1)}
+                  </p>
+                  <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={r.clearFilters}
-                      className="admin-control rounded-xl px-4 text-foreground hover:bg-background/70"
+                      onClick={() => r.setPage(Math.max(0, r.page - 1))}
+                      disabled={r.page <= 0}
+                      className="admin-control h-9 rounded-lg px-3 text-foreground hover:bg-background/70"
                     >
-                      Clear Filters
+                      Previous
                     </Button>
-                  ) : undefined
-                }
-              />
-            ) : (
-              <>
-                {/* Desktop table */}
-                <div className="hidden md:block">
-                  <ReservationsTable
-                    reservations={r.reservations}
-                    draftStatusById={r.draftStatusById}
-                    savingById={r.savingById}
-                    onDraftStatusChange={r.setDraftStatus}
-                    onStatusSave={(reservation) => void r.handleStatusSave(reservation)}
-                    onRowClick={setSelectedReservation}
-                  />
-                </div>
-
-                {/* Mobile cards */}
-                <div className="space-y-3 md:hidden">
-                  {r.reservations.map((reservation, index) => (
-                    <ReservationCard
-                      key={reservation.id}
-                      reservation={reservation}
-                      draftStatus={r.draftStatusById[reservation.id] ?? reservation.status}
-                      isSaving={Boolean(r.savingById[reservation.id])}
-                      onDraftStatusChange={(status) => r.setDraftStatus(reservation.id, status)}
-                      onStatusSave={() => void r.handleStatusSave(reservation)}
-                      onCardClick={() => setSelectedReservation(reservation)}
-                      index={index}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Pagination */}
-            <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/65 pt-4">
-              <p className="text-xs text-muted-foreground">
-                Page {r.page + 1} of {Math.max(r.pageCount, 1)}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => r.setPage(Math.max(0, r.page - 1))}
-                  disabled={r.page <= 0}
-                  className="admin-control h-9 rounded-lg px-3 text-foreground hover:bg-background/70"
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => r.setPage(Math.min(Math.max(r.pageCount - 1, 0), r.page + 1))}
-                  disabled={r.page >= r.pageCount - 1}
-                  className="admin-control h-9 rounded-lg px-3 text-foreground hover:bg-background/70"
-                >
-                  Next
-                </Button>
-              </div>
-            </footer>
-          </section>
+                    <Button
+                      variant="outline"
+                      onClick={() => r.setPage(Math.min(Math.max(r.pageCount - 1, 0), r.page + 1))}
+                      disabled={r.page >= r.pageCount - 1}
+                      className="admin-control h-9 rounded-lg px-3 text-foreground hover:bg-background/70"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </footer>
+              </section>
+            </section>
+          </div>
 
           {/* Detail sheet */}
           <ReservationDetailSheet
@@ -354,22 +256,13 @@ const AdminReservations = () => {
               if (selectedReservation) void r.handleStatusSave(selectedReservation);
             }}
             isSaving={selectedReservation ? Boolean(r.savingById[selectedReservation.id]) : false}
+            profileHref={
+              selectedReservationProfileId
+                ? `/admin/profiles/${selectedReservationProfileId}`
+                : null
+            }
           />
-
-          {/* Command palette */}
-          <CommandPalette
-            open={commandOpen}
-            onOpenChange={setCommandOpen}
-            reservations={r.reservations}
-            onSelectReservation={(reservation) => {
-              setSelectedReservation(reservation);
-              setCommandOpen(false);
-            }}
-            onRefresh={r.refresh}
-            onClearFilters={r.clearFilters}
-            onShowToday={handleShowToday}
-          />
-        </div>
+        </>
       )}
     </AdminShell>
   );

@@ -20,8 +20,6 @@ const allowedStatuses = new Set<ReservationStatus>([
   "no_show",
 ]);
 
-const terminalStatuses = new Set<ReservationStatus>(["completed", "cancelled", "no_show"]);
-
 interface ReminderRow {
   id: string;
   reminder_type: ReminderType;
@@ -162,39 +160,20 @@ serve(async (req) => {
       });
     }
 
-    const nowIso = new Date().toISOString();
-
-    const { error: updateError } = await adminClient
-      .from("appointments")
-      .update({
-        status,
-        updated_at: nowIso,
-      })
-      .eq("id", reservationId);
-
-    if (updateError) {
-      throw updateError;
+    const { data: skippedCount, error: rpcError } = await adminClient.rpc(
+      "update_reservation_status_atomic",
+      {
+        _reservation_id: reservationId,
+        _status: status,
+      },
+    );
+    if (rpcError) {
+      throw rpcError;
     }
-
-    let remindersAutoSkipped = 0;
-    if (terminalStatuses.has(status)) {
-      const { data: skippedRows, error: skipError } = await adminClient
-        .from("appointment_reminders")
-        .update({
-          status: "skipped",
-          last_error: "cancelled_by_status_change",
-          updated_at: nowIso,
-        })
-        .eq("appointment_id", reservationId)
-        .in("status", ["pending", "processing"])
-        .select("id");
-
-      if (skipError) {
-        throw skipError;
-      }
-
-      remindersAutoSkipped = skippedRows?.length ?? 0;
-    }
+    const remindersAutoSkipped =
+      typeof skippedCount === "number"
+        ? skippedCount
+        : Number(skippedCount ?? 0) || 0;
 
     const { data: appointment, error: fetchError } = await adminClient
       .from("appointments")

@@ -12,6 +12,8 @@ type ReminderType = "r24h" | "r3h" | "r30m";
 type ReminderStatus = "pending" | "processing" | "sent" | "failed" | "skipped";
 type DeliveryStatus = "unknown" | "sent" | "failed" | "skipped";
 
+type Bucket = "upcoming" | "past";
+
 const allowedStatuses = new Set<ReservationStatus>([
   "new",
   "confirmed",
@@ -48,6 +50,40 @@ interface AppointmentRow {
   updated_at: string;
   appointment_reminders: ReminderRow[] | null;
 }
+
+interface ReservationFilters {
+  search: string;
+  status: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+const APPOINTMENT_SELECT = `
+  id,
+  client_name,
+  client_phone,
+  language,
+  appointment_date,
+  appointment_time,
+  appointment_at,
+  status,
+  confirmation_whatsapp_status,
+  confirmation_whatsapp_attempts,
+  confirmation_whatsapp_sent_at,
+  confirmation_whatsapp_error,
+  created_at,
+  updated_at,
+  appointment_reminders (
+    id,
+    reminder_type,
+    status,
+    attempts,
+    scheduled_for,
+    sent_at,
+    last_error,
+    updated_at
+  )
+`;
 
 const normalizeReminderMap = (reminders: ReminderRow[] | null) => {
   const defaultReminder = {
@@ -99,23 +135,78 @@ const toReservationDto = (row: AppointmentRow) => ({
   updatedAt: row.updated_at,
 });
 
-const isUpcoming = (appointmentAt: string) => new Date(appointmentAt).getTime() >= Date.now();
+const applyReservationFilters = (query: any, filters: ReservationFilters) => {
+  let next = query;
 
-const sortReservations = (rows: AppointmentRow[]) => {
-  return [...rows].sort((a, b) => {
-    const aUpcoming = isUpcoming(a.appointment_at);
-    const bUpcoming = isUpcoming(b.appointment_at);
+  if (filters.search) {
+    next = next.or(`client_name.ilike.%${filters.search}%,client_phone.ilike.%${filters.search}%`);
+  }
 
-    if (aUpcoming !== bUpcoming) {
-      return aUpcoming ? -1 : 1;
-    }
+  if (filters.status !== "all" && allowedStatuses.has(filters.status as ReservationStatus)) {
+    next = next.eq("status", filters.status);
+  }
 
-    if (aUpcoming && bUpcoming) {
-      return new Date(a.appointment_at).getTime() - new Date(b.appointment_at).getTime();
-    }
+  if (filters.dateFrom) {
+    next = next.gte("appointment_date", filters.dateFrom);
+  }
 
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+  if (filters.dateTo) {
+    next = next.lte("appointment_date", filters.dateTo);
+  }
+
+  return next;
+};
+
+const applyBucketFilterAndSort = (query: any, bucket: Bucket, nowIso: string) => {
+  if (bucket === "upcoming") {
+    return query
+      .gte("appointment_at", nowIso)
+      .order("appointment_at", { ascending: true })
+      .order("id", { ascending: true });
+  }
+
+  return query
+    .lt("appointment_at", nowIso)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
+};
+
+const fetchBucketCount = async (
+  adminClient: ReturnType<typeof createClient>,
+  filters: ReservationFilters,
+  bucket: Bucket,
+  nowIso: string,
+): Promise<number> => {
+  let query = adminClient.from("appointments").select("id", { count: "exact", head: true });
+  query = applyReservationFilters(query, filters);
+  query =
+    bucket === "upcoming"
+      ? query.gte("appointment_at", nowIso)
+      : query.lt("appointment_at", nowIso);
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+};
+
+const fetchBucketRows = async (
+  adminClient: ReturnType<typeof createClient>,
+  filters: ReservationFilters,
+  bucket: Bucket,
+  nowIso: string,
+  start: number,
+  end: number,
+): Promise<AppointmentRow[]> => {
+  if (end < start) return [];
+
+  let query = adminClient.from("appointments").select(APPOINTMENT_SELECT);
+  query = applyReservationFilters(query, filters);
+  query = applyBucketFilterAndSort(query, bucket, nowIso);
+
+  const { data, error } = await query.range(start, end);
+  if (error) throw error;
+
+  return (data ?? []) as AppointmentRow[];
 };
 
 serve(async (req) => {
@@ -164,70 +255,60 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const page = Math.max(0, Number(body.page ?? 0) || 0);
     const pageSize = Math.min(100, Math.max(1, Number(body.pageSize ?? 20) || 20));
-    const search = String(body.search ?? "").trim();
-    const status = String(body.status ?? "all").trim();
-    const dateFrom = String(body.dateFrom ?? "").trim();
-    const dateTo = String(body.dateTo ?? "").trim();
 
-    let query = adminClient
-      .from("appointments")
-      .select(`
-        id,
-        client_name,
-        client_phone,
-        language,
-        appointment_date,
-        appointment_time,
-        appointment_at,
-        status,
-        confirmation_whatsapp_status,
-        confirmation_whatsapp_attempts,
-        confirmation_whatsapp_sent_at,
-        confirmation_whatsapp_error,
-        created_at,
-        updated_at,
-        appointment_reminders (
-          id,
-          reminder_type,
-          status,
-          attempts,
-          scheduled_for,
-          sent_at,
-          last_error,
-          updated_at
-        )
-      `);
+    const filters: ReservationFilters = {
+      search: String(body.search ?? "").trim(),
+      status: String(body.status ?? "all").trim(),
+      dateFrom: String(body.dateFrom ?? "").trim(),
+      dateTo: String(body.dateTo ?? "").trim(),
+    };
 
-    if (search) {
-      query = query.or(`client_name.ilike.%${search}%,client_phone.ilike.%${search}%`);
+    const nowIso = new Date().toISOString();
+
+    const [upcomingTotal, pastTotal] = await Promise.all([
+      fetchBucketCount(adminClient, filters, "upcoming", nowIso),
+      fetchBucketCount(adminClient, filters, "past", nowIso),
+    ]);
+
+    const total = upcomingTotal + pastTotal;
+    const pageStart = page * pageSize;
+    const pageEndExclusive = pageStart + pageSize;
+
+    let upcomingRows: AppointmentRow[] = [];
+    if (pageStart < upcomingTotal) {
+      const upcomingStart = pageStart;
+      const upcomingEnd = Math.min(upcomingTotal, pageEndExclusive) - 1;
+      upcomingRows = await fetchBucketRows(
+        adminClient,
+        filters,
+        "upcoming",
+        nowIso,
+        upcomingStart,
+        upcomingEnd,
+      );
     }
 
-    if (status !== "all" && allowedStatuses.has(status as ReservationStatus)) {
-      query = query.eq("status", status);
+    const remainingSlots = pageSize - upcomingRows.length;
+
+    let pastRows: AppointmentRow[] = [];
+    if (remainingSlots > 0 && pageEndExclusive > upcomingTotal) {
+      const pastStart = Math.max(0, pageStart - upcomingTotal);
+      const pastEnd = pastStart + remainingSlots - 1;
+      pastRows = await fetchBucketRows(
+        adminClient,
+        filters,
+        "past",
+        nowIso,
+        pastStart,
+        pastEnd,
+      );
     }
 
-    if (dateFrom) {
-      query = query.gte("appointment_date", dateFrom);
-    }
-
-    if (dateTo) {
-      query = query.lte("appointment_date", dateTo);
-    }
-
-    const { data, error } = await query.limit(1000);
-    if (error) {
-      throw error;
-    }
-
-    const sortedRows = sortReservations((data ?? []) as AppointmentRow[]);
-    const total = sortedRows.length;
-    const start = page * pageSize;
-    const end = start + pageSize;
-    const pagedRows = sortedRows.slice(start, end);
+    const pageRows = [...upcomingRows, ...pastRows];
 
     return new Response(
       JSON.stringify({
-        reservations: pagedRows.map(toReservationDto),
+        reservations: pageRows.map(toReservationDto),
         pagination: {
           page,
           pageSize,
@@ -241,12 +322,9 @@ serve(async (req) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(
-      JSON.stringify({ error: message }),
-      {
-        status: message === "Unauthorized" || message.includes("Forbidden") ? 403 : 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: message }), {
+      status: message === "Unauthorized" || message.includes("Forbidden") ? 403 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

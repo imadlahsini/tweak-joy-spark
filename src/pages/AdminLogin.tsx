@@ -22,13 +22,22 @@ const AdminLogin = () => {
     let mounted = true;
 
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!mounted) return;
 
-      if (data.session) {
-        navigate("/admin/reservations", { replace: true });
-      } else {
-        setIsCheckingSession(false);
+        if (data.session) {
+          navigate("/admin/queue", { replace: true });
+          return;
+        }
+      } catch {
+        if (!mounted) return;
+        setLoginError("Unable to verify session. Please sign in.");
+      } finally {
+        if (mounted) {
+          setIsCheckingSession(false);
+        }
       }
     };
 
@@ -61,7 +70,7 @@ const AdminLogin = () => {
       return;
     }
 
-    navigate("/admin/reservations", { replace: true });
+    navigate("/admin/queue", { replace: true });
   };
 
   // Session checking state

@@ -97,6 +97,7 @@ export type StatCardDef = {
   icon: LucideIcon;
   colorClasses: { plate: string; glow: string };
   getValue: (stats: ReservationStats) => number;
+  getContext?: (stats: ReservationStats) => string;
 };
 
 export type ReservationStats = {
@@ -115,6 +116,7 @@ export const statCards: StatCardDef[] = [
       glow: "bg-cyan-500/12",
     },
     getValue: (s) => s.total,
+    getContext: () => "In active date range",
   },
   {
     key: "today",
@@ -125,6 +127,7 @@ export const statCards: StatCardDef[] = [
       glow: "bg-teal-500/12",
     },
     getValue: (s) => s.todayCount,
+    getContext: () => "Scheduled in Casablanca",
   },
   {
     key: "new",
@@ -135,6 +138,7 @@ export const statCards: StatCardDef[] = [
       glow: "bg-cyan-500/12",
     },
     getValue: (s) => s.byStatus.new,
+    getContext: () => "Needs review",
   },
   {
     key: "confirmed",
@@ -145,6 +149,7 @@ export const statCards: StatCardDef[] = [
       glow: "bg-emerald-500/12",
     },
     getValue: (s) => s.byStatus.confirmed,
+    getContext: () => "Ready to attend",
   },
   {
     key: "cancelled",
@@ -155,6 +160,7 @@ export const statCards: StatCardDef[] = [
       glow: "bg-rose-500/12",
     },
     getValue: (s) => s.byStatus.cancelled,
+    getContext: () => "Excluded from active flow",
   },
 ];
 
@@ -213,6 +219,38 @@ export const formatRelativeTime = (isoValue: string) =>
     minute: "2-digit",
     timeZone: "Africa/Casablanca",
   }).format(new Date(isoValue));
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+export const formatRelativeFromNow = (
+  value: Date | string | null,
+  nowMs: number = Date.now(),
+): string => {
+  if (!value) return "Not updated yet";
+  const targetMs = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  if (Number.isNaN(targetMs)) return "Not updated yet";
+
+  const diffSeconds = Math.round((targetMs - nowMs) / 1000);
+  const absSeconds = Math.abs(diffSeconds);
+
+  if (absSeconds < 8) return "just now";
+  if (absSeconds < 60) return relativeTimeFormatter.format(diffSeconds, "second");
+
+  const diffMinutes = Math.round(diffSeconds / 60);
+  if (Math.abs(diffMinutes) < 60) return relativeTimeFormatter.format(diffMinutes, "minute");
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 24) return relativeTimeFormatter.format(diffHours, "hour");
+
+  const diffDays = Math.round(diffHours / 24);
+  if (Math.abs(diffDays) < 31) return relativeTimeFormatter.format(diffDays, "day");
+
+  const diffMonths = Math.round(diffDays / 30);
+  if (Math.abs(diffMonths) < 12) return relativeTimeFormatter.format(diffMonths, "month");
+
+  const diffYears = Math.round(diffMonths / 12);
+  return relativeTimeFormatter.format(diffYears, "year");
+};
 
 export const formatDateOnly = (isoValue: string) =>
   new Intl.DateTimeFormat("en-GB", {

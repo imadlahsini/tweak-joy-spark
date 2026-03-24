@@ -136,6 +136,163 @@ export type Database = {
         }
         Relationships: []
       }
+      opticians: {
+        Row: {
+          address: string | null
+          id: string
+          is_active: boolean
+          map_link: string | null
+          name: string
+          phone: string | null
+          created_at: string
+        }
+        Insert: {
+          address?: string | null
+          id?: string
+          is_active?: boolean
+          map_link?: string | null
+          name: string
+          phone?: string | null
+          created_at?: string
+        }
+        Update: {
+          address?: string | null
+          id?: string
+          is_active?: boolean
+          map_link?: string | null
+          name?: string
+          phone?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      patient_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          normalized_phone: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          normalized_phone: string
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          normalized_phone?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      queue_patients: {
+        Row: {
+          id: string
+          queue_date: string
+          queue_type: string
+          client_name: string
+          client_phone: string | null
+          patient_profile_id: string | null
+          status: string
+          notes: string | null
+          procedure: string | null
+          procedure_at: string | null
+          follow_up: string | null
+          follow_up_date: string | null
+          follow_up_queue_patient_id: string | null
+          optician_id: string | null
+          position: number
+          checked_in_at: string
+          with_doctor_at: string | null
+          completed_at: string | null
+          no_show_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          updated_at: string
+          appointment_id: string | null
+        }
+        Insert: {
+          id?: string
+          queue_date?: string
+          queue_type: string
+          client_name: string
+          client_phone?: string | null
+          patient_profile_id?: string | null
+          status?: string
+          notes?: string | null
+          procedure?: string | null
+          procedure_at?: string | null
+          follow_up?: string | null
+          follow_up_date?: string | null
+          follow_up_queue_patient_id?: string | null
+          optician_id?: string | null
+          position?: number
+          checked_in_at?: string
+          with_doctor_at?: string | null
+          completed_at?: string | null
+          no_show_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          updated_at?: string
+          appointment_id?: string | null
+        }
+        Update: {
+          id?: string
+          queue_date?: string
+          queue_type?: string
+          client_name?: string
+          client_phone?: string | null
+          patient_profile_id?: string | null
+          status?: string
+          notes?: string | null
+          procedure?: string | null
+          procedure_at?: string | null
+          follow_up?: string | null
+          follow_up_date?: string | null
+          follow_up_queue_patient_id?: string | null
+          optician_id?: string | null
+          position?: number
+          checked_in_at?: string
+          with_doctor_at?: string | null
+          completed_at?: string | null
+          no_show_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          updated_at?: string
+          appointment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_patients_patient_profile_id_fkey"
+            columns: ["patient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "patient_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_patients_follow_up_queue_patient_id_fkey"
+            columns: ["follow_up_queue_patient_id"]
+            isOneToOne: false
+            referencedRelation: "queue_patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_patients_optician_id_fkey"
+            columns: ["optician_id"]
+            isOneToOne: false
+            referencedRelation: "opticians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           amount: number
@@ -198,12 +355,115 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_queue_patient_atomic: {
+        Args: {
+          _client_name: string
+          _client_phone?: string | null
+          _notes?: string | null
+          _queue_date: string
+          _queue_type: string
+        }
+        Returns: {
+          appointment_id: string | null
+          cancelled_at: string | null
+          checked_in_at: string
+          client_name: string
+          client_phone: string | null
+          patient_profile_id: string | null
+          completed_at: string | null
+          created_at: string
+          follow_up: string | null
+          follow_up_date: string | null
+          follow_up_queue_patient_id: string | null
+          id: string
+          no_show_at: string | null
+          notes: string | null
+          optician_id: string | null
+          position: number
+          procedure: string | null
+          procedure_at: string | null
+          queue_date: string
+          queue_type: string
+          status: string
+          updated_at: string
+          with_doctor_at: string | null
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      move_queue_patient_to_medecin_atomic: {
+        Args: {
+          _patient_id: string
+        }
+        Returns: {
+          appointment_id: string | null
+          cancelled_at: string | null
+          checked_in_at: string
+          client_name: string
+          client_phone: string | null
+          patient_profile_id: string | null
+          completed_at: string | null
+          created_at: string
+          follow_up: string | null
+          follow_up_date: string | null
+          follow_up_queue_patient_id: string | null
+          id: string
+          no_show_at: string | null
+          notes: string | null
+          optician_id: string | null
+          position: number
+          procedure: string | null
+          procedure_at: string | null
+          queue_date: string
+          queue_type: string
+          status: string
+          updated_at: string
+          with_doctor_at: string | null
+        }
+      }
+      set_queue_patient_follow_up_atomic: {
+        Args: {
+          _follow_up: string
+          _follow_up_date: string
+          _source_queue_patient_id: string
+        }
+        Returns: {
+          appointment_id: string | null
+          cancelled_at: string | null
+          checked_in_at: string
+          client_name: string
+          client_phone: string | null
+          patient_profile_id: string | null
+          completed_at: string | null
+          created_at: string
+          follow_up: string | null
+          follow_up_date: string | null
+          follow_up_queue_patient_id: string | null
+          id: string
+          no_show_at: string | null
+          notes: string | null
+          optician_id: string | null
+          position: number
+          procedure: string | null
+          procedure_at: string | null
+          queue_date: string
+          queue_type: string
+          status: string
+          updated_at: string
+          with_doctor_at: string | null
+        }
+      }
+      update_reservation_status_atomic: {
+        Args: {
+          _reservation_id: string
+          _status: string
+        }
+        Returns: number
       }
     }
     Enums: {
