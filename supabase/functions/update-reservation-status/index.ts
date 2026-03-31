@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 type ReservationStatus = "new" | "confirmed" | "completed" | "cancelled" | "no_show";
-type ReminderType = "r24h" | "r3h" | "r30m";
+type ReminderType = "r24h" | "r4h";
 type ReminderStatus = "pending" | "processing" | "sent" | "failed" | "skipped";
 type DeliveryStatus = "unknown" | "sent" | "failed" | "skipped";
 
@@ -61,8 +61,7 @@ const normalizeReminderMap = (reminders: ReminderRow[] | null) => {
 
   const map: Record<ReminderType, typeof defaultReminder> = {
     r24h: { ...defaultReminder },
-    r3h: { ...defaultReminder },
-    r30m: { ...defaultReminder },
+    r4h: { ...defaultReminder },
   };
 
   for (const reminder of reminders ?? []) {

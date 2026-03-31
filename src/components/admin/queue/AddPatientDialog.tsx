@@ -279,10 +279,10 @@ const AddPatientDialog = ({
 
     const phoneError = getPhoneErrorMessage(phone);
     if (!name.trim() || phoneError) {
-      if (!name.trim()) {
-        nameInputRef.current?.focus();
-      } else {
+      if (phoneError) {
         phoneInputRef.current?.focus();
+      } else {
+        nameInputRef.current?.focus();
       }
       return;
     }
@@ -325,6 +325,47 @@ const AddPatientDialog = ({
   const formFields = (
     <div className="queue-add-popup-fields">
       <div className="queue-add-popup-field">
+        <Label htmlFor={phoneInputId} className="queue-add-popup-label">
+          Phone <span className="text-rose-500">*</span>
+        </Label>
+        <Input
+          id={phoneInputId}
+          ref={phoneInputRef}
+          value={phoneFocused ? phone : formatMoroccanPhone(phone)}
+          onChange={(e) => {
+            setPhone(normalizeMoroccanPhone(e.target.value));
+            setFormError(null);
+          }}
+          onFocus={() => setPhoneFocused(true)}
+          onBlur={() => {
+            setPhoneTouched(true);
+            setPhoneFocused(false);
+          }}
+          placeholder="06 00 00 00 00"
+          className={cn(
+            "queue-add-popup-control h-11 rounded-[12px] px-3.5 text-[15px] font-mono shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
+            activePhoneError && "queue-add-popup-control-invalid",
+          )}
+          inputMode="tel"
+          autoComplete="tel-national"
+          enterKeyHint="next"
+          aria-invalid={Boolean(activePhoneError)}
+          aria-describedby={phoneDescribedBy || undefined}
+          required
+        />
+        {profileHint && (
+          <p id={phoneHelpId} className="queue-add-popup-help queue-add-popup-profile-hint">
+            {profileHint}
+          </p>
+        )}
+        {activePhoneError && (
+          <p id={phoneErrorId} role="alert" className="queue-add-popup-field-error">
+            {activePhoneError}
+          </p>
+        )}
+      </div>
+
+      <div className="queue-add-popup-field">
         <Label htmlFor={nameInputId} className="queue-add-popup-label">
           Patient Name <span className="text-rose-500">*</span>
         </Label>
@@ -350,47 +391,6 @@ const AddPatientDialog = ({
         {activeNameError && (
           <p id={nameErrorId} role="alert" className="queue-add-popup-field-error">
             {activeNameError}
-          </p>
-        )}
-      </div>
-
-      <div className="queue-add-popup-field">
-        <Label htmlFor={phoneInputId} className="queue-add-popup-label">
-          Phone <span className="text-rose-500">*</span>
-        </Label>
-        <Input
-          id={phoneInputId}
-          ref={phoneInputRef}
-          value={phoneFocused ? phone : formatMoroccanPhone(phone)}
-          onChange={(e) => {
-            setPhone(normalizeMoroccanPhone(e.target.value));
-            setFormError(null);
-          }}
-          onFocus={() => setPhoneFocused(true)}
-          onBlur={() => {
-            setPhoneTouched(true);
-            setPhoneFocused(false);
-          }}
-          placeholder="06 00 00 00 00"
-          className={cn(
-            "queue-add-popup-control h-11 rounded-[12px] px-3.5 text-[15px] font-mono shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
-            activePhoneError && "queue-add-popup-control-invalid",
-          )}
-          inputMode="tel"
-          autoComplete="tel-national"
-          enterKeyHint={notesExpanded ? "next" : "done"}
-          aria-invalid={Boolean(activePhoneError)}
-          aria-describedby={phoneDescribedBy || undefined}
-          required
-        />
-        {profileHint && (
-          <p id={phoneHelpId} className="queue-add-popup-help queue-add-popup-profile-hint">
-            {profileHint}
-          </p>
-        )}
-        {activePhoneError && (
-          <p id={phoneErrorId} role="alert" className="queue-add-popup-field-error">
-            {activePhoneError}
           </p>
         )}
       </div>

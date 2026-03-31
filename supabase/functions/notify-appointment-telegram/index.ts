@@ -8,7 +8,7 @@ const baseCorsHeaders = {
 };
 
 type SupportedLanguage = "en" | "fr" | "ar" | "zgh";
-type ReminderType = "r24h" | "r3h" | "r30m";
+type ReminderType = "r24h" | "r4h";
 type ConfirmationDeliveryStatus = "unknown" | "sent" | "failed" | "skipped";
 
 interface AppointmentPayload {
@@ -40,6 +40,7 @@ interface ReminderQueueResult {
   skipped: ReminderSkipItem[];
   errors: string[];
   appointmentId?: string;
+  duplicate?: boolean;
 }
 
 interface BookingPersistenceMeta {
@@ -74,8 +75,7 @@ const QUIET_HOUR_END = 21;
 
 const reminderDefinitions: Array<{ type: ReminderType; offsetMs: number }> = [
   { type: "r24h", offsetMs: 24 * 60 * 60 * 1000 },
-  { type: "r3h", offsetMs: 3 * 60 * 60 * 1000 },
-  { type: "r30m", offsetMs: 30 * 60 * 1000 },
+  { type: "r4h", offsetMs: 4 * 60 * 60 * 1000 },
 ];
 
 const localeByLanguage: Record<SupportedLanguage, string> = {
@@ -397,49 +397,53 @@ const buildTelegramMessage = (payload: AppointmentPayload) =>
     `🕒 Submitted: ${formatDateTime(payload.submittedAt, payload.language)}`,
   ].join("\n");
 
+const CLINIC_MAPS_URL = "https://maps.app.goo.gl/Sx2ygnM6Ksh9Qwcy7";
+
 const buildWhatsappMessage = (payload: AppointmentPayload) => {
   const dateLabel = formatDate(payload.selectedDate, payload.language);
+  const name = payload.clientName;
+  const time = payload.selectedTime;
 
   if (payload.language === "fr") {
     return [
-      "✅ Votre rendez-vous est confirmé.",
-      `👤 Nom: ${payload.clientName}`,
-      `🗓 Date: ${dateLabel}`,
-      `⏰ Heure: ${payload.selectedTime}`,
+      `✅ Bonjour ${name} ! Votre rendez-vous est confirmé pour le ${dateLabel} à ${time}.`,
       "",
-      "Si vous souhaitez modifier votre rendez-vous, répondez à ce message.",
+      "Si vous avez besoin de modifier ou annuler, répondez simplement à ce message.",
+      "",
+      `📍 Cabinet d'Ophtalmologie Dr. Sounny, Agadir`,
+      CLINIC_MAPS_URL,
     ].join("\n");
   }
 
   if (payload.language === "ar") {
     return [
-      "✅ تم تأكيد موعدك بنجاح.",
-      `👤 الاسم: ${payload.clientName}`,
-      `🗓 التاريخ: ${dateLabel}`,
-      `⏰ الوقت: ${payload.selectedTime}`,
+      `✅ مرحباً ${name}! تم تأكيد موعدك يوم ${dateLabel} على الساعة ${time}.`,
       "",
-      "إذا رغبت في تعديل الموعد، يمكنك الرد على هذه الرسالة.",
+      "إذا رغبتم في التعديل أو الإلغاء، يمكنكم الرد على هذه الرسالة.",
+      "",
+      `📍 عيادة طب العيون د. الصوني، أكادير`,
+      CLINIC_MAPS_URL,
     ].join("\n");
   }
 
   if (payload.language === "zgh") {
     return [
-      "✅ ⵉⵜⵜⵓⵙⵙⵏⵜⵎ ⵓⵎⵓⵄⴷ ⵏⵏⴽ.",
-      `👤 ⵉⵙⵎ: ${payload.clientName}`,
-      `🗓 ⴰⵣⵎⵣ: ${dateLabel}`,
-      `⏰ ⴰⴽⵓⴷ: ${payload.selectedTime}`,
+      `✅ ⴰⵣⵓⵍ ${name}! ⵉⵜⵜⵓⵙⵙⵏⵜⵎ ⵓⵎⵓⵄⴷ ⵏⵏⴽ ⴰⵙⵙ ⵏ ${dateLabel} ⴳ ${time}.`,
       "",
-      "ⵎⴰ ⵜⵔⵉⴷ ⴰⴷ ⵜⵙⵏⴼⵍⴷ ⵓⵎⵓⵄⴷ, ⵔⴰⵔ ⵉ ⵜⵉⵣⵉ.",
+      "ⵎⴰ ⵜⵔⵉⴷ ⴰⴷ ⵜⵙⵏⴼⵍⴷ ⵏⵖ ⴰⴷ ⵜⵙⵔⴳⵍⴷ, ⵔⴰⵔ ⵉ ⵜⵉⵣⵉ ⴰⴷ.",
+      "",
+      `📍 ⴰⵅⵅⴰⵎ ⵏ ⵓⵎⵙⵙⵓⴼⵖ Dr. Sounny, ⴰⴳⴰⴷⵉⵔ`,
+      CLINIC_MAPS_URL,
     ].join("\n");
   }
 
   return [
-    "✅ Your appointment is confirmed.",
-    `👤 Name: ${payload.clientName}`,
-    `🗓 Date: ${dateLabel}`,
-    `⏰ Time: ${payload.selectedTime}`,
+    `✅ Hi ${name}! Your appointment is confirmed for ${dateLabel} at ${time}.`,
     "",
-    "If you need to reschedule, just reply to this message.",
+    "If you need to reschedule or cancel, simply reply to this message.",
+    "",
+    `📍 Dr. Sounny Ophthalmology Clinic, Agadir`,
+    CLINIC_MAPS_URL,
   ].join("\n");
 };
 
@@ -544,21 +548,33 @@ const persistAppointmentAndReminders = async (
 
     const { data: appointmentRow, error: appointmentError } = await serviceClient
       .from("appointments")
-      .insert({
-        client_name: payload.clientName,
-        client_phone: payload.clientPhone,
-        normalized_client_phone: payload.normalizedClientPhone,
-        whatsapp_chat_id: payload.whatsappChatId,
-        language: payload.language,
-        appointment_date: appointmentDateTime.appointmentDate,
-        appointment_time: appointmentDateTime.appointmentTime,
-        appointment_at: appointmentDateTime.appointmentAt.toISOString(),
-      })
+      .upsert(
+        {
+          client_name: payload.clientName,
+          client_phone: payload.clientPhone,
+          normalized_client_phone: payload.normalizedClientPhone,
+          whatsapp_chat_id: payload.whatsappChatId,
+          language: payload.language,
+          appointment_date: appointmentDateTime.appointmentDate,
+          appointment_time: appointmentDateTime.appointmentTime,
+          appointment_at: appointmentDateTime.appointmentAt.toISOString(),
+        },
+        {
+          onConflict: "normalized_client_phone,appointment_date,appointment_time",
+          ignoreDuplicates: true,
+        },
+      )
       .select("id")
-      .single();
+      .maybeSingle();
 
-    if (appointmentError || !appointmentRow?.id) {
-      result.errors.push(`appointment_insert_failed:${appointmentError?.message ?? "unknown"}`);
+    if (appointmentError) {
+      result.errors.push(`appointment_insert_failed:${appointmentError.message}`);
+      return result;
+    }
+
+    if (!appointmentRow?.id) {
+      // Duplicate booking — same phone+date+time already exists
+      result.duplicate = true;
       return result;
     }
 
@@ -645,7 +661,10 @@ const persistAppointmentAndReminders = async (
 
     const { error: remindersInsertError } = await serviceClient
       .from("appointment_reminders")
-      .insert(reminderRows);
+      .upsert(reminderRows, {
+        onConflict: "appointment_id,reminder_type",
+        ignoreDuplicates: true,
+      });
 
     if (remindersInsertError) {
       result.errors.push(`reminders_insert_failed:${remindersInsertError.message}`);
@@ -960,25 +979,69 @@ serve(async (req) => {
     }
     markCooldown(cooldownKey, now);
 
-    const telegramPromise = sendTelegram(
-      payload,
-      Deno.env.get("TELEGRAM_BOT_TOKEN"),
-      Deno.env.get("TELEGRAM_CHAT_ID"),
-    );
-    const whatsappPromise = sendWhatsappViaGreenApi(
-      payload,
-      Deno.env.get("GREEN_API_API_URL"),
-      Deno.env.get("GREEN_API_ID_INSTANCE"),
-      Deno.env.get("GREEN_API_API_TOKEN_INSTANCE"),
-    );
-    const reminderQueuePromise = persistAppointmentAndReminders(payload);
+    // Step 1: Persist appointment + reminders FIRST (before sending any messages)
+    const reminderQueueResult = await persistAppointmentAndReminders(payload);
+    const bookingMeta = buildBookingPersistenceMeta(reminderQueueResult);
 
-    const [telegramResult, whatsappResult, reminderQueueResult] = await Promise.all([
-      telegramPromise,
-      whatsappPromise,
-      reminderQueuePromise,
+    // Step 2: If duplicate booking (same phone+date+time), skip messaging entirely
+    if (reminderQueueResult.duplicate) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          duplicate: true,
+          bookingPersisted: false,
+          appointmentId: null,
+          bookingError: null,
+          channels: {
+            telegram: { ok: false, error: "skipped_duplicate" },
+            whatsapp: { ok: false, error: "skipped_duplicate" },
+          },
+          reminders: reminderQueueResult,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Bug C fix: Don't send messages if appointment wasn't persisted (non-duplicate failure)
+    if (!bookingMeta.bookingPersisted) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "booking_not_persisted",
+          bookingPersisted: false,
+          appointmentId: null,
+          bookingError: bookingMeta.bookingError ?? "unknown_persistence_error",
+          channels: {
+            telegram: { ok: false, error: "skipped_no_booking" },
+            whatsapp: { ok: false, error: "skipped_no_booking" },
+          },
+          reminders: reminderQueueResult,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Step 3: Send Telegram + WhatsApp confirmation in parallel (only if appointment was created)
+    const [telegramResult, whatsappResult] = await Promise.all([
+      sendTelegram(
+        payload,
+        Deno.env.get("TELEGRAM_BOT_TOKEN"),
+        Deno.env.get("TELEGRAM_CHAT_ID"),
+      ),
+      sendWhatsappViaGreenApi(
+        payload,
+        Deno.env.get("GREEN_API_API_URL"),
+        Deno.env.get("GREEN_API_ID_INSTANCE"),
+        Deno.env.get("GREEN_API_API_TOKEN_INSTANCE"),
+      ),
     ]);
 
+    // Step 4: Persist WhatsApp confirmation status on the appointment row
     if (reminderQueueResult.appointmentId) {
       const persistenceError = await persistWhatsappConfirmationStatus(
         reminderQueueResult.appointmentId,
@@ -990,7 +1053,6 @@ serve(async (req) => {
     }
 
     const success = telegramResult.ok || whatsappResult.ok;
-    const bookingMeta = buildBookingPersistenceMeta(reminderQueueResult);
 
     return new Response(
       JSON.stringify({

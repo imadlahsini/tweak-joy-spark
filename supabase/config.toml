@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.update-reservation-status]
 verify_jwt = false
+
+[functions.manage-notification]
+verify_jwt = false

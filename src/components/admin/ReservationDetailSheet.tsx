@@ -1,4 +1,4 @@
-import { Check, ClipboardCopy, Loader2, Phone } from "lucide-react";
+import { Check, ClipboardCopy, Loader2, Phone, Send, SkipForward } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,17 +51,20 @@ interface ReservationDetailSheetProps {
   onStatusSave: () => void;
   isSaving: boolean;
   profileHref?: string | null;
+  onSkipReminder?: (reservationId: string, reminderType: ReminderType) => Promise<void>;
+  onResendReminder?: (reservationId: string, reminderType: ReminderType) => Promise<void>;
+  onResendConfirmation?: (reservationId: string) => Promise<void>;
 }
 
 const timelineDotClass = {
-  pending: "border-slate-400 bg-slate-300/35",
-  processing: "border-blue-400 bg-blue-300/55 animate-pulse",
-  sent: "border-emerald-400 bg-emerald-300/55",
-  failed: "border-rose-400 bg-rose-300/55",
-  skipped: "border-amber-400 bg-amber-300/55",
+  pending: "border-slate-400/50 bg-slate-400/20",
+  processing: "border-blue-400/50 bg-blue-400/20 animate-pulse",
+  sent: "border-emerald-400/50 bg-emerald-400/20",
+  failed: "border-rose-400/50 bg-rose-400/20",
+  skipped: "border-amber-400/50 bg-amber-400/20",
 } as const;
 
-const reminderOrder: ReminderType[] = ["r24h", "r3h", "r30m"];
+const reminderOrder: ReminderType[] = ["r24h", "r4h"];
 
 const ReservationDetailSheet = ({
   reservation,
@@ -72,9 +75,44 @@ const ReservationDetailSheet = ({
   onStatusSave,
   isSaving,
   profileHref,
+  onSkipReminder,
+  onResendReminder,
+  onResendConfirmation,
 }: ReservationDetailSheetProps) => {
   const { toast } = useToast();
   const [copiedId, setCopiedId] = useState(false);
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
+  const [reminderLoading, setReminderLoading] = useState<Record<string, boolean>>({});
+
+  const handleResendConfirmation = async () => {
+    if (!onResendConfirmation || !reservation || confirmationLoading) return;
+    setConfirmationLoading(true);
+    try {
+      await onResendConfirmation(reservation.id);
+    } finally {
+      setConfirmationLoading(false);
+    }
+  };
+
+  const handleSkipReminder = async (type: ReminderType) => {
+    if (!onSkipReminder || !reservation || reminderLoading[type]) return;
+    setReminderLoading((c) => ({ ...c, [type]: true }));
+    try {
+      await onSkipReminder(reservation.id, type);
+    } finally {
+      setReminderLoading((c) => ({ ...c, [type]: false }));
+    }
+  };
+
+  const handleResendReminder = async (type: ReminderType) => {
+    if (!onResendReminder || !reservation || reminderLoading[type]) return;
+    setReminderLoading((c) => ({ ...c, [type]: true }));
+    try {
+      await onResendReminder(reservation.id, type);
+    } finally {
+      setReminderLoading((c) => ({ ...c, [type]: false }));
+    }
+  };
 
   if (!reservation) return null;
 
@@ -117,59 +155,59 @@ const ReservationDetailSheet = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="reservations-drawer w-full overflow-y-auto border-l border-border/65 p-0 text-foreground backdrop-blur-2xl sm:max-w-[560px]"
+        className="reservations-drawer w-full overflow-y-auto border-l border-white/10 p-0 text-white backdrop-blur-2xl sm:max-w-[560px]"
       >
         <div className="p-6">
           {/* Header */}
-          <SheetHeader className="border-b border-border/65 pb-5 text-left">
-            <SheetTitle className="text-2xl font-bold tracking-tight text-foreground">
+          <SheetHeader className="border-b border-white/8 pb-5 text-left">
+            <SheetTitle className="text-2xl font-bold tracking-tight text-white">
               {reservation.clientName}
             </SheetTitle>
             <a
               href={`tel:${reservation.clientPhone}`}
-              className="mt-1 inline-flex w-fit items-center gap-1.5 font-mono text-sm text-cyan-700 transition-colors hover:text-cyan-800"
+              className="mt-1 inline-flex w-fit items-center gap-1.5 font-mono text-sm text-cyan-400 transition-colors hover:text-cyan-300"
             >
               <Phone className="h-3.5 w-3.5" />
               {reservation.clientPhone}
             </a>
             {profileHref && (
-              <Button asChild variant="ghost" className="reservation-detail-profile-link mt-3 h-9 rounded-lg px-3 text-cyan-700 hover:bg-cyan-500/10 hover:text-cyan-800">
+              <Button asChild variant="ghost" className="reservation-detail-profile-link mt-3 h-9 rounded-lg px-3 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300">
                 <Link to={profileHref}>Open Profile</Link>
               </Button>
             )}
 
-            <div className="admin-glass-panel-soft mt-3 flex items-baseline gap-3 rounded-xl px-3 py-2.5">
+            <div className="mt-3 flex items-baseline gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
               <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Date</p>
-                <p className="text-lg font-semibold leading-tight text-foreground">
+                <p className="text-xs uppercase tracking-wider text-white/35">Date</p>
+                <p className="text-lg font-semibold leading-tight text-white">
                   {formatDateOnly(reservation.appointmentAt)}
                 </p>
               </div>
-              <div className="h-8 w-px bg-border/70" />
+              <div className="h-8 w-px bg-white/10" />
               <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Time</p>
-                <p className="text-lg font-semibold leading-tight text-cyan-700">
+                <p className="text-xs uppercase tracking-wider text-white/35">Time</p>
+                <p className="text-lg font-semibold leading-tight text-cyan-400">
                   {formatTimeOnly(reservation.appointmentAt)}
                 </p>
               </div>
-              <span className="ml-auto rounded border border-border/70 bg-white/70 px-1.5 py-0.5 text-xs uppercase text-muted-foreground">
+              <span className="ml-auto rounded border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-xs uppercase text-white/40">
                 {reservation.language}
               </span>
             </div>
           </SheetHeader>
 
           {/* Status section */}
-          <div className="reservations-drawer-section border-b border-border/65 py-5">
-            <p className="mb-3 text-xs uppercase tracking-[0.16em] text-muted-foreground">Status</p>
+          <div className="reservations-drawer-section border-b border-white/8 py-5">
+            <p className="mb-3 text-xs uppercase tracking-[0.16em] text-white/35">Status</p>
             <div className="flex items-center gap-2">
               <Select
                 value={currentDraft}
                 onValueChange={(v) => onDraftStatusChange(v as ReservationStatus)}
               >
-                <SelectTrigger className="admin-control h-12 text-base">
+                <SelectTrigger className="h-12 text-base border-white/10 bg-white/[0.04] text-white/85 hover:bg-white/[0.07] focus:border-[#6DB5FF]/50 focus:ring-[#6DB5FF]/20">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-white/12 bg-[#1A1A1E] text-white/85">
                   {reservationStatuses.map((s) => (
                     <SelectItem key={s} value={s}>
                       <span className="flex items-center gap-2">
@@ -199,20 +237,20 @@ const ReservationDetailSheet = ({
                   </AlertDialogTrigger>
                   <AlertDialogContent
                     style={{ position: "fixed" }}
-                    className="admin-glass-panel border-border/70 text-foreground"
+                    className="border-white/12 bg-[#1A1A1E] text-white"
                   >
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-foreground">Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-muted-foreground">
-                        Change <strong className="text-foreground">{reservation.clientName}</strong>'s
+                      <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-white/50">
+                        Change <strong className="text-white">{reservation.clientName}</strong>'s
                         status from{" "}
-                        <strong className="text-foreground">{statusLabel[reservation.status]}</strong> to{" "}
-                        <strong className="text-foreground">{statusLabel[currentDraft]}</strong>. This
+                        <strong className="text-white">{statusLabel[reservation.status]}</strong> to{" "}
+                        <strong className="text-white">{statusLabel[currentDraft]}</strong>. This
                         will also skip any pending reminders.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel className="admin-control text-foreground hover:bg-white/80">
+                      <AlertDialogCancel className="border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]">
                         Cancel
                       </AlertDialogCancel>
                       <AlertDialogAction
@@ -231,8 +269,8 @@ const ReservationDetailSheet = ({
           </div>
 
           {/* Confirmation section */}
-          <div className="reservations-drawer-section border-b border-border/65 py-5">
-            <p className="mb-3 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+          <div className="reservations-drawer-section border-b border-white/8 py-5">
+            <p className="mb-3 text-xs uppercase tracking-[0.16em] text-white/35">
               Confirmation
             </p>
             <div className="flex items-center gap-3">
@@ -244,14 +282,38 @@ const ReservationDetailSheet = ({
               >
                 {deliveryLabel[reservation.confirmation.status]}
               </Badge>
+              {onResendConfirmation && (reservation.confirmation.status === "failed" || reservation.confirmation.status === "skipped") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleResendConfirmation}
+                  disabled={confirmationLoading}
+                  className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300"
+                >
+                  {confirmationLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Resend
+                </Button>
+              )}
+              {onResendConfirmation && reservation.confirmation.status === "sent" && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleResendConfirmation}
+                  disabled={confirmationLoading}
+                  className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-white/30 hover:bg-white/5 hover:text-white/50"
+                >
+                  {confirmationLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Resend
+                </Button>
+              )}
             </div>
             {reservation.confirmation.sentAt && (
-              <p className="mt-2 text-xs text-emerald-700">
+              <p className="mt-2 text-xs text-emerald-400">
                 Sent at {formatRelativeTime(reservation.confirmation.sentAt)}
               </p>
             )}
             {reservation.confirmation.error && (
-              <div className="mt-2 rounded-xl border border-rose-300/45 bg-rose-100/70 p-3 text-sm text-rose-700">
+              <div className="mt-2 rounded-xl border border-[#FF6B6B]/25 bg-[#FF6B6B]/10 p-3 text-sm text-[#FF6B6B]">
                 {reservation.confirmation.error}
               </div>
             )}
@@ -259,17 +321,17 @@ const ReservationDetailSheet = ({
 
           {/* Reminders timeline */}
           <div className="reservations-drawer-section py-5">
-            <p className="mb-4 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="mb-4 text-xs uppercase tracking-[0.16em] text-white/35">
               Reminders
             </p>
             <div className="relative pl-8">
               {/* Vertical line */}
-              <div className="absolute bottom-1 left-3 top-1 w-px bg-gradient-to-b from-slate-400/60 via-slate-300/50 to-transparent" />
+              <div className="absolute bottom-1 left-3 top-1 w-px bg-gradient-to-b from-white/15 via-white/8 to-transparent" />
 
               {reminderOrder.map((type, i) => {
-                const reminder = reservation.reminders[type];
+                const reminder = reservation.reminders[type] ?? { status: "pending" as const, attempts: 0, scheduledFor: null, sentAt: null, lastError: null };
                 return (
-                  <div key={type} className={cn("relative", i < 2 ? "pb-6" : "pb-0")}>
+                  <div key={type} className={cn("relative", i < reminderOrder.length - 1 ? "pb-6" : "pb-0")}>
                     {/* Dot */}
                     <div
                       className={cn(
@@ -281,21 +343,21 @@ const ReservationDetailSheet = ({
                     {/* Content */}
                     <div className="ml-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-foreground">
+                        <span className="text-sm font-semibold text-white">
                           {reminderTypeLabel[type]}
                         </span>
                         <Badge
                           className={cn(
                             "admin-chip border px-1.5 py-0 text-xs",
                             timelineDotClass[reminder.status].includes("emerald")
-                              ? "border-emerald-300/45 bg-emerald-200/55 text-emerald-700"
+                              ? "border-emerald-400/25 bg-emerald-400/15 text-emerald-400"
                               : timelineDotClass[reminder.status].includes("rose")
-                                ? "border-rose-300/45 bg-rose-200/55 text-rose-700"
+                                ? "border-rose-400/25 bg-rose-400/15 text-rose-400"
                                 : timelineDotClass[reminder.status].includes("blue")
-                                  ? "border-blue-300/45 bg-blue-200/55 text-blue-700"
+                                  ? "border-blue-400/25 bg-blue-400/15 text-blue-400"
                                   : timelineDotClass[reminder.status].includes("amber")
-                                    ? "border-amber-300/45 bg-amber-200/55 text-amber-700"
-                                    : "border-slate-300/45 bg-slate-200/65 text-slate-700",
+                                    ? "border-amber-400/25 bg-amber-400/15 text-amber-400"
+                                    : "border-slate-400/25 bg-slate-400/15 text-slate-400",
                           )}
                         >
                           {reminder.status}
@@ -303,23 +365,50 @@ const ReservationDetailSheet = ({
                       </div>
 
                       {reminder.scheduledFor && (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-xs text-white/40">
                           Scheduled for {formatRelativeTime(reminder.scheduledFor)}
                         </p>
                       )}
                       {reminder.sentAt && (
-                        <p className="mt-0.5 text-xs text-emerald-700">
+                        <p className="mt-0.5 text-xs text-emerald-400">
                           Sent at {formatRelativeTime(reminder.sentAt)}
                         </p>
                       )}
                       {reminder.lastError && (
-                        <p className="mt-0.5 text-xs text-rose-700">{reminder.lastError}</p>
+                        <p className="mt-0.5 text-xs text-rose-400">{reminder.lastError}</p>
                       )}
                       {reminder.attempts > 0 && (
-                        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                        <p className="mt-0.5 font-mono text-xs text-white/30">
                           {reminder.attempts} attempt(s)
                         </p>
                       )}
+                      {/* Action buttons */}
+                      <div className="mt-1.5 flex gap-1.5">
+                        {(reminder.status === "pending" || reminder.status === "processing") && onSkipReminder && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleSkipReminder(type)}
+                            disabled={!!reminderLoading[type]}
+                            className="h-6 gap-1 rounded-md px-2 text-[11px] text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+                          >
+                            {reminderLoading[type] ? <Loader2 className="h-3 w-3 animate-spin" /> : <SkipForward className="h-3 w-3" />}
+                            Skip
+                          </Button>
+                        )}
+                        {(reminder.status === "failed" || reminder.status === "skipped") && onResendReminder && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleResendReminder(type)}
+                            disabled={!!reminderLoading[type]}
+                            className="h-6 gap-1 rounded-md px-2 text-[11px] text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300"
+                          >
+                            {reminderLoading[type] ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                            Resend
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -328,14 +417,14 @@ const ReservationDetailSheet = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between border-t border-border/65 pt-4">
-            <p className="text-xs text-muted-foreground">
+          <div className="flex items-center justify-between border-t border-white/8 pt-4">
+            <p className="text-xs text-white/35">
               Updated {formatRelativeTime(reservation.updatedAt)}
             </p>
             <button
               type="button"
               onClick={copyId}
-              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-1 font-mono text-xs text-white/35 transition-colors hover:text-white"
             >
               {copiedId ? "Copied!" : reservation.id.slice(0, 8)}
               <ClipboardCopy className="h-3 w-3" />

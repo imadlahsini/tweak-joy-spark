@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 type SupportedLanguage = "en" | "fr" | "ar" | "zgh";
-type ReminderType = "r24h" | "r3h" | "r30m";
+type ReminderType = "r24h" | "r4h";
 
 interface ClaimedReminderRow {
   reminder_id: string;
@@ -10,6 +10,7 @@ interface ClaimedReminderRow {
   reminder_type: ReminderType;
   scheduled_for: string;
   attempts: number;
+  sent_message_id: string | null;
   language: SupportedLanguage;
   client_name: string;
   whatsapp_chat_id: string;
@@ -27,6 +28,7 @@ interface WhatsappSendResult {
 
 const clinicTimeZone = "Africa/Casablanca";
 const DISPATCH_BATCH_SIZE = 25;
+const MAX_ATTEMPTS = 5;
 const retryDelayMs = 450;
 
 const localeByLanguage: Record<SupportedLanguage, string> = {
@@ -57,74 +59,95 @@ const formatAppointmentDate = (value: string, language: SupportedLanguage) => {
   });
 };
 
-const buildReminderIntro = (type: ReminderType, language: SupportedLanguage) => {
-  if (language === "fr") {
-    if (type === "r24h") return "⏰ Rappel: votre rendez-vous est dans 24 heures.";
-    if (type === "r3h") return "⏰ Rappel: votre rendez-vous est dans 3 heures.";
-    return "⏰ Rappel: votre rendez-vous est dans 30 minutes.";
-  }
-
-  if (language === "ar") {
-    if (type === "r24h") return "⏰ تذكير: موعدك بعد 24 ساعة.";
-    if (type === "r3h") return "⏰ تذكير: موعدك بعد 3 ساعات.";
-    return "⏰ تذكير: موعدك بعد 30 دقيقة.";
-  }
-
-  if (language === "zgh") {
-    if (type === "r24h") return "⏰ ⴰⵙⵎⵎⵍ: ⵓⵎⵓⵄⴷ ⵏⵏⴽ ⵢⵓⵙⵙ 24 ⵜⴰⵙⵔⴰⵖⵜ.";
-    if (type === "r3h") return "⏰ ⴰⵙⵎⵎⵍ: ⵓⵎⵓⵄⴷ ⵏⵏⴽ ⵢⵓⵙⵙ 3 ⵜⴰⵙⵔⴰⵖⵜ.";
-    return "⏰ ⴰⵙⵎⵎⵍ: ⵓⵎⵓⵄⴷ ⵏⵏⴽ ⵢⵓⵙⵙ 30 ⵜⵓⵙⴷⵉⴷⵜ.";
-  }
-
-  if (type === "r24h") return "⏰ Reminder: your appointment is in 24 hours.";
-  if (type === "r3h") return "⏰ Reminder: your appointment is in 3 hours.";
-  return "⏰ Reminder: your appointment is in 30 minutes.";
-};
+const CLINIC_MAPS_URL = "https://maps.app.goo.gl/Sx2ygnM6Ksh9Qwcy7";
 
 const buildReminderMessage = (row: ClaimedReminderRow) => {
   const dateLabel = formatAppointmentDate(row.appointment_at, row.language);
-  const intro = buildReminderIntro(row.reminder_type, row.language);
+  const name = row.client_name;
+  const time = row.appointment_time;
+  const type = row.reminder_type;
 
   if (row.language === "fr") {
+    if (type === "r24h") {
+      return [
+        `🔔 Bonjour ${name}, petit rappel : votre rendez-vous est demain, le ${dateLabel} à ${time}.`,
+        "",
+        "À demain ! Si un empêchement survient, répondez à ce message.",
+        "",
+        `📍 Cabinet d'Ophtalmologie Dr. Sounny, Agadir`,
+        CLINIC_MAPS_URL,
+      ].join("\n");
+    }
     return [
-      intro,
-      `👤 Nom: ${row.client_name}`,
-      `🗓 Date: ${dateLabel}`,
-      `⏰ Heure: ${row.appointment_time}`,
+      `⏰ ${name}, votre rendez-vous est dans quelques heures — aujourd'hui à ${time}.`,
       "",
-      "Si vous souhaitez modifier votre rendez-vous, répondez à ce message.",
+      "N'oubliez pas ! Si un empêchement survient, répondez à ce message.",
+      "",
+      `📍 Cabinet d'Ophtalmologie Dr. Sounny, Agadir`,
+      CLINIC_MAPS_URL,
     ].join("\n");
   }
 
   if (row.language === "ar") {
+    if (type === "r24h") {
+      return [
+        `🔔 مرحباً ${name}، تذكير: موعدك غداً ${dateLabel} على الساعة ${time}.`,
+        "",
+        "نراكم غداً! إذا طرأ أي مانع، يمكنكم الرد على هذه الرسالة.",
+        "",
+        `📍 عيادة طب العيون د. الصوني، أكادير`,
+        CLINIC_MAPS_URL,
+      ].join("\n");
+    }
     return [
-      intro,
-      `👤 الاسم: ${row.client_name}`,
-      `🗓 التاريخ: ${dateLabel}`,
-      `⏰ الوقت: ${row.appointment_time}`,
+      `⏰ ${name}، موعدك بعد ساعات قليلة — اليوم على الساعة ${time}.`,
       "",
-      "إذا رغبت في تعديل الموعد، يمكنك الرد على هذه الرسالة.",
+      "لا تنسوا! إذا طرأ أي مانع، يمكنكم الرد على هذه الرسالة.",
+      "",
+      `📍 عيادة طب العيون د. الصوني، أكادير`,
+      CLINIC_MAPS_URL,
     ].join("\n");
   }
 
   if (row.language === "zgh") {
+    if (type === "r24h") {
+      return [
+        `🔔 ⴰⵣⵓⵍ ${name}, ⴰⵙⵎⵎⵍ: ⵓⵎⵓⵄⴷ ⵏⵏⴽ ⴰⵣⴽⴽⴰ ${dateLabel} ⴳ ${time}.`,
+        "",
+        "ⴰⵔ ⵜⵉⵎⵎⴰⴳⴳⴰⵔ ⴰⵣⴽⴽⴰ! ⵎⴰ ⵢⵍⵍⴰ ⴽⵔⴰ, ⵔⴰⵔ ⵉ ⵜⵉⵣⵉ ⴰⴷ.",
+        "",
+        `📍 ⴰⵅⵅⴰⵎ ⵏ ⵓⵎⵙⵙⵓⴼⵖ Dr. Sounny, ⴰⴳⴰⴷⵉⵔ`,
+        CLINIC_MAPS_URL,
+      ].join("\n");
+    }
     return [
-      intro,
-      `👤 ⵉⵙⵎ: ${row.client_name}`,
-      `🗓 ⴰⵣⵎⵣ: ${dateLabel}`,
-      `⏰ ⴰⴽⵓⴷ: ${row.appointment_time}`,
+      `⏰ ${name}, ⵓⵎⵓⵄⴷ ⵏⵏⴽ ⴷⴼⴼⵉⵔ ⴽⵔⴰ ⵏ ⵜⵙⵔⴰⵖⵉⵏ — ⴰⵙⵙ ⴰⴷ ⴳ ${time}.`,
       "",
-      "ⵎⴰ ⵜⵔⵉⴷ ⴰⴷ ⵜⵙⵏⴼⵍⴷ ⵓⵎⵓⵄⴷ, ⵔⴰⵔ ⵉ ⵜⵉⵣⵉ.",
+      "ⵓⵔ ⵜⵜⵓⵜ! ⵎⴰ ⵢⵍⵍⴰ ⴽⵔⴰ, ⵔⴰⵔ ⵉ ⵜⵉⵣⵉ ⴰⴷ.",
+      "",
+      `📍 ⴰⵅⵅⴰⵎ ⵏ ⵓⵎⵙⵙⵓⴼⵖ Dr. Sounny, ⴰⴳⴰⴷⵉⵔ`,
+      CLINIC_MAPS_URL,
     ].join("\n");
   }
 
+  // English (default)
+  if (type === "r24h") {
+    return [
+      `🔔 Hi ${name}, just a reminder: your appointment is tomorrow, ${dateLabel} at ${time}.`,
+      "",
+      "See you tomorrow! If something came up, reply to this message.",
+      "",
+      `📍 Dr. Sounny Ophthalmology Clinic, Agadir`,
+      CLINIC_MAPS_URL,
+    ].join("\n");
+  }
   return [
-    intro,
-    `👤 Name: ${row.client_name}`,
-    `🗓 Date: ${dateLabel}`,
-    `⏰ Time: ${row.appointment_time}`,
+    `⏰ ${name}, your appointment is in a few hours — today at ${time}.`,
     "",
-    "If you need to reschedule, just reply to this message.",
+    "Don't forget! If something came up, reply to this message.",
+    "",
+    `📍 Dr. Sounny Ophthalmology Clinic, Agadir`,
+    CLINIC_MAPS_URL,
   ].join("\n");
 };
 
@@ -283,20 +306,31 @@ serve(async (req) => {
     let skippedCount = 0;
 
     for (const row of claimedRows) {
-      const reminderMessage = buildReminderMessage(row);
-      const sendResult = await sendWhatsappViaGreenApi(
-        row.whatsapp_chat_id,
-        reminderMessage,
-        Deno.env.get("GREEN_API_API_URL"),
-        Deno.env.get("GREEN_API_ID_INSTANCE"),
-        Deno.env.get("GREEN_API_API_TOKEN_INSTANCE"),
-      );
-
       const nowIso = new Date().toISOString();
+
+      // Bug B fix: If message was already sent (DB update failed last time), skip re-send
+      let sendResult: WhatsappSendResult;
+      if (row.sent_message_id) {
+        // Message already delivered — just fix the DB status
+        sendResult = { ok: true, attempts: 0, details: { idMessage: row.sent_message_id } };
+      } else {
+        const reminderMessage = buildReminderMessage(row);
+        sendResult = await sendWhatsappViaGreenApi(
+          row.whatsapp_chat_id,
+          reminderMessage,
+          Deno.env.get("GREEN_API_API_URL"),
+          Deno.env.get("GREEN_API_ID_INSTANCE"),
+          Deno.env.get("GREEN_API_API_TOKEN_INSTANCE"),
+        );
+      }
+
       const attempts = row.attempts + (sendResult.attempts ?? 0);
 
       if (sendResult.ok) {
-        sentCount += 1;
+        const messageId = typeof sendResult.details === "object" && sendResult.details !== null
+          ? (sendResult.details as Record<string, unknown>).idMessage ?? null
+          : null;
+
         const { error: updateError } = await serviceClient
           .from("appointment_reminders")
           .update({
@@ -305,12 +339,18 @@ serve(async (req) => {
             sent_at: nowIso,
             last_error: null,
             updated_at: nowIso,
+            sent_message_id: messageId ?? row.sent_message_id,
           })
           .eq("id", row.reminder_id);
 
         if (updateError) {
-          console.error("Failed to mark reminder as sent:", updateError);
+          console.error(
+            `CRITICAL: WhatsApp sent but DB update failed for reminder ${row.reminder_id}:`,
+            updateError,
+          );
           failedCount += 1;
+        } else {
+          sentCount += 1;  // Bug A fix: only count as sent after DB update succeeds
         }
         continue;
       }
@@ -335,12 +375,15 @@ serve(async (req) => {
       }
 
       failedCount += 1;
+      const exhausted = attempts >= MAX_ATTEMPTS;
       const { error: updateError } = await serviceClient
         .from("appointment_reminders")
         .update({
-          status: "failed",
+          status: exhausted ? "failed" : "pending",
           attempts,
-          last_error: getReminderErrorText(sendResult),
+          last_error: exhausted
+            ? `max_attempts_exceeded (${attempts}): ${getReminderErrorText(sendResult)}`
+            : getReminderErrorText(sendResult),
           updated_at: nowIso,
         })
         .eq("id", row.reminder_id);

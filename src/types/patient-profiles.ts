@@ -49,7 +49,7 @@ export interface PatientProfileAppointmentHistoryRow {
     sentAt: string | null;
     error: string | null;
   };
-  reminders: Record<"r24h" | "r3h" | "r30m", ReminderState>;
+  reminders: Record<"r24h" | "r4h", ReminderState>;
   createdAt: string;
   updatedAt: string;
 }

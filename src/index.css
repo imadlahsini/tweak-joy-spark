@@ -56,15 +56,10 @@
     --admin-text: 214 33% 16%;
     --admin-muted: 215 15% 45%;
 
-    /* Reservations editorial theme */
-    --reservation-bg: 39 45% 96%;
-    --reservation-bg-soft: 40 36% 98%;
-    --reservation-surface: 42 58% 99%;
-    --reservation-border: 34 30% 81%;
-    --reservation-ink: 204 30% 18%;
-    --reservation-muted: 210 11% 44%;
-    --reservation-focus: 170 67% 38%;
-    --reservation-table-head: 40 48% 96%;
+    /* Reservations — dark theme (matches Queue) */
+    --reservation-border: 0 0% 100% / 0.08;
+    --reservation-ink: 0 0% 100% / 0.92;
+    --reservation-muted: 0 0% 100% / 0.35;
   }
 
   .dark {
@@ -1018,11 +1013,11 @@
   }
 
   .queue-detail-followup-focus-backdrop--mobile {
-    z-index: 51;
+    z-index: 52;
   }
 
   .queue-detail-drawer--followup-focus {
-    z-index: 52;
+    z-index: 51;
   }
 
   .queue-detail-followup-focus-surface {
@@ -1215,6 +1210,103 @@
   .queue-detail-phone:focus-visible {
     color: rgba(255, 255, 255, 0.46);
     outline: none;
+  }
+
+  /* Inline edit — name & phone */
+  .queue-detail-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .queue-detail-edit-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem;
+    border-radius: 0.35rem;
+    color: rgba(255, 255, 255, 0.3);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .queue-detail-edit-trigger:hover {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .queue-detail-edit-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  .queue-detail-edit-input {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    color: white;
+    width: 100%;
+    outline: none;
+    transition: border-color 150ms ease;
+  }
+  .queue-detail-edit-input:focus {
+    border-color: rgba(109, 181, 255, 0.5);
+  }
+  .queue-detail-edit-input--name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .queue-detail-edit-input--phone {
+    font-family: "Azeret Mono", "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .queue-detail-edit-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .queue-detail-edit-save,
+  .queue-detail-edit-cancel {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: opacity 150ms ease, background 150ms ease;
+  }
+  .queue-detail-edit-save:disabled,
+  .queue-detail-edit-cancel:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .queue-detail-edit-save {
+    background: rgba(34, 211, 238, 0.18);
+    color: rgb(34, 211, 238);
+    border: 1px solid rgba(34, 211, 238, 0.2);
+  }
+  .queue-detail-edit-save:hover:not(:disabled) {
+    background: rgba(34, 211, 238, 0.28);
+  }
+  .queue-detail-edit-cancel {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .queue-detail-edit-cancel:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .queue-detail-profile-link {
@@ -1668,6 +1760,22 @@
     margin-top: 0;
   }
 
+  .queue-detail-followup-inline.queue-detail-followup-inline--desktop-portal {
+    position: fixed;
+    inset: 0;
+    z-index: 56;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .queue-detail-followup-inline--desktop-portal .queue-detail-followup-picker-panel {
+    width: 22.5rem;
+    max-width: 22.5rem;
+    pointer-events: auto;
+  }
+
   .queue-detail-followup-picker-panel {
     --queue-detail-followup-origin-x: 50%;
     width: 100%;
@@ -2003,6 +2111,11 @@
     cursor: not-allowed;
     transform: none;
     filter: none;
+  }
+
+  /* Ensure discard dialog portal renders above the followup popup (z-53) */
+  [data-radix-portal]:has(.queue-detail-followup-discard-dialog) {
+    z-index: 60;
   }
 
   .queue-detail-followup-discard-dialog {
@@ -4477,44 +4590,18 @@
     }
   }
 
+  /* ── Reservations Dark Theme (matches Queue) ── */
+
   .reservations-shell {
     position: relative;
-    border-radius: 1.5rem;
-    padding: 1px;
-    background: linear-gradient(
-      135deg,
-      hsl(var(--reservation-border) / 0.55),
-      hsl(var(--primary) / 0.18),
-      hsl(var(--accent) / 0.2)
-    );
-  }
-
-  .reservations-shell::before {
-    content: "";
-    position: absolute;
-    inset: 1px;
-    pointer-events: none;
-    border-radius: calc(1.5rem - 1px);
-    background:
-      radial-gradient(circle at 12% 10%, hsl(var(--accent) / 0.08), transparent 42%),
-      radial-gradient(circle at 86% 86%, hsl(var(--primary) / 0.08), transparent 38%);
-    opacity: 0.7;
   }
 
   .reservations-layout {
     position: relative;
-    border-radius: calc(1.5rem - 1px);
     padding: 0.75rem;
     display: grid;
     gap: 0.75rem;
     grid-template-columns: 1fr;
-    background:
-      linear-gradient(
-        160deg,
-        hsl(var(--reservation-bg-soft) / 0.94) 0%,
-        hsl(var(--reservation-bg) / 0.88) 52%,
-        hsl(var(--reservation-bg-soft) / 0.92) 100%
-      );
   }
 
   .reservations-rail-sticky {
@@ -4523,87 +4610,34 @@
     gap: 0.75rem;
   }
 
-  .reservations-filter-card {
-    border: 1px solid hsl(var(--reservation-border) / 0.82);
-    border-radius: 1rem;
-    padding: 1rem;
-    background:
-      linear-gradient(
-        145deg,
-        hsl(var(--reservation-surface) / 0.9),
-        hsl(var(--reservation-bg-soft) / 0.72)
-      );
-    box-shadow: 0 18px 30px -28px hsl(var(--foreground) / 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.75);
-    animation: reservations-rise 0.35s ease-out both;
+  /* ── Reservations inline topbar grid ─────────────── */
+  .reservations-topbar-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
   }
 
-  .reservations-eyebrow {
-    font-family: "Manrope", "Exo 2", sans-serif;
-    font-size: 0.63rem;
-    font-weight: 700;
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: hsl(var(--reservation-muted));
+  .reservations-topbar-date {
+    width: clamp(120px, 18vw, 160px);
+    flex-shrink: 0;
   }
 
-  .reservations-filter-title {
-    margin-top: 0.2rem;
-    font-family: "Fraunces", "Times New Roman", serif;
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    color: hsl(var(--reservation-ink));
+  .reservations-topbar-spacer {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
-  .reservations-filter-state {
-    border-radius: 9999px;
-    border: 1px solid hsl(var(--reservation-border) / 0.86);
-    padding: 0.22rem 0.55rem;
-    font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
-    font-size: 0.64rem;
-    color: hsl(var(--reservation-muted));
-    background: hsl(var(--reservation-surface) / 0.76);
-  }
-
-  .reservations-filter-topbar {
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    background: transparent;
-    box-shadow: none;
-    animation: none;
-    display: grid;
-    gap: 0.55rem;
-  }
-
-  .reservations-filter-topbar .reservations-filter-title {
-    font-size: 0.95rem;
-  }
-
-  .reservations-filter-topbar .reservations-filter-state {
-    background: hsl(var(--reservation-surface) / 0.55);
-  }
-
-  @media (min-width: 1024px) {
-    .reservations-filter-topbar {
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: end;
-      column-gap: 0.7rem;
+  @media (max-width: 639px) {
+    .reservations-topbar-tools {
+      gap: 0.4rem;
     }
 
-    .reservations-filter-topbar .reservations-filter-header {
-      margin-bottom: 0;
-      align-self: end;
-    }
-
-    .reservations-filter-topbar .reservations-filter-controls {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .reservations-filter-topbar .reservations-filter-actions {
-      margin-top: 0;
-      justify-content: flex-end;
-      align-self: end;
+    .reservations-topbar-date {
+      width: calc(50% - 0.2rem);
+      flex-shrink: 1;
     }
   }
 
@@ -4616,101 +4650,73 @@
   .reservations-kpi-panel {
     padding: 0.9rem;
     border-radius: 1rem;
-    border-color: hsl(var(--reservation-border) / 0.82);
+    border-color: rgba(255, 255, 255, 0.08);
     animation: reservations-rise 0.45s ease-out both;
   }
 
   .reservations-kpi-card {
-    color: hsl(var(--reservation-ink));
+    color: rgba(255, 255, 255, 0.92);
   }
 
   .reservations-kpi-label {
-    font-family: "Manrope", "Exo 2", sans-serif;
-    font-size: 0.67rem;
+    font-family: "Outfit", "Exo 2", sans-serif;
+    font-size: 0.64rem;
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: hsl(var(--reservation-muted));
+    color: rgba(255, 255, 255, 0.35);
   }
 
   .reservations-kpi-context {
     margin-top: 0.25rem;
     font-size: 0.72rem;
     line-height: 1.25;
-    color: hsl(var(--reservation-muted) / 0.94);
+    color: rgba(255, 255, 255, 0.3);
   }
 
   .reservations-kpi-value {
-    font-family: "Fraunces", "Times New Roman", serif;
+    font-family: "Azeret Mono", "Outfit", sans-serif;
     font-size: clamp(1.8rem, 3vw, 2.1rem);
-    font-weight: 650;
-    letter-spacing: -0.03em;
+    font-weight: 800;
+    letter-spacing: -0.04em;
     line-height: 1;
-    color: hsl(var(--reservation-ink));
+    color: rgba(255, 255, 255, 0.95);
   }
 
   .reservations-kpi-ratio {
     border-radius: 9999px;
-    border: 1px solid hsl(var(--reservation-border) / 0.9);
-    background: hsl(var(--reservation-surface) / 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
     padding: 0.2rem 0.5rem;
-    font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+    font-family: "Azeret Mono", "JetBrains Mono", ui-monospace, monospace;
     font-size: 0.63rem;
-    color: hsl(var(--reservation-muted));
+    color: rgba(255, 255, 255, 0.4);
   }
 
   .reservations-main {
-    border-color: hsl(var(--reservation-border) / 0.85);
-    background:
-      linear-gradient(
-        150deg,
-        hsl(var(--reservation-surface) / 0.9) 0%,
-        hsl(var(--reservation-bg-soft) / 0.82) 52%,
-        hsl(var(--reservation-bg-soft) / 0.78) 100%
-      );
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: 0 22px 50px -34px rgba(0, 0, 0, 0.76), inset 0 1px 0 rgba(255, 255, 255, 0.04);
     animation: reservations-rise 0.42s ease-out both;
   }
 
-  .reservations-title {
-    margin-top: 0.1rem;
-    font-family: "Fraunces", "Times New Roman", serif;
-    font-size: clamp(1.25rem, 2.1vw, 1.75rem);
-    font-weight: 650;
-    letter-spacing: -0.028em;
-    line-height: 1.05;
-    color: hsl(var(--reservation-ink));
-  }
-
-  .reservations-last-updated {
-    min-width: 9.8rem;
-    border-radius: 0.9rem;
-    border: 1px solid hsl(var(--reservation-border) / 0.78);
-    background: hsl(var(--reservation-surface) / 0.68);
-    padding: 0.65rem 0.72rem;
-    text-align: right;
-  }
-
-  .reservations-last-updated-value {
-    margin-top: 0.2rem;
-    font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
-    font-size: 0.72rem;
-    color: hsl(var(--reservation-ink));
-  }
 
   .reservations-table-shell {
-    border: 1px solid hsl(var(--reservation-border) / 0.72);
-    background: hsl(var(--reservation-surface) / 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
     overflow: hidden;
   }
 
   .reservations-table-head {
     height: 2.75rem;
-    font-family: "Manrope", "Exo 2", sans-serif;
+    font-family: "Outfit", "Exo 2", sans-serif;
     font-size: 0.62rem;
     font-weight: 700;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: hsl(var(--reservation-muted));
+    color: rgba(255, 255, 255, 0.3);
   }
 
   .reservations-mobile-list {
@@ -4718,23 +4724,14 @@
   }
 
   .reservations-mobile-card {
-    border-color: hsl(var(--reservation-border) / 0.82);
-    background:
-      linear-gradient(
-        150deg,
-        hsl(var(--reservation-surface) / 0.88),
-        hsl(var(--reservation-bg-soft) / 0.76)
-      );
-    box-shadow:
-      0 20px 34px -30px hsl(var(--foreground) / 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.76);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.008));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .reservations-mobile-card:hover {
-    border-color: hsl(var(--reservation-border) / 0.95);
-    box-shadow:
-      0 24px 40px -30px hsl(var(--foreground) / 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    border-color: rgba(255, 255, 255, 0.12);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
   }
 
   .reservations-card-header {
@@ -4745,18 +4742,18 @@
   }
 
   .reservations-card-patient-name {
-    font-family: "Manrope", "Exo 2", sans-serif;
+    font-family: "Outfit", "Exo 2", sans-serif;
     font-size: 0.96rem;
     font-weight: 700;
     letter-spacing: -0.012em;
     line-height: 1.15;
-    color: hsl(var(--reservation-ink));
+    color: rgba(255, 255, 255, 0.92);
   }
 
   .reservations-card-phone {
-    font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+    font-family: "Azeret Mono", "JetBrains Mono", ui-monospace, monospace;
     font-size: 0.72rem;
-    color: hsl(var(--reservation-muted) / 0.98);
+    color: rgba(255, 255, 255, 0.45);
     letter-spacing: 0.01em;
   }
 
@@ -4771,22 +4768,22 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    font-family: "Manrope", "Exo 2", sans-serif;
+    font-family: "Outfit", "Exo 2", sans-serif;
     font-size: 0.76rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: hsl(var(--reservation-muted) / 0.95);
+    color: rgba(255, 255, 255, 0.35);
   }
 
   .reservations-card-appointment-time {
     margin-top: 0;
-    font-family: "Fraunces", "Times New Roman", serif;
+    font-family: "Outfit", "Exo 2", sans-serif;
     font-size: 0.94rem;
     font-weight: 600;
     letter-spacing: -0.013em;
     line-height: 1.18;
-    color: hsl(var(--reservation-ink));
+    color: rgba(255, 255, 255, 0.85);
   }
 
   .reservations-card-divider {
@@ -4795,14 +4792,14 @@
     background: linear-gradient(
       90deg,
       transparent,
-      hsl(var(--reservation-border) / 0.9) 18%,
-      hsl(var(--reservation-border) / 0.9) 82%,
+      rgba(255, 255, 255, 0.08) 18%,
+      rgba(255, 255, 255, 0.08) 82%,
       transparent
     );
   }
 
   .reservations-card-save-btn {
-    box-shadow: 0 10px 20px -14px hsl(var(--primary) / 0.6);
+    box-shadow: 0 10px 20px -14px rgba(6, 182, 212, 0.6);
     font-size: 0.78rem;
   }
 
@@ -4811,12 +4808,12 @@
   }
 
   .reservations-card-disclosure-title {
-    font-family: "Manrope", "Exo 2", sans-serif;
+    font-family: "Outfit", "Exo 2", sans-serif;
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.075em;
     text-transform: uppercase;
-    color: hsl(var(--reservation-ink));
+    color: rgba(255, 255, 255, 0.85);
   }
 
   .reservations-card-summary-pill {
@@ -4835,12 +4832,12 @@
   }
 
   .reservations-card-section-label {
-    font-family: "Manrope", "Exo 2", sans-serif;
+    font-family: "Outfit", "Exo 2", sans-serif;
     font-size: 0.76rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: hsl(var(--reservation-muted) / 0.95);
+    color: rgba(255, 255, 255, 0.35);
   }
 
   .reservations-card-subdivider {
@@ -4849,8 +4846,8 @@
     background: linear-gradient(
       90deg,
       transparent,
-      hsl(var(--reservation-border) / 0.78) 12%,
-      hsl(var(--reservation-border) / 0.78) 88%,
+      rgba(255, 255, 255, 0.06) 12%,
+      rgba(255, 255, 255, 0.06) 88%,
       transparent
     );
   }
@@ -4860,16 +4857,16 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.6rem;
-    border: 1px solid hsl(var(--reservation-border) / 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 0.62rem;
-    background: hsl(var(--reservation-surface) / 0.62);
+    background: rgba(255, 255, 255, 0.03);
     padding: 0.34rem 0.45rem;
   }
 
   .reservations-card-reminder-label {
-    font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+    font-family: "Azeret Mono", "JetBrains Mono", ui-monospace, monospace;
     font-size: 0.76rem;
-    color: hsl(var(--reservation-ink));
+    color: rgba(255, 255, 255, 0.85);
   }
 
   .reservations-card-reminder-status {
@@ -4888,12 +4885,7 @@
   }
 
   .reservations-drawer {
-    background:
-      linear-gradient(
-        158deg,
-        hsl(var(--reservation-surface) / 0.96),
-        hsl(var(--reservation-bg-soft) / 0.92)
-      );
+    background: linear-gradient(158deg, rgba(13, 13, 18, 0.98), rgba(9, 9, 13, 0.98));
   }
 
   .reservations-drawer-section {

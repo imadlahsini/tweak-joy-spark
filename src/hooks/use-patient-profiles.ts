@@ -55,7 +55,7 @@ const APPOINTMENT_SELECT = `
 `;
 
 interface ReminderRow {
-  reminder_type: "r24h" | "r3h" | "r30m";
+  reminder_type: "r24h" | "r4h";
   status: ReminderState["status"];
   attempts: number;
   scheduled_for: string;
@@ -131,11 +131,10 @@ const emptyReminder = (): ReminderState => ({
 
 const normalizeReminderMap = (
   reminders: ReminderRow[] | null,
-): Record<"r24h" | "r3h" | "r30m", ReminderState> => {
+): Record<"r24h" | "r4h", ReminderState> => {
   const map = {
     r24h: emptyReminder(),
-    r3h: emptyReminder(),
-    r30m: emptyReminder(),
+    r4h: emptyReminder(),
   };
 
   for (const reminder of reminders ?? []) {

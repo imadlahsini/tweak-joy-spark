@@ -1,5 +1,5 @@
 export type ReservationStatus = "new" | "confirmed" | "completed" | "cancelled" | "no_show";
-export type ReminderType = "r24h" | "r3h" | "r30m";
+export type ReminderType = "r24h" | "r4h";
 export type ReminderStatus = "pending" | "processing" | "sent" | "failed" | "skipped";
 export type DeliveryStatus = "unknown" | "sent" | "failed" | "skipped";
 

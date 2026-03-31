@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Pencil, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -19,11 +19,6 @@ import {
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  PopoverAnchor,
-  Popover,
-  PopoverContent,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -138,7 +133,11 @@ const pickerFooterDateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 const queueDateToCalendarDate = (dateStr: string) => {
-  const [year, month, day] = dateStr.split("-").map(Number);
+  const parts = dateStr?.split("-").map(Number);
+  if (!parts || parts.length < 3 || parts.some(Number.isNaN)) {
+    return new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 12, 0, 0, 0);
+  }
+  const [year, month, day] = parts;
   return new Date(year, month - 1, day, 12, 0, 0, 0);
 };
 
@@ -149,52 +148,45 @@ const calendarDateToQueueDateStr = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const queueDateToUtcDate = (dateStr: string) => {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
-};
+const getDaysInMonth = (year: number, monthIndex: number) =>
+  new Date(year, monthIndex + 1, 0, 12, 0, 0, 0).getDate();
 
-const utcDateToQueueDateStr = (date: Date) => date.toISOString().slice(0, 10);
-
-const getUtcDaysInMonth = (year: number, monthIndex: number) =>
-  new Date(Date.UTC(year, monthIndex + 1, 0, 12, 0, 0, 0)).getUTCDate();
-
-const addUtcMonthsClamped = (date: Date, monthsToAdd: number) => {
-  const currentDay = date.getUTCDate();
+const addMonthsClamped = (date: Date, monthsToAdd: number) => {
+  const currentDay = date.getDate();
   const monthAnchor = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 12, 0, 0, 0),
+    date.getFullYear(), date.getMonth(), 1, 12, 0, 0, 0,
   );
-  monthAnchor.setUTCMonth(monthAnchor.getUTCMonth() + monthsToAdd);
+  monthAnchor.setMonth(monthAnchor.getMonth() + monthsToAdd);
 
-  const targetYear = monthAnchor.getUTCFullYear();
-  const targetMonth = monthAnchor.getUTCMonth();
-  const clampedDay = Math.min(currentDay, getUtcDaysInMonth(targetYear, targetMonth));
+  const targetYear = monthAnchor.getFullYear();
+  const targetMonth = monthAnchor.getMonth();
+  const clampedDay = Math.min(currentDay, getDaysInMonth(targetYear, targetMonth));
 
-  return new Date(Date.UTC(targetYear, targetMonth, clampedDay, 12, 0, 0, 0));
+  return new Date(targetYear, targetMonth, clampedDay, 12, 0, 0, 0);
 };
 
 const getFollowUpPresetDate = (followUp: string, baseDateStr = getTodayStr()) => {
-  const date = queueDateToUtcDate(baseDateStr);
+  const date = queueDateToCalendarDate(baseDateStr);
 
   switch (followUp) {
     case "15 Days":
-      date.setUTCDate(date.getUTCDate() + 15);
+      date.setDate(date.getDate() + 15);
       break;
     case "1 month":
-      return utcDateToQueueDateStr(addUtcMonthsClamped(date, 1));
+      return calendarDateToQueueDateStr(addMonthsClamped(date, 1));
     case "2 months":
-      return utcDateToQueueDateStr(addUtcMonthsClamped(date, 2));
+      return calendarDateToQueueDateStr(addMonthsClamped(date, 2));
     case "3 months":
-      return utcDateToQueueDateStr(addUtcMonthsClamped(date, 3));
+      return calendarDateToQueueDateStr(addMonthsClamped(date, 3));
     case "6 months":
-      return utcDateToQueueDateStr(addUtcMonthsClamped(date, 6));
+      return calendarDateToQueueDateStr(addMonthsClamped(date, 6));
     case "1 year":
-      return utcDateToQueueDateStr(addUtcMonthsClamped(date, 12));
+      return calendarDateToQueueDateStr(addMonthsClamped(date, 12));
     default:
       break;
   }
 
-  return utcDateToQueueDateStr(date);
+  return calendarDateToQueueDateStr(date);
 };
 
 const formatStageTime = (value: string | null) =>
@@ -289,6 +281,9 @@ const PatientDetailSheet = ({
     active: false,
   });
   const [isProcedureDragging, setIsProcedureDragging] = useState(false);
+  const [isEditingHeader, setIsEditingHeader] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
 
   const cancelQueuedProcedureScroll = () => {
     if (procedureScrollRafRef.current !== null) {
@@ -326,6 +321,7 @@ const PatientDetailSheet = ({
     setFollowUpDraftDate(null);
     setFollowUpPickerInitial(null);
     setFollowUpDiscardConfirmOpen(false);
+    setIsEditingHeader(false);
     setFollowUpAnimationOriginX(50);
     setFollowUpCalendarMonth(
       patient?.followUpDate
@@ -390,10 +386,13 @@ const PatientDetailSheet = ({
   };
 
   const isFollowUpDraftDirty = () => {
-    if (!followUpPickerInitial) return false;
+    if (!pendingFollowUpValue || !followUpDraftDate) return false;
+    // Compare against saved patient data, not initial picker state.
+    // A preset IS a real change when the patient has no follow-up yet,
+    // or when the preset differs from the currently saved values.
     return (
-      pendingFollowUpValue !== followUpPickerInitial.followUp ||
-      followUpDraftDate !== followUpPickerInitial.date
+      pendingFollowUpValue !== followUpValue ||
+      followUpDraftDate !== followUpDateValue
     );
   };
 
@@ -467,6 +466,44 @@ const PatientDetailSheet = ({
       toast.error("Failed to update");
     } finally {
       setSavingField((current) => (current === field ? null : current));
+    }
+  };
+
+  const startEditingHeader = () => {
+    if (!patient) return;
+    setEditName(patient.clientName);
+    setEditPhone(patient.clientPhone ?? "");
+    setIsEditingHeader(true);
+  };
+
+  const cancelEditingHeader = () => {
+    setIsEditingHeader(false);
+  };
+
+  const saveHeaderEdits = async () => {
+    if (!patient) return;
+    const trimmedName = editName.trim();
+    if (!trimmedName) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    const updates: Record<string, unknown> = {};
+    if (trimmedName !== patient.clientName) updates.clientName = trimmedName;
+    const trimmedPhone = editPhone.trim() || null;
+    if (trimmedPhone !== (patient.clientPhone ?? null)) updates.clientPhone = trimmedPhone;
+    if (Object.keys(updates).length === 0) {
+      setIsEditingHeader(false);
+      return;
+    }
+    setSavingField("header");
+    try {
+      await onUpdate(patient.id, updates);
+      toast.success("Updated");
+      setIsEditingHeader(false);
+    } catch {
+      toast.error("Failed to update");
+    } finally {
+      setSavingField((c) => (c === "header" ? null : c));
     }
   };
 
@@ -700,13 +737,6 @@ const PatientDetailSheet = ({
     : followUpValue
       ? `${followUpValue} selected — pick date`
       : "Choose a follow-up to schedule the next RDV";
-  const isOutsideFollowUpMonth = (date: Date) => {
-    if (!followUpCalendarMonth) return false;
-    return (
-      date.getMonth() !== followUpCalendarMonth.getMonth() ||
-      date.getFullYear() !== followUpCalendarMonth.getFullYear()
-    );
-  };
   const monthAnchorDate =
     followUpCalendarMonth ??
     (followUpDraftDate
@@ -867,7 +897,6 @@ const PatientDetailSheet = ({
           }}
           disabled={[
             { before: queueDateToCalendarDate(today) },
-            isOutsideFollowUpMonth,
           ]}
           className="queue-detail-followup-calendar"
           data-vaul-no-drag={isMobile ? "" : undefined}
@@ -961,36 +990,102 @@ const PatientDetailSheet = ({
           )}
         >
           <div className="queue-detail-title-block">
-            <h2 className="queue-detail-title">{patient.clientName}</h2>
-            <div className="queue-detail-status-row">
-              <span
-                className={cn(
-                  "queue-detail-status-line",
-                  queueDetailStatusClass[patient.status],
-                )}
-              >
-                <span
-                  className={cn(
-                    "queue-detail-status-dot",
-                    queueStatusDotClass[patient.status],
+            {isEditingHeader ? (
+              <>
+                <div className="queue-detail-edit-fields">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="queue-detail-edit-input queue-detail-edit-input--name"
+                    placeholder="Patient name"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void saveHeaderEdits();
+                      if (e.key === "Escape") cancelEditingHeader();
+                    }}
+                  />
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="queue-detail-edit-input queue-detail-edit-input--phone"
+                    placeholder="Phone number"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void saveHeaderEdits();
+                      if (e.key === "Escape") cancelEditingHeader();
+                    }}
+                  />
+                </div>
+                <div className="queue-detail-edit-actions">
+                  <button
+                    type="button"
+                    onClick={() => void saveHeaderEdits()}
+                    disabled={savingField === "header"}
+                    className="queue-detail-edit-save"
+                    aria-label="Save changes"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    <span>{savingField === "header" ? "Saving…" : "Save"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEditingHeader}
+                    disabled={savingField === "header"}
+                    className="queue-detail-edit-cancel"
+                    aria-label="Cancel editing"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    <span>Cancel</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="queue-detail-name-row">
+                  <h2 className="queue-detail-title">{patient.clientName}</h2>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={startEditingHeader}
+                      className="queue-detail-edit-trigger"
+                      aria-label="Edit patient name and phone"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
                   )}
-                />
-                {queueStatusLabel[patient.status]}
-              </span>
-              {headerStatusDetail && <span className="queue-detail-status-separator">·</span>}
-              {headerStatusDetail && (
-                <span className="queue-detail-status-detail">{headerStatusDetail}</span>
-              )}
-              <span className="queue-detail-status-separator">·</span>
-              <span className="queue-detail-status-type">{queueTypeDisplay}</span>
-            </div>
-            {patient.clientPhone && (
-              <a
-                href={`tel:${patient.clientPhone}`}
-                className="queue-detail-phone"
-              >
-                {patient.clientPhone}
-              </a>
+                </div>
+                <div className="queue-detail-status-row">
+                  <span
+                    className={cn(
+                      "queue-detail-status-line",
+                      queueDetailStatusClass[patient.status],
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "queue-detail-status-dot",
+                        queueStatusDotClass[patient.status],
+                      )}
+                    />
+                    {queueStatusLabel[patient.status]}
+                  </span>
+                  {headerStatusDetail && <span className="queue-detail-status-separator">·</span>}
+                  {headerStatusDetail && (
+                    <span className="queue-detail-status-detail">{headerStatusDetail}</span>
+                  )}
+                  <span className="queue-detail-status-separator">·</span>
+                  <span className="queue-detail-status-type">{queueTypeDisplay}</span>
+                </div>
+                {patient.clientPhone && (
+                  <a
+                    href={`tel:${patient.clientPhone}`}
+                    className="queue-detail-phone"
+                  >
+                    {patient.clientPhone}
+                  </a>
+                )}
+              </>
             )}
             {profileHref && (
               <Link to={profileHref} className="queue-detail-profile-link">
@@ -1151,35 +1246,30 @@ const PatientDetailSheet = ({
                   {followUpPresetButtons}
                 </div>
               ) : (
-                <Popover
-                  open={desktopFollowUpPopoverOpen}
-                  onOpenChange={(nextOpen) => {
-                    if (!nextOpen) {
-                      requestCloseFollowUpPicker();
-                    }
-                  }}
-                >
-                  <PopoverAnchor asChild>
-                    <div
-                      className="queue-detail-followup-track"
-                      aria-label="Follow-up options"
-                      ref={followUpTrackRef}
-                    >
-                      {followUpPresetButtons}
-                    </div>
-                  </PopoverAnchor>
-                  <PopoverContent
-                    align="center"
-                    sideOffset={10}
-                    className={cn(
-                      "queue-detail-followup-popover queue-detail-followup-popover--animated",
-                      isFollowUpFocusActive && "queue-detail-followup-popover--focus-active",
-                    )}
-                    style={followUpAnimationStyle}
+                <>
+                  <div
+                    className="queue-detail-followup-track"
+                    aria-label="Follow-up options"
+                    ref={followUpTrackRef}
                   >
-                    {followUpPickerPanel}
-                  </PopoverContent>
-                </Popover>
+                    {followUpPresetButtons}
+                  </div>
+                  {desktopFollowUpPopoverOpen && followUpPickerPanel && typeof document !== "undefined" &&
+                    createPortal(
+                      <div
+                        key={pendingFollowUpValue ?? "followup-desktop"}
+                        className={cn(
+                          "queue-detail-followup-inline queue-detail-followup-inline--animated queue-detail-followup-inline--desktop-portal",
+                          isFollowUpFocusActive && "queue-detail-followup-inline--focus-active",
+                        )}
+                        style={followUpAnimationStyle}
+                      >
+                        {followUpPickerPanel}
+                      </div>,
+                      document.body,
+                    )
+                  }
+                </>
               )}
               {followUpValue ? (
                 <button
@@ -1335,9 +1425,18 @@ const PatientDetailSheet = ({
     </>
   );
 
+  const handleDrawerOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isFollowUpFocusActive) {
+      // User tried to close drawer while calendar is open — close calendar instead
+      requestCloseFollowUpPicker();
+      return;
+    }
+    onOpenChange(nextOpen);
+  };
+
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open={open} onOpenChange={handleDrawerOpenChange}>
         <DrawerContent
           overlayClassName="queue-detail-drawer-overlay"
           className={cn(

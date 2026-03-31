@@ -9,7 +9,7 @@ import {
   type ReservationStats,
   type UpdateReservationStatusResponse,
 } from "@/lib/admin-constants";
-import type { ReservationRow, ReservationStatus } from "@/types/reservations";
+import type { ReservationRow, ReservationStatus, ReminderType } from "@/types/reservations";
 
 export interface UseReservationsReturn {
   reservations: ReservationRow[];
@@ -37,6 +37,9 @@ export interface UseReservationsReturn {
   setDraftStatus: (id: string, status: ReservationStatus) => void;
   savingById: Record<string, boolean>;
   handleStatusSave: (reservation: ReservationRow) => Promise<void>;
+  skipReminder: (reservationId: string, reminderType: ReminderType) => Promise<void>;
+  resendReminder: (reservationId: string, reminderType: ReminderType) => Promise<void>;
+  resendConfirmation: (reservationId: string) => Promise<void>;
 
   refresh: () => void;
   stats: ReservationStats;
@@ -222,6 +225,87 @@ export function useReservations(): UseReservationsReturn {
     [draftStatusById, savingById, toast],
   );
 
+  const skipReminder = useCallback(
+    async (reservationId: string, reminderType: ReminderType) => {
+      const { data, error } = await supabase.functions.invoke("manage-notification", {
+        body: { action: "skip_reminder", reservationId, reminderType },
+      });
+
+      if (error) {
+        toast({
+          title: "Skip failed",
+          description: getErrorMessage(error),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const payload = data as { reservation: ReservationRow };
+      setReservations((current) =>
+        current.map((row) => (row.id === reservationId ? payload.reservation : row)),
+      );
+      toast({ title: "Reminder skipped", description: `The ${reminderType === "r24h" ? "24h" : "4h"} reminder has been skipped.` });
+    },
+    [toast],
+  );
+
+  const resendReminder = useCallback(
+    async (reservationId: string, reminderType: ReminderType) => {
+      const { data, error } = await supabase.functions.invoke("manage-notification", {
+        body: { action: "resend_reminder", reservationId, reminderType },
+      });
+
+      if (error) {
+        toast({
+          title: "Resend failed",
+          description: getErrorMessage(error),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const payload = data as { reservation: ReservationRow };
+      setReservations((current) =>
+        current.map((row) => (row.id === reservationId ? payload.reservation : row)),
+      );
+      toast({ title: "Reminder queued", description: `The ${reminderType === "r24h" ? "24h" : "4h"} reminder has been re-queued for delivery.` });
+    },
+    [toast],
+  );
+
+  const resendConfirmation = useCallback(
+    async (reservationId: string) => {
+      const { data, error } = await supabase.functions.invoke("manage-notification", {
+        body: { action: "resend_confirmation", reservationId },
+      });
+
+      if (error) {
+        toast({
+          title: "Resend failed",
+          description: getErrorMessage(error),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const payload = data as { reservation: ReservationRow; confirmationSent: boolean };
+      setReservations((current) =>
+        current.map((row) => (row.id === reservationId ? payload.reservation : row)),
+      );
+
+      if (payload.confirmationSent) {
+        toast({ title: "Confirmation sent", description: "The WhatsApp confirmation has been re-sent." });
+      } else {
+        toast({
+          title: "Confirmation failed",
+          description: "The confirmation could not be delivered. Check the detail view for errors.",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast],
+  );
+
   const clearFilters = useCallback(() => {
     setDateFrom("");
     setDateTo("");
@@ -278,6 +362,9 @@ export function useReservations(): UseReservationsReturn {
     setDraftStatus,
     savingById,
     handleStatusSave,
+    skipReminder,
+    resendReminder,
+    resendConfirmation,
     refresh,
     stats,
   };

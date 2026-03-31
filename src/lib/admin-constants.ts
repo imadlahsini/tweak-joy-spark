@@ -56,11 +56,11 @@ export const statusLabel: Record<ReservationStatus, string> = {
 };
 
 export const statusBadgeClass: Record<ReservationStatus, string> = {
-  new: "border-cyan-400/35 bg-cyan-500/12 text-cyan-700",
-  confirmed: "border-emerald-400/35 bg-emerald-500/12 text-emerald-700",
-  completed: "border-teal-400/35 bg-teal-500/12 text-teal-700",
-  cancelled: "border-rose-400/35 bg-rose-500/12 text-rose-700",
-  no_show: "border-amber-400/35 bg-amber-500/12 text-amber-700",
+  new: "border-cyan-400/25 bg-cyan-500/15 text-cyan-400",
+  confirmed: "border-emerald-400/25 bg-emerald-500/15 text-emerald-400",
+  completed: "border-teal-400/25 bg-teal-500/15 text-teal-400",
+  cancelled: "border-rose-400/25 bg-rose-500/15 text-rose-400",
+  no_show: "border-amber-400/25 bg-amber-500/15 text-amber-400",
 };
 
 export const statusDotClass: Record<ReservationStatus, string> = {
@@ -72,11 +72,11 @@ export const statusDotClass: Record<ReservationStatus, string> = {
 };
 
 export const statusIconPlateClass: Record<ReservationStatus, string> = {
-  new: "border-cyan-400/35 bg-cyan-500/12 text-cyan-600",
-  confirmed: "border-emerald-400/35 bg-emerald-500/12 text-emerald-600",
-  completed: "border-teal-400/35 bg-teal-500/12 text-teal-600",
-  cancelled: "border-rose-400/35 bg-rose-500/12 text-rose-600",
-  no_show: "border-amber-400/35 bg-amber-500/12 text-amber-600",
+  new: "border-cyan-400/25 bg-cyan-500/15 text-cyan-400",
+  confirmed: "border-emerald-400/25 bg-emerald-500/15 text-emerald-400",
+  completed: "border-teal-400/25 bg-teal-500/15 text-teal-400",
+  cancelled: "border-rose-400/25 bg-rose-500/15 text-rose-400",
+  no_show: "border-amber-400/25 bg-amber-500/15 text-amber-400",
 };
 
 export const statusIcon: Record<ReservationStatus, LucideIcon> = {
@@ -112,8 +112,8 @@ export const statCards: StatCardDef[] = [
     label: "Total",
     icon: BarChart3,
     colorClasses: {
-      plate: "border-cyan-400/35 bg-cyan-500/12 text-cyan-600",
-      glow: "bg-cyan-500/12",
+      plate: "border-cyan-400/25 bg-cyan-500/15 text-cyan-400",
+      glow: "bg-cyan-500/15",
     },
     getValue: (s) => s.total,
     getContext: () => "In active date range",
@@ -123,8 +123,8 @@ export const statCards: StatCardDef[] = [
     label: "Today",
     icon: CalendarDays,
     colorClasses: {
-      plate: "border-teal-400/35 bg-teal-500/12 text-teal-600",
-      glow: "bg-teal-500/12",
+      plate: "border-teal-400/25 bg-teal-500/15 text-teal-400",
+      glow: "bg-teal-500/15",
     },
     getValue: (s) => s.todayCount,
     getContext: () => "Scheduled in Casablanca",
@@ -134,8 +134,8 @@ export const statCards: StatCardDef[] = [
     label: "New",
     icon: Sparkles,
     colorClasses: {
-      plate: "border-cyan-400/35 bg-cyan-500/12 text-cyan-600",
-      glow: "bg-cyan-500/12",
+      plate: "border-cyan-400/25 bg-cyan-500/15 text-cyan-400",
+      glow: "bg-cyan-500/15",
     },
     getValue: (s) => s.byStatus.new,
     getContext: () => "Needs review",
@@ -145,8 +145,8 @@ export const statCards: StatCardDef[] = [
     label: "Confirmed",
     icon: CheckCircle2,
     colorClasses: {
-      plate: "border-emerald-400/35 bg-emerald-500/12 text-emerald-600",
-      glow: "bg-emerald-500/12",
+      plate: "border-emerald-400/25 bg-emerald-500/15 text-emerald-400",
+      glow: "bg-emerald-500/15",
     },
     getValue: (s) => s.byStatus.confirmed,
     getContext: () => "Ready to attend",
@@ -156,8 +156,8 @@ export const statCards: StatCardDef[] = [
     label: "Cancelled",
     icon: XCircle,
     colorClasses: {
-      plate: "border-rose-400/35 bg-rose-500/12 text-rose-600",
-      glow: "bg-rose-500/12",
+      plate: "border-rose-400/25 bg-rose-500/15 text-rose-400",
+      glow: "bg-rose-500/15",
     },
     getValue: (s) => s.byStatus.cancelled,
     getContext: () => "Excluded from active flow",
@@ -176,24 +176,38 @@ export const deliveryLabel: Record<DeliveryStatus, string> = {
 };
 
 export const deliveryBadgeClass: Record<DeliveryStatus, string> = {
-  unknown: "border-slate-400/35 bg-slate-500/10 text-slate-700",
-  sent: "border-emerald-400/35 bg-emerald-500/12 text-emerald-700",
-  failed: "border-rose-400/35 bg-rose-500/12 text-rose-700",
-  skipped: "border-amber-400/35 bg-amber-500/12 text-amber-700",
+  unknown: "border-slate-400/25 bg-slate-500/15 text-slate-400",
+  sent: "border-emerald-400/25 bg-emerald-500/15 text-emerald-400",
+  failed: "border-rose-400/25 bg-rose-500/15 text-rose-400",
+  skipped: "border-amber-400/25 bg-amber-500/15 text-amber-400",
 };
 
 export const reminderTypeLabel: Record<ReminderType, string> = {
   r24h: "24h",
-  r3h: "3h",
-  r30m: "30m",
+  r4h: "4h",
 };
 
 export const reminderBadgeClass: Record<ReminderStatus, string> = {
-  pending: "border-slate-400/35 bg-slate-500/10 text-slate-700",
-  processing: "border-blue-400/35 bg-blue-500/12 text-blue-700",
-  sent: "border-emerald-400/35 bg-emerald-500/12 text-emerald-700",
-  failed: "border-rose-400/35 bg-rose-500/12 text-rose-700",
-  skipped: "border-amber-400/35 bg-amber-500/12 text-amber-700",
+  pending: "border-slate-400/25 bg-slate-500/15 text-slate-400",
+  processing: "border-blue-400/25 bg-blue-500/15 text-blue-400",
+  sent: "border-emerald-400/25 bg-emerald-500/15 text-emerald-400",
+  failed: "border-rose-400/25 bg-rose-500/15 text-rose-400",
+  skipped: "border-amber-400/25 bg-amber-500/15 text-amber-400",
+};
+
+export const reminderDotColor: Record<ReminderStatus, string> = {
+  pending: "bg-white/25",
+  processing: "bg-blue-400",
+  sent: "bg-emerald-400",
+  failed: "bg-rose-400",
+  skipped: "bg-amber-400",
+};
+
+export const confirmationTextClass: Record<DeliveryStatus, string> = {
+  unknown: "text-slate-400",
+  sent: "text-emerald-400",
+  failed: "text-rose-400",
+  skipped: "text-amber-400",
 };
 
 /* ------------------------------------------------------------------ */

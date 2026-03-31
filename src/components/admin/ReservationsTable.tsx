@@ -1,14 +1,5 @@
 import { motion } from "framer-motion";
-import { Check, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Mail, MailCheck, MailX } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -19,37 +10,42 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
-  deliveryBadgeClass,
+  confirmationTextClass,
   deliveryLabel,
   formatDateTime,
-  reminderBadgeClass,
-  reminderTypeLabel,
-  reservationStatuses,
-  statusDotClass,
-  statusLabel,
+  reminderDotColor,
 } from "@/lib/admin-constants";
-import type { ReservationRow, ReservationStatus, ReminderStatus } from "@/types/reservations";
+import type { ReservationRow, ReservationStatus, ReminderStatus, DeliveryStatus } from "@/types/reservations";
 
 interface ReservationsTableProps {
   reservations: ReservationRow[];
-  draftStatusById: Record<string, ReservationStatus>;
-  savingById: Record<string, boolean>;
-  onDraftStatusChange: (id: string, status: ReservationStatus) => void;
-  onStatusSave: (reservation: ReservationRow) => void;
   onRowClick: (reservation: ReservationRow) => void;
 }
 
-const ReminderChip = ({
-  label,
-  status,
-}: {
-  label: string;
-  status: ReminderStatus;
-}) => (
-  <div className={cn("admin-chip border", reminderBadgeClass[status])}>
-    <span className="font-semibold">{label}</span> {status}
+const confirmationIcon: Record<DeliveryStatus, typeof Mail> = {
+  unknown: Mail,
+  sent: MailCheck,
+  failed: MailX,
+  skipped: Mail,
+};
+
+const ReminderDot = ({ label, status }: { label: string; status: ReminderStatus }) => (
+  <div className="flex items-center gap-1" title={`${label}: ${status}`}>
+    <span className={cn("h-2 w-2 shrink-0 rounded-full", reminderDotColor[status])} />
+    <span className="text-[10px] text-white/40">{label}</span>
   </div>
 );
+
+const getReminderSummary = (statuses: ReminderStatus[]): string => {
+  const failed = statuses.filter((s) => s === "failed").length;
+  if (failed > 0) return `${failed} failed`;
+  const sent = statuses.filter((s) => s === "sent").length;
+  if (sent === statuses.length) return "all sent";
+  if (sent > 0) return `${sent}/${statuses.length} sent`;
+  const processing = statuses.filter((s) => s === "processing").length;
+  if (processing > 0) return `${processing} processing`;
+  return "pending";
+};
 
 const rowAccentClass: Record<ReservationStatus, string> = {
   new: "before:bg-cyan-400",
@@ -61,49 +57,46 @@ const rowAccentClass: Record<ReservationStatus, string> = {
 
 const ReservationsTable = ({
   reservations,
-  draftStatusById,
-  savingById,
-  onDraftStatusChange,
-  onStatusSave,
   onRowClick,
 }: ReservationsTableProps) => {
   return (
-    <div className="reservations-table-shell admin-glass-panel-soft rounded-[22px]">
-      <Table className="min-w-[1080px] table-fixed">
+    <div className="reservations-table-shell">
+      <Table className="min-w-[820px] table-fixed">
         <colgroup>
-          <col style={{ width: "190px" }} />
           <col style={{ width: "220px" }} />
-          <col style={{ width: "180px" }} />
-          <col style={{ width: "250px" }} />
           <col style={{ width: "240px" }} />
+          <col style={{ width: "200px" }} />
+          <col style={{ width: "280px" }} />
         </colgroup>
 
         <TableHeader className="sticky top-0 z-20">
-          <TableRow className="border-border/70 bg-[hsl(var(--reservation-table-head)/0.95)] hover:bg-[hsl(var(--reservation-table-head)/0.95)]">
+          <TableRow className="border-white/8 bg-white/[0.03] hover:bg-white/[0.03]">
             <TableHead className="reservations-table-head px-4">Time</TableHead>
             <TableHead className="reservations-table-head px-4">Patient</TableHead>
             <TableHead className="reservations-table-head px-4">Contact</TableHead>
-            <TableHead className="reservations-table-head px-4">Status Workflow</TableHead>
-            <TableHead className="reservations-table-head px-4">Confirmation & Reminders</TableHead>
+            <TableHead className="reservations-table-head px-4">Notifications</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {reservations.map((reservation, index) => {
-            const draftStatus = draftStatusById[reservation.id] ?? reservation.status;
-            const statusChanged = draftStatus !== reservation.status;
-            const isSaving = Boolean(savingById[reservation.id]);
-            const saveLabel = isSaving ? "Saving" : statusChanged ? "Save" : "Saved";
+            const confStatus = reservation.confirmation.status;
+            const ConfIcon = confirmationIcon[confStatus];
+            const reminderStatuses: ReminderStatus[] = [
+              reservation.reminders.r24h?.status ?? "pending",
+              reservation.reminders.r4h?.status ?? "pending",
+            ];
+            const summary = getReminderSummary(reminderStatuses);
 
             return (
               <motion.tr
                 key={reservation.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: index * 0.03, duration: 0.28 }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04, duration: 0.28, ease: "easeOut" }}
                 onClick={() => onRowClick(reservation)}
                 className={cn(
-                  "group cursor-pointer border-b border-border/60 align-top transition-all duration-150 hover:bg-white/58 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--reservation-focus)/0.45)] focus-visible:ring-offset-0",
+                  "group cursor-pointer border-b border-white/[0.06] align-top transition-all duration-150 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(109,181,255,0.45)] focus-visible:ring-offset-0",
                 )}
               >
                 <TableCell className="px-4 py-4 align-top">
@@ -113,87 +106,45 @@ const ReservationsTable = ({
                       rowAccentClass[reservation.status],
                     )}
                   >
-                    <p className="text-sm font-semibold text-foreground">{formatDateTime(reservation.appointmentAt)}</p>
-                    <span className="mt-1 inline-flex rounded-md border border-border/70 bg-white/65 px-1.5 py-0.5 text-xs uppercase text-muted-foreground">
+                    <p className="text-sm font-semibold text-white/90">{formatDateTime(reservation.appointmentAt)}</p>
+                    <span className="mt-1 inline-flex rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-xs uppercase text-white/40">
                       {reservation.language}
                     </span>
                   </div>
                 </TableCell>
 
                 <TableCell className="px-4 py-4 align-top">
-                  <p className="text-[14px] font-semibold text-foreground">{reservation.clientName}</p>
-                  <p className="mt-0.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  <p className="text-[14px] font-semibold text-white/92">{reservation.clientName}</p>
+                  <p className="mt-0.5 text-xs uppercase tracking-[0.14em] text-white/35">
                     Patient
                   </p>
                 </TableCell>
 
                 <TableCell className="px-4 py-4 align-top">
-                  <p className="font-mono text-xs text-foreground/85">{reservation.clientPhone}</p>
+                  <p className="font-mono text-xs text-white/70">{reservation.clientPhone}</p>
                 </TableCell>
 
-                <TableCell className="px-4 py-4 align-top" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={draftStatus}
-                      onValueChange={(value) =>
-                        onDraftStatusChange(reservation.id, value as ReservationStatus)
-                      }
-                    >
-                      <SelectTrigger className="admin-control h-9 flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {reservationStatuses.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            <span className="flex items-center gap-2">
-                              <span className={cn("h-1.5 w-1.5 rounded-full", statusDotClass[s])} />
-                              {statusLabel[s]}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Button
-                      size="sm"
-                      onClick={() => onStatusSave(reservation)}
-                      disabled={!statusChanged || isSaving}
-                      className="h-9 min-w-[78px] shrink-0 rounded-lg bg-cyan-500/90 px-2.5 text-white hover:bg-cyan-500 disabled:opacity-45"
-                    >
-                      {isSaving ? (
-                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Check className="mr-1.5 h-4 w-4" />
-                      )}
-                      <span className="text-xs">{saveLabel}</span>
-                    </Button>
-                  </div>
-                </TableCell>
-
-                <TableCell className="px-4 py-4 align-top">
-                  <div className="space-y-2">
-                    <Badge
-                      className={cn(
-                        "admin-chip border text-xs uppercase tracking-[0.08em]",
-                        deliveryBadgeClass[reservation.confirmation.status],
-                      )}
-                    >
-                      {deliveryLabel[reservation.confirmation.status]}
-                    </Badge>
-                    <div className="flex flex-wrap gap-1">
-                      <ReminderChip
-                        label={reminderTypeLabel.r24h}
-                        status={reservation.reminders.r24h.status}
-                      />
-                      <ReminderChip
-                        label={reminderTypeLabel.r3h}
-                        status={reservation.reminders.r3h.status}
-                      />
-                      <ReminderChip
-                        label={reminderTypeLabel.r30m}
-                        status={reservation.reminders.r30m.status}
-                      />
+                <TableCell className="px-4 py-4 align-middle">
+                  <div className="flex items-center gap-3">
+                    {/* Confirmation status */}
+                    <div className={cn("flex shrink-0 items-center gap-1.5", confirmationTextClass[confStatus])}>
+                      <ConfIcon className="h-3.5 w-3.5" />
+                      <span className="text-[12px] font-medium">{deliveryLabel[confStatus]}</span>
                     </div>
+
+                    {/* Separator */}
+                    <div className="h-3.5 w-px bg-white/10" />
+
+                    {/* Reminder dots */}
+                    <div className="flex items-center gap-2.5">
+                      <ReminderDot label="24h" status={reservation.reminders.r24h?.status ?? "pending"} />
+                      <ReminderDot label="4h" status={reservation.reminders.r4h?.status ?? "pending"} />
+                    </div>
+
+                    {/* Summary */}
+                    <span className="ml-auto shrink-0 text-[11px] font-mono text-white/35">
+                      {summary}
+                    </span>
                   </div>
                 </TableCell>
               </motion.tr>
